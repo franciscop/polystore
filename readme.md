@@ -1,4 +1,4 @@
-# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/fetch/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/fetch/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/fetch/master/index.min.js.svg?compression=gzip)](https://github.com/franciscop/fetch/blob/master/index.min.js)
+# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/polystore/master/index.min.js.svg?compression=gzip)](https://github.com/franciscop/polystore/blob/master/index.min.js)
 
 Add a unified API for any KV store like localStorage, Redis, FileSystem, etc:
 
