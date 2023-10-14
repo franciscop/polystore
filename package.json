@@ -1,6 +1,6 @@
 {
   "name": "polystore",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Add a unified API for any KV store like localStorage, Redis, FileSystem, etc.",
   "homepage": "https://github.com/franciscop/polystore",
   "repository": "https://github.com/franciscop/polystore.git",
