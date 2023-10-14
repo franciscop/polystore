@@ -159,9 +159,11 @@ await store.clear();
 
 ## Stores
 
-Accepts directly the store, or a promise that resolves into a store:
+Accepts directly the store, or a promise that resolves into a store. All of the stores, including those that natively _don't_ support it, are enhanced with `Promises` and `expire` times, so they all work the same way.
 
 ### Memory
+
+An in-memory KV store, with promises and expiration time:
 
 ```js
 import kv from "polystore";
@@ -180,6 +182,8 @@ console.log(await store.get("key1"));
 
 ### Local Storage
 
+The traditional localStorage that we all know and love, this time with a unified API, and promises:
+
 ```js
 import kv from "polystore";
 
@@ -188,7 +192,11 @@ await store.set("key1", "Hello world");
 console.log(await store.get("key1"));
 ```
 
+Same limitations as always apply to localStorage, if you think you are going to use too much storage try instead our integration with [Local Forage](#local-forage)!
+
 ### Session Storage
+
+Same as localStorage, but now for the session only:
 
 ```js
 import kv from "polystore";
@@ -200,6 +208,8 @@ console.log(await store.get("key1"));
 
 ### Cookies
 
+Supports native browser cookies, including setting the expire time:
+
 ```js
 import kv from "polystore";
 
@@ -208,20 +218,26 @@ await store.set("key1", "Hello world");
 console.log(await store.get("key1"));
 ```
 
+It is fairly limited for how powerful cookies are, but in exchange it has the same API as any other method or KV store. It works with browser-side Cookies (no http-only).
+
 > Note: the cookie expire resolution is unfortunately in the seconds. While it still expects you to pass the number of ms as with the other methods (or a string like `1h`), times shorter than 1 second like `expire: 200` (ms) don't make sense for this storage method and won't properly save them.
 
 ### Local Forage
+
+Supports localForage (with any driver it uses) so that you have a unified API. It also _adds_ the `expire` option to the setters!
 
 ```js
 import kv from "polystore";
 import localForage from "localforage";
 
 const store = kv(localForage);
-await store.set("key1", "Hello world");
+await store.set("key1", "Hello world", { expire: "1h" });
 console.log(await store.get("key1"));
 ```
 
 ### Redis Client
+
+Supports the official Node Redis Client. You can pass either the client or the promise:
 
 ```js
 import kv from "polystore";
