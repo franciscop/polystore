@@ -139,6 +139,19 @@ layers.redis = (store) => {
   return { get, set, has, del, keys, clear, close };
 };
 
+layers.localForage = (store) => {
+  const get = (key) => store.getItem(key);
+  const set = (key, value) => store.setItem(key, value);
+  const has = async (key) => (await get(key)) !== null;
+  const del = (key) => store.removeItem(key);
+
+  const keys = async (prefix = "") =>
+    (await store.keys()).filter((k) => k.startsWith(prefix));
+  const clear = () => store.clear();
+
+  return { get, set, has, del, keys, clear };
+};
+
 export default function compat(store) {
   if (!store || store instanceof Map) {
     // Convert it to the normalized kv, then add the expiry layer on top
@@ -152,6 +165,9 @@ export default function compat(store) {
   }
   if (store === "cookie") {
     return layers.cookie();
+  }
+  if (store.defineDriver && store.dropInstance && store.INDEXEDDB) {
+    return layers.expire(layers.localForage(store));
   }
   return layers.redis(store);
 }

@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import localForage from "localforage";
 import { createClient } from "redis";
 
 import kv from "./";
@@ -11,6 +12,7 @@ stores.push(["kv()", kv()]);
 stores.push(["kv(new Map())", kv(new Map())]);
 stores.push(["kv(localStorage)", kv(localStorage)]);
 stores.push(["kv(sessionStorage)", kv(sessionStorage)]);
+stores.push(["kv(localForage)", kv(localForage)]);
 if (process.env.REDIS) {
   stores.push(["kv(redis)", kv(createClient().connect())]);
 }

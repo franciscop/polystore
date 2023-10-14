@@ -1,6 +1,6 @@
 # Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/polystore/master/index.min.js.svg?compression=gzip)](https://github.com/franciscop/polystore/blob/master/index.min.js)
 
-Add a unified API for any KV store like localStorage, Redis, FileSystem, etc:
+A small compatibility layer for many popular KV stores like localStorage, Redis, FileSystem, etc:
 
 ```js
 import kv from "polystore";
@@ -25,26 +25,22 @@ Available stores:
 - **Local Storage** `localStorage` (fe): persist the data in the browser's localStorage
 - **Session Storage** `sessionStorage` (fe): persist the data in the browser's sessionStorage
 - **Cookies** `"cookie"` (fe): persist the data using cookies
-- (WIP) **LocalForage** `localForage` (fe): persist the data on IndexedDB
+- **LocalForage** `localForage` (fe): persist the data on IndexedDB
 - **Redis Client** `redisClient` (be): persist the data in the Redis instance that you connect to.
 - (WIP) **FS File** `fs.open(pathToFile)` (be): store the data in a single file
 - (WIP) **FS Folder** `fs.opendir(pathToFolder)` (be): store the data in files inside the folder
 - (WIP) **Cloudflare KV** `env.KV_NAMESPACE` (be): use Cloudflare's KV store
 
-It main usage is for _libraries using this library_, so that _your_ library can easily accept many cache stores! For example, let's say you create an API library, then you can accept the stores from your client:
+I build this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js and the Browser) and tiny (1~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
 
-MyApi({ cache: new Map() });
-// OR
-MyApi({ cache: localStorage });
-// OR
-MyApi({ cache: fs.opendir("./data/") });
-// OR
-MyApi({ cache: redisClient });
-// OR
-MyApi({ cache: env.KV_NAMESPACE });
+MyApi({ cache: new Map() }); // OR
+MyApi({ cache: localStorage }); // OR
+MyApi({ cache: redisClient }); // OR
+MyApi({ cache: env.KV_NAMESPACE }); // OR
+// ...
 ```
 
 ## API
@@ -218,7 +214,11 @@ console.log(await store.get("key1"));
 
 ```js
 import kv from "polystore";
-// TODO
+import localForage from "localforage";
+
+const store = kv(localForage);
+await store.set("key1", "Hello world");
+console.log(await store.get("key1"));
 ```
 
 ### Redis Client
