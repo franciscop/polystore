@@ -58,13 +58,13 @@ layers.memory = (store) => {
 
   // Group methods
   const keys = async (prefix = "") =>
-    [...(await store.keys())].filter((k) => k.startsWith(prefix)); // 🤷‍♂️
+    [...(await store.keys())].filter((k) => k.startsWith(prefix));
   const clear = () => store.clear();
 
   return { get, set, has, del, keys, clear };
 };
 
-layers.localStorage = (store) => {
+layers.storage = (store) => {
   // Item methods
   const get = async (key) => (store[key] ? JSON.parse(store[key]) : null);
   const set = async (key, data) => store.setItem(key, JSON.stringify(data));
@@ -152,22 +152,105 @@ layers.localForage = (store) => {
   return { get, set, has, del, keys, clear };
 };
 
-export default function compat(store) {
-  if (!store || store instanceof Map) {
-    // Convert it to the normalized kv, then add the expiry layer on top
-    return layers.expire(layers.memory(store || new Map()));
+layers.file = (file) => {
+  const fsProm = (async () => {
+    // For the bundler, it doesn't like it otherwise
+    const lib = "node:fs/promises";
+    const fsp = await import(lib);
+    // We want to make sure the file already exists, so attempt to
+    // create it (but not OVERWRITE it, that's why the x flag) and
+    // it fails if it already exists
+    await fsp.writeFile(file, "{}", { flag: "wx" }).catch((err) => {
+      if (err.code !== "EEXIST") throw err;
+    });
+    return fsp;
+  })();
+  const getContent = async () => {
+    const fsp = await fsProm;
+    const text = await fsp.readFile(file, "utf8");
+    if (!text) return {};
+    return JSON.parse(text);
+  };
+  const setContent = async (data) => {
+    const fsp = await fsProm;
+    await fsp.writeFile(file, JSON.stringify(data, null, 2));
+  };
+  const get = async (key) => {
+    const data = await getContent();
+    return data[key] ?? null;
+  };
+  const set = async (key, value) => {
+    const data = await getContent();
+    data[key] = value;
+    await setContent(data);
+  };
+  const has = async (key) => (await get(key)) !== null;
+  const del = async (key) => {
+    const data = await getContent();
+    delete data[key];
+    await setContent(data);
+  };
+  const keys = async (prefix = "") => {
+    const data = await getContent();
+    return Object.keys(data).filter((k) => k.startsWith(prefix));
+  };
+  const clear = async () => {
+    await setContent({});
+  };
+  return { get, set, has, del, keys, clear };
+};
+
+const getStore = async (store) => {
+  // Convert it to the normalized kv, then add the expiry layer on top
+  if (store instanceof Map) {
+    return layers.expire(layers.memory(store));
   }
+
   if (typeof localStorage !== "undefined" && store === localStorage) {
-    return layers.expire(layers.localStorage(store));
+    return layers.expire(layers.storage(store));
   }
+
   if (typeof sessionStorage !== "undefined" && store === sessionStorage) {
-    return layers.expire(layers.localStorage(store));
+    return layers.expire(layers.storage(store));
   }
+
   if (store === "cookie") {
     return layers.cookie();
   }
+
   if (store.defineDriver && store.dropInstance && store.INDEXEDDB) {
     return layers.expire(layers.localForage(store));
   }
-  return layers.redis(store);
+
+  if (store.protocol && store.protocol === "file:") {
+    return layers.expire(layers.file(store));
+  }
+
+  if (store.pSubscribe && store.sSubscribe) {
+    return layers.redis(store);
+  }
+
+  // ¯\_(ツ)_/¯
+  return null;
+};
+
+export default function compat(storeClient = new Map()) {
+  return new Proxy(
+    {},
+    {
+      get: (_, key) => {
+        return async (...args) => {
+          const store = await getStore(await storeClient);
+          // Throw at the first chance when the store failed to init:
+          if (!store) {
+            throw new Error("Store is not valid");
+          }
+          // The store.close() is the only one allowed to be called even
+          // if it doesn't exist, since it's optional in some stores
+          if (!store[key] && key === "close") return null;
+          return store[key](...args);
+        };
+      },
+    }
+  );
 }

@@ -13,12 +13,20 @@ stores.push(["kv(new Map())", kv(new Map())]);
 stores.push(["kv(localStorage)", kv(localStorage)]);
 stores.push(["kv(sessionStorage)", kv(sessionStorage)]);
 stores.push(["kv(localForage)", kv(localForage)]);
+const path = `file://${process.cwd()}/src/test/data.json`;
+stores.push([`kv(new URL("${path}"))`, kv(new URL(path))]);
 if (process.env.REDIS) {
   stores.push(["kv(redis)", kv(createClient().connect())]);
 }
 stores.push(["kv('cookie')", kv("cookie")]);
 
 const delay = (t) => new Promise((done) => setTimeout(done, t));
+
+describe("potato", () => {
+  it("a potato is not a valid store", async () => {
+    await expect(() => kv("potato").get("any")).rejects.toThrow();
+  });
+});
 
 for (let [name, store] of stores) {
   describe(name, () => {
@@ -27,6 +35,7 @@ for (let [name, store] of stores) {
     });
 
     afterAll(async () => {
+      await store.clear();
       if (store.close) {
         await store.close();
       }
