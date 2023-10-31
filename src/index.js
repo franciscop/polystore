@@ -160,20 +160,20 @@ layers.file = (file) => {
     // We want to make sure the file already exists, so attempt to
     // create it (but not OVERWRITE it, that's why the x flag) and
     // it fails if it already exists
-    await fsp.writeFile(file, "{}", { flag: "wx" }).catch((err) => {
+    await fsp.writeFile(file.pathname, "{}", { flag: "wx" }).catch((err) => {
       if (err.code !== "EEXIST") throw err;
     });
     return fsp;
   })();
   const getContent = async () => {
     const fsp = await fsProm;
-    const text = await fsp.readFile(file, "utf8");
+    const text = await fsp.readFile(file.pathname, "utf8");
     if (!text) return {};
     return JSON.parse(text);
   };
   const setContent = async (data) => {
     const fsp = await fsProm;
-    await fsp.writeFile(file, JSON.stringify(data, null, 2));
+    await fsp.writeFile(file.pathname, JSON.stringify(data, null, 2));
   };
   const get = async (key) => {
     const data = await getContent();
