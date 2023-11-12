@@ -11,6 +11,7 @@ parse.week = parse.wk = parse.w = parse.d * 7;
 parse.year = parse.yr = parse.y = parse.d * 365.25;
 parse.month = parse.b = parse.y / 12;
 
+// Returns the time in milliseconds
 function parse(str) {
   if (str === null || str === undefined) return null;
   if (typeof str === "number") return str;
@@ -152,6 +153,25 @@ layers.localForage = (store) => {
   return { get, set, has, del, keys, clear };
 };
 
+layers.cloudflare = (store) => {
+  const get = async (key) => {
+    const data = await store.get(key);
+    if (!data) return null;
+    return JSON.parse(data);
+  };
+  const set = async (key, value, { expire }) => {
+    if (value === null || expire === 0) return del(key);
+    const client = await store;
+    const exp = parse(expire);
+    const expirationTtl = exp ? Math.round(exp / 1000) : undefined;
+    return client.set(key, JSON.stringify(value), { expirationTtl });
+  };
+  const has = (key) => Boolean(store.get(key));
+  const del = (key) => store.delete(key);
+  const keys = (prefix) => store.list({ prefix });
+  return { get, set, has, del, keys, clear };
+};
+
 layers.file = (file) => {
   const fsProm = (async () => {
     // For the bundler, it doesn't like it otherwise
@@ -228,6 +248,10 @@ const getStore = async (store) => {
 
   if (store.pSubscribe && store.sSubscribe) {
     return layers.redis(store);
+  }
+
+  if (store.constructor && store.constructor.name === "NvNamespace") {
+    return layers.cloudflare(store);
   }
 
   // ¯\_(ツ)_/¯
