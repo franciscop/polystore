@@ -250,7 +250,7 @@ const getStore = async (store) => {
     return layers.redis(store);
   }
 
-  if (store.constructor && store.constructor.name === "KvNamespace") {
+  if (store?.constructor?.name === "KvNamespace") {
     return layers.cloudflare(store);
   }
 
