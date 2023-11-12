@@ -175,7 +175,7 @@ layers.cloudflare = (store) => {
 layers.file = (file) => {
   const fsProm = (async () => {
     // For the bundler, it doesn't like it otherwise
-    const lib = "node:fs/promises";
+    const lib = ["node:fs", "promises"].join("/");
     const fsp = await import(lib);
     // We want to make sure the file already exists, so attempt to
     // create it (but not OVERWRITE it, that's why the x flag) and
