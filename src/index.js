@@ -164,7 +164,7 @@ layers.cloudflare = (store) => {
     const client = await store;
     const exp = parse(expire);
     const expirationTtl = exp ? Math.round(exp / 1000) : undefined;
-    return client.set(key, JSON.stringify(value), { expirationTtl });
+    return client.put(key, JSON.stringify(value), { expirationTtl });
   };
   const has = async (key) => Boolean(await store.get(key));
   const del = (key) => store.delete(key);
