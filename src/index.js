@@ -166,9 +166,10 @@ layers.cloudflare = (store) => {
     const expirationTtl = exp ? Math.round(exp / 1000) : undefined;
     return client.set(key, JSON.stringify(value), { expirationTtl });
   };
-  const has = (key) => Boolean(store.get(key));
+  const has = async (key) => Boolean(await store.get(key));
   const del = (key) => store.delete(key);
   const keys = (prefix) => store.list({ prefix });
+  const clear = () => {};
   return { get, set, has, del, keys, clear };
 };
 
