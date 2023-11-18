@@ -27,12 +27,12 @@ Available stores:
 - **Session Storage** `sessionStorage` (fe): persist the data in the browser's sessionStorage
 - **Cookies** `"cookie"` (fe): persist the data using cookies
 - **LocalForage** `localForage` (fe): persist the data on IndexedDB
-- **Redis Client** `redisClient` (be): persist the data in the Redis instance that you connect to
 - **FS File** `new URL('file:///...')` (be): store the data in a single JSON file
-- (WIP) **Cloudflare KV** `env.KV_NAMESPACE` (be): use Cloudflare's KV store
+- **Redis Client** `redisClient` (be): use the Redis instance that you connect to
+- **Cloudflare KV** `env.KV_NAMESPACE` (be): use Cloudflare's KV store
 - (WIP) **Consul KV** `new Consul()` (fe+be): use Hashicorp's Consul KV store (https://www.npmjs.com/package/consul#kv)
 
-I build this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js and the Browser) and tiny (1~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
+I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
@@ -94,22 +94,22 @@ If the value is returned, it can be a simple type like `boolean`, `string` or `n
 Create or update a value in the store. Will return a promise that resolves when the value has been saved. The value needs to be serializable:
 
 ```js
-await store.set(key: string, value: any, options?: { expire: number|string });
+await store.set(key: string, value: any, options?: { expires: number|string });
 
 await store.set("key1", "Hello World");
-await store.set("key2", ["my", "grocery", "list"], { expire: "1h" });
-await store.set("key3", { name: "Francisco" }, { expire: 60 * 60 * 1000  });
+await store.set("key2", ["my", "grocery", "list"], { expires: "1h" });
+await store.set("key3", { name: "Francisco" }, { expires: 60 * 60 * 1000  });
 ```
 
 The value can be a simple type like `boolean`, `string` or `number`, or it can be a plain Object or Array, or a combination of those. It **cannot** be a more complex or non-serializable values like a `Date()`, `Infinity`, `undefined` (casted to `null`), a `Symbol`, etc.
 
 - By default the keys _don't expire_.
-- Setting the `value` to `null`, or the `expire` to `0` is the equivalent of deleting the key+value.
-- Conversely, setting `expire` to `null` or `undefined` will make the value never to expire.
+- Setting the `value` to `null`, or the `expires` to `0` is the equivalent of deleting the key+value.
+- Conversely, setting `expires` to `null` or `undefined` will make the value never to expire.
 
-#### Expire
+#### Expires
 
-When the `expire` option is set, it can be a number (ms) or a string representing some time:
+When the `expires` option is set, it can be a number (ms) or a string representing some time:
 
 ```js
 // Valid "expire" values:
@@ -165,8 +165,6 @@ Create a sub-store where all the operations use the given prefix:
 ```js
 const store = kv(new Map());
 const sub = store.prefix("session:");
-
-const sub = kv(new Map(), { prefix: "session:" });
 ```
 
 Then all of the operations will be converted internally to add the prefix when reading, writing, etc:
@@ -192,7 +190,7 @@ The main reason this is not stable is because [_some_ store engines don't allow 
 
 ## Stores
 
-Accepts directly the store, or a promise that resolves into a store. All of the stores, including those that natively _don't_ support it, are enhanced with `Promises` and `expire` times, so they all work the same way.
+Accepts directly the store, or a promise that resolves into a store. All of the stores, including those that natively _don't_ support it, are enhanced with `Promises` and `expires` times, so they all work the same way.
 
 ### Memory
 
@@ -253,18 +251,18 @@ console.log(await store.get("key1"));
 
 It is fairly limited for how powerful cookies are, but in exchange it has the same API as any other method or KV store. It works with browser-side Cookies (no http-only).
 
-> Note: the cookie expire resolution is in the seconds. While it still expects you to pass the number of ms as with the other methods (or [a string like `1h`](#expire)), times shorter than 1 second like `expire: 200` (ms) don't make sense for this storage method and won't properly save them.
+> Note: the cookie expire resolution is in the seconds. While it still expects you to pass the number of ms as with the other methods (or [a string like `1h`](#expires)), times shorter than 1 second like `expires: 200` (ms) don't make sense for this storage method and won't properly save them.
 
 ### Local Forage
 
-Supports localForage (with any driver it uses) so that you have a unified API. It also _adds_ the `expire` option to the setters!
+Supports localForage (with any driver it uses) so that you have a unified API. It also _adds_ the `expires` option to the setters!
 
 ```js
 import kv from "polystore";
 import localForage from "localforage";
 
 const store = kv(localForage);
-await store.set("key1", "Hello world", { expire: "1h" });
+await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
 ```
 
@@ -282,7 +280,7 @@ await store.set("key1", "Hello world");
 console.log(await store.get("key1"));
 ```
 
-> Note: the Redis client expire resolution is in the seconds. While it still expects you to pass the number of ms as with the other methods (or [a string like `1h`](#expire)), times shorter than 1 second like `expire: 200` (ms) don't make sense for this storage method and won't properly save them.
+> Note: the Redis client expire resolution is in the seconds. While it still expects you to pass the number of ms as with the other methods (or [a string like `1h`](#expires)), times shorter than 1 second like `expires: 200` (ms) don't make sense for this storage method and won't properly save them.
 
 ### FS File
 
@@ -299,7 +297,36 @@ const store = kv(new URL(`file://${process.cwd()}/cache.json`));
 
 ### Cloudflare KV
 
+Supports the official Cloudflare's KV stores. Follow [the official guide](https://developers.cloudflare.com/kv/get-started/), then load it like this:
+
 ```js
 import kv from "polystore";
-// TODO
+
+export default {
+  async fetch(request, env, ctx) {
+    const store = kv(env.YOUR_KV_NAMESPACE);
+
+    await store.set("KEY", "VALUE");
+    const value = await store.get("KEY");
+
+    if (!value) {
+      return new Response("Value not found", { status: 404 });
+    }
+    return new Response(value);
+  },
+};
+```
+
+The Cloudflare native KV store only accepts strings and has you manually calculating timeouts, but as usual with `polystore` you can set/get any serializable value and set the timeout in a familiar format:
+
+```js
+// GOOD - with polystore
+await store.set("user", { name: "Francisco" }, { expires: "2days" });
+
+// COMPLEX - With native Cloudflare KV
+const serialValue = JSON.stringify({ name: "Francisco" });
+const twoDaysInSeconds = 2 * 24 * 3600;
+await env.YOUR_KV_NAMESPACE.put("user", serialValue, {
+  expirationTtl: twoDaysInSeconds,
+});
 ```

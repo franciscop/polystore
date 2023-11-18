@@ -7,16 +7,22 @@
   "bugs": "https://github.com/franciscop/polystore/issues",
   "funding": "https://www.paypal.me/franciscopresencia/19",
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
-  "main": "index.min.js",
-  "types": "index.d.ts",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --minify --sourcemap --outfile=index.min.js --format=esm",
-    "size": "echo $(gzip -c index.min.js | wc -c) bytes",
+    "size": "echo $(gzip -c src/index.js | wc -c) bytes",
     "start": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --detectOpenHandles",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --detectOpenHandles && check-dts"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --detectOpenHandles && check-dts src/index.types.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "kv",
+    "store",
+    "polystore",
+    "key-value",
+    "key",
+    "value"
+  ],
   "license": "MIT",
   "devDependencies": {
     "check-dts": "^0.7.2",

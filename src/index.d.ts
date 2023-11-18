@@ -1,8 +1,10 @@
-type Expire = number | string | null;
-
 type Store = {
   get: (key: string) => Promise<any>;
-  set: (key: string, value: any, opts?: { expire?: Expire }) => Promise<null>;
+  set: (
+    key: string,
+    value: any,
+    opts?: { expires?: number | string | null }
+  ) => Promise<null>;
   has: (key: string) => Promise<boolean>;
   del: (key: string) => Promise<null>;
 

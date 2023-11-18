@@ -25,20 +25,26 @@ function parse(str) {
   return Math.abs(Math.round(result));
 }
 
+// Adds an expiration layer to those stores that don't have it;
+// it's not perfect since it's not deleted until it's read, but
+// hey it's better than nothing
 layers.expire = (store) => {
   // Item methods
   const get = async (key) => {
     if (!(await store.has(key))) return null;
-    const { data, expire } = await store.get(key);
-    if (expire === null) return data;
+    const { value, expire } = await store.get(key);
+    // It never expires
+    if (expire === null) return value;
     const diff = expire - new Date().getTime();
     if (diff <= 0) return null;
-    return data;
+    return value;
   };
-  const set = async (key, data, { expire = null } = {}) => {
-    const time = parse(expire);
+  const set = async (key, value, { expire, expires } = {}) => {
+    const time = parse(expire || expires);
+    // Already expired, or do _not_ save it, then delete it
+    if (value === null || time === 0) return del(key);
     const expDiff = time !== null ? new Date().getTime() + time : null;
-    return store.set(key, { expire: expDiff, data });
+    return store.set(key, { expire: expDiff, value });
   };
   const has = async (key) => (await store.get(key)) !== null;
   const del = store.del;
@@ -52,7 +58,7 @@ layers.expire = (store) => {
 
 layers.memory = (store) => {
   // Item methods
-  const get = async (key) => store.get(key) || null;
+  const get = async (key) => store.get(key) ?? null;
   const set = async (key, data) => store.set(key, data);
   const has = async (key) => store.has(key);
   const del = async (key) => store.delete(key);
@@ -91,9 +97,10 @@ layers.cookie = () => {
     return JSON.parse(decodeURIComponent(value));
   };
 
-  const set = async (key, data, { expire = null } = {}) => {
-    const time = parse(expire);
+  const set = async (key, data, { expire, expires } = {}) => {
+    const time = parse(expire || expires);
     const now = new Date().getTime();
+    // NOTE: 0 is already considered here!
     const expireStr =
       time !== null ? `; expires=${new Date(now + time).toUTCString()}` : "";
     const value = encodeURIComponent(JSON.stringify(data));
@@ -123,11 +130,11 @@ layers.redis = (store) => {
     if (!value) return null;
     return JSON.parse(value);
   };
-  const set = async (key, value, { expire = null } = {}) => {
-    if (value === null || expire === 0) return del(key);
+  const set = async (key, value, { expire, expires } = {}) => {
+    const time = parse(expire || expires);
+    if (value === null || time === 0) return del(key);
     const client = await store;
-    const exp = parse(expire);
-    const EX = exp ? Math.round(exp / 1000) : undefined;
+    const EX = time ? Math.round(time / 1000) : undefined;
     return client.set(key, JSON.stringify(value), { EX });
   };
   const has = async (key) => Boolean(await (await store).exists(key));
@@ -159,11 +166,11 @@ layers.cloudflare = (store) => {
     if (!data) return null;
     return JSON.parse(data);
   };
-  const set = async (key, value, { expire }) => {
-    if (value === null || expire === 0) return del(key);
+  const set = async (key, value, { expire, expires } = {}) => {
+    const time = parse(expire || expires);
+    if (value === null || time === 0) return del(key);
     const client = await store;
-    const exp = parse(expire);
-    const expirationTtl = exp ? Math.round(exp / 1000) : undefined;
+    const expirationTtl = time ? Math.round(time / 1000) : undefined;
     return client.put(key, JSON.stringify(value), { expirationTtl });
   };
   const has = async (key) => Boolean(await store.get(key));

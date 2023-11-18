@@ -113,33 +113,33 @@ for (let [name, store] of stores) {
     });
 
     describe("expires", () => {
-      it("expire = 0 means immediately", async () => {
-        await store.set("a", "b", { expire: 0 });
+      it("expires = 0 means immediately", async () => {
+        await store.set("a", "b", { expires: 0 });
         expect(await store.get("a")).toBe(null);
       });
 
-      it("expire = potato means undefined = forever", async () => {
-        await store.set("a", "b", { expire: "potato" });
+      it("expires = potato means undefined = forever", async () => {
+        await store.set("a", "b", { expires: "potato" });
         expect(await store.get("a")).toBe("b");
         await delay(100);
         expect(await store.get("a")).toBe("b");
       });
 
-      it("expire = 5potato means undefined = forever", async () => {
-        await store.set("a", "b", { expire: "5potato" });
+      it("expires = 5potato means undefined = forever", async () => {
+        await store.set("a", "b", { expires: "5potato" });
         expect(await store.get("a")).toBe("b");
         await delay(100);
         expect(await store.get("a")).toBe("b");
       });
 
-      it("expire = null means never to expire it", async () => {
-        await store.set("a", "b", { expire: null });
+      it("expires = null means never to expire it", async () => {
+        await store.set("a", "b", { expires: null });
         expect(await store.get("a")).toBe("b");
         await delay(100);
         expect(await store.get("a")).toBe("b");
       });
 
-      it("expire = undefined means never to expire it", async () => {
+      it("expires = undefined means never to expire it", async () => {
         await store.set("a", "b");
         expect(await store.get("a")).toBe("b");
         await delay(100);
@@ -148,41 +148,41 @@ for (let [name, store] of stores) {
 
       if (name !== "kv('cookie')" && name !== "kv(redis)") {
         it("can use 10 expire", async () => {
-          await store.set("a", "b", { expire: 10 });
+          await store.set("a", "b", { expires: 10 });
           expect(await store.get("a")).toBe("b");
           await delay(100);
           expect(await store.get("a")).toBe(null);
         });
 
         it("can use 0.01s expire", async () => {
-          await store.set("a", "b", { expire: "0.01s" });
+          await store.set("a", "b", { expires: "0.01s" });
           expect(await store.get("a")).toBe("b");
           await delay(100);
           expect(await store.get("a")).toBe(null);
         });
 
         it("can use 0.01seconds expire", async () => {
-          await store.set("a", "b", { expire: "0.01seconds" });
+          await store.set("a", "b", { expires: "0.01seconds" });
           expect(await store.get("a")).toBe("b");
           await delay(100);
           expect(await store.get("a")).toBe(null);
         });
 
         it("can use 10ms expire", async () => {
-          await store.set("a", "b", { expire: "10ms" });
+          await store.set("a", "b", { expires: "10ms" });
           expect(await store.get("a")).toBe("b");
           await delay(100);
           expect(await store.get("a")).toBe(null);
         });
       } else {
         it("can use 1000 expire", async () => {
-          await store.set("a", "b", { expire: 1000 });
+          await store.set("a", "b", { expires: 1000 });
           expect(await store.get("a")).toBe("b");
           await delay(2000);
           expect(await store.get("a")).toBe(null);
         });
         it("can use 1s expire", async () => {
-          await store.set("a", "b", { expire: "1s" });
+          await store.set("a", "b", { expires: "1s" });
           expect(await store.get("a")).toBe("b");
           await delay(2000);
           expect(await store.get("a")).toBe(null);
