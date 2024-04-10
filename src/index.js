@@ -49,6 +49,10 @@ layers.extra = (store) => {
   const add = async (value, options) => store.set(generateId(), value, options);
   const has = async (key) => (await store.get(key)) !== null;
   const del = async (key) => store.set(key, null);
+  const all = async (prefix = "") => {
+    const entries = await store.entries(prefix);
+    return Object.fromEntries(entries);
+  };
   const keys = async (prefix = "") => {
     const all = await store.entries(prefix);
     return all.map((p) => p[0]);
@@ -57,7 +61,7 @@ layers.extra = (store) => {
     const all = await store.entries(prefix);
     return all.map((p) => p[1]);
   };
-  return { add, has, del, keys, values, ...store };
+  return { add, has, del, keys, values, all, ...store };
 };
 
 // Adds an expiration layer to those stores that don't have it;
