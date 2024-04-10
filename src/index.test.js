@@ -104,6 +104,15 @@ for (let [name, store] of stores) {
       ]);
     });
 
+    it("can get the all object", async () => {
+      await store.set("a", "b");
+      await store.set("c", "d");
+      expect(await store.all()).toEqual({
+        a: "b",
+        c: "d",
+      });
+    });
+
     it("can get the keys with a colon prefix", async () => {
       await store.set("a:0", "a0");
       await store.set("a:1", "a1");
@@ -132,6 +141,18 @@ for (let [name, store] of stores) {
       ]);
     });
 
+    it("can get the all object with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect(await store.all("a:")).toEqual({
+        "a:0": "a0",
+        "a:1": "a1",
+        "a:2": "a2",
+      });
+    });
+
     it("can get the keys with a dash prefix", async () => {
       await store.set("a-0", "a0");
       await store.set("a-1", "a1");
@@ -158,6 +179,18 @@ for (let [name, store] of stores) {
         ["a-1", "a1"],
         ["a-2", "a2"],
       ]);
+    });
+
+    it("can get the all object with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect(await store.all("a-")).toEqual({
+        "a-0": "a0",
+        "a-1": "a1",
+        "a-2": "a2",
+      });
     });
 
     it("can delete the data", async () => {
