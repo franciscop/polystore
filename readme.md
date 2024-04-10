@@ -1,4 +1,4 @@
-# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/polystore/master/src/index.js.svg?compression=gzip)](https://github.com/franciscop/polystore/blob/master/src/index.js)
+# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://github.com/franciscop/polystore/blob/master/src/index.js)
 
 A small compatibility layer for many KV stores like localStorage, Redis, FileSystem, etc:
 
