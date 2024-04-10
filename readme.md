@@ -14,9 +14,12 @@ This is the [API](#api) with all of the methods (they are all `async`):
 
 - `.get(key): any`: retrieve a single value, or `null` if it doesn't exist or is expired.
 - `.set(key, value, options?)`: save a single value, which can be anything that is serializable.
+- `.add(value, options?)`: same as with `.set()`, but auto-generate the key.
 - `.has(key): boolean`: check whether the key is in the store or not.
 - `.del(key)`: delete a single value from the store.
 - `.keys(prefix?): string[]`: get a list of all the available strings in the store.
+- `.values(prefix?): any[]`: get a list of all the values in the store.
+- `.entries(prefix?): [string, any][]`: get a list of all the key-value pairs in the store.
 - `.clear()`: delete ALL of the data in the store, effectively resetting it.
 - `.close()`: (only _some_ stores) ends the connection to the store.
 
@@ -91,7 +94,7 @@ If the value is returned, it can be a simple type like `boolean`, `string` or `n
 
 ### .set()
 
-Create or update a value in the store. Will return a promise that resolves when the value has been saved. The value needs to be serializable:
+Create or update a value in the store. Will return a promise that resolves with the key when the value has been saved. The value needs to be serializable:
 
 ```js
 await store.set(key: string, value: any, options?: { expires: number|string });
@@ -109,22 +112,42 @@ The value can be a simple type like `boolean`, `string` or `number`, or it can b
 
 #### Expires
 
-When the `expires` option is set, it can be a number (ms) or a string representing some time:
+When the `expires` option is set, it can be a number (**seconds**) or a string representing some time:
 
 ```js
 // Valid "expire" values:
 0 - expire immediately (AKA delete it)
-100 - expire after 100ms
-60 * 60 * 1000 - expire after 1h
-3_600_000 - expire after 1h
+0.1 - expire after 100ms*
+60 * 60 - expire after 1h
+3_600 - expire after 1h
 "10s" - expire after 10 seconds
 "2minutes" - expire after 2 minutes
 "5d" - expire after 5 days
 ```
 
+\* not all stores support sub-second expirations, notably Redis and Cookies don't, so it's safer to always use an integer or an amount larger than 1s
+
 These are all the units available:
 
 > "ms", "millisecond", "s", "sec", "second", "m", "min", "minute", "h", "hr", "hour", "d", "day", "w", "wk", "week", "b" (month), "month", "y", "yr", "year"
+
+### .add()
+
+Create a value in the store with a random key string. Will return a promise that resolves with the key when the value has been saved. The value needs to be serializable:
+
+```js
+const key:string = await store.add(value: any, options?: { expires: number|string });
+
+const key1 = await store.add("Hello World");
+const key2 = await store.add(["my", "grocery", "list"], { expires: "1h" });
+const key3 = await store.add({ name: "Francisco" }, { expires: 60 * 60 * 1000  });
+```
+
+The generated key is 24 AlphaNumeric characters (including upper and lower case) generated with random cryptography to make sure it's unguessable, high entropy and safe to use in most contexts like URLs, queries, etc. We use [`nanoid`](https://github.com/ai/nanoid/) with a custom dictionary, so you can check the entropy [in this dictionary](https://zelark.github.io/nano-id-cc/) by removing the "\_" and "-", and setting it to 24 characters.
+
+Here is the safety: "If you generate 1 million keys/second, it will take ~14 million years in order to have a 1% probability of at least one collision."
+
+> Note: please make sure to read the [`.set()`](#set) section for all the details, since `.set()` and `.add()` behave the same way except for the first argument.
 
 ### .has()
 
@@ -132,6 +155,10 @@ Check whether the key is available in the store and not expired:
 
 ```js
 await store.has(key: string);
+
+if (await store.has('cookie-consent')) {
+  loadCookies();
+}
 ```
 
 ### .del()
@@ -150,6 +177,45 @@ Get all of the keys in the store, optionally filtered by a prefix:
 await store.keys(filter?: string);
 ```
 
+> We ensure that all of the keys returned by this method are _not_ expired, while discarding any potentially expired key. See [**expiration explained**](#expiration-explained) for more details.
+
+### .values()
+
+Get all of the values in the store, optionally filtered by a **key** prefix:
+
+```js
+await store.values(filter?: string);
+```
+
+This is useful specially when you already have the id/key within the value as an object, then you can just get a list of all of them:
+
+```js
+const sessions = await store.values("session:");
+// A list of all the sessions
+
+const companies = await store.values("company:");
+// A list of all the companies
+```
+
+> We ensure that all of the values returned by this method are _not_ expired, while discarding any potentially expired key. See [**expiration explained**](#expiration-explained) for more details.
+
+### .entries()
+
+Get all of the entries (key:value tuples) in the store, optionally filtered by a **key** prefix:
+
+```js
+await store.entries(filter?: string);
+```
+
+It is in a format that you can easily build an object out of it:
+
+```js
+const sessionEntries = await store.entries("session:");
+const sessions = Object.fromEntries(sessionEntries);
+```
+
+> We ensure that all of the entries returned by this method are _not_ expired, while discarding any potentially expired key. See [**expiration explained**](#expiration-explained) for more details.
+
 ### .clear()
 
 Remove all of the data from the store:
@@ -164,26 +230,26 @@ Create a sub-store where all the operations use the given prefix:
 
 ```js
 const store = kv(new Map());
-const sub = store.prefix("session:");
+const session = store.prefix("session:");
 ```
 
 Then all of the operations will be converted internally to add the prefix when reading, writing, etc:
 
 ```js
-const val = await sub.get("key1"); // .get('session:key1');
-await sub.set("key2", "some data"); // .set('session:key2', ...);
-const val = await sub.has("key3"); // .has('session:key3');
-await sub.del("key4"); // .del('session:key4');
-await sub.keys(); // .keys('session:');
+const val = await session.get("key1"); // .get('session:key1');
+await session.set("key2", "some data"); // .set('session:key2', ...);
+const val = await session.has("key3"); // .has('session:key3');
+await session.del("key4"); // .del('session:key4');
+await session.keys(); // .keys('session:');
 // ['key1', 'key2', ...]   Note no prefix here
-await sub.clear(); // delete only keys with the prefix
+await session.clear(); // delete only keys with the prefix
 ```
 
 This will probably never be stable given the nature of some engines, so as an alternative please consider using two stores instead of prefixes:
 
 ```js
 const store = kv(new Map());
-const sessionStore = kv(new Map());
+const session = kv(new Map());
 ```
 
 The main reason this is not stable is because [_some_ store engines don't allow for atomic deletion of keys given a prefix](https://stackoverflow.com/q/4006324/938236). While we do still clear them internally in those cases, that is a non-atomic operation and it could have some trouble if some other thread is reading/writing the data _at the same time_.
@@ -251,7 +317,7 @@ console.log(await store.get("key1"));
 
 It is fairly limited for how powerful cookies are, but in exchange it has the same API as any other method or KV store. It works with browser-side Cookies (no http-only).
 
-> Note: the cookie expire resolution is in the seconds. While it still expects you to pass the number of ms as with the other methods (or [a string like `1h`](#expires)), times shorter than 1 second like `expires: 200` (ms) don't make sense for this storage method and won't properly save them.
+> Note: the cookie expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
 ### Local Forage
 
@@ -280,7 +346,7 @@ await store.set("key1", "Hello world");
 console.log(await store.get("key1"));
 ```
 
-> Note: the Redis client expire resolution is in the seconds. While it still expects you to pass the number of ms as with the other methods (or [a string like `1h`](#expires)), times shorter than 1 second like `expires: 200` (ms) don't make sense for this storage method and won't properly save them.
+> Note: the Redis client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
 ### FS File
 
@@ -317,7 +383,7 @@ export default {
 };
 ```
 
-The Cloudflare native KV store only accepts strings and has you manually calculating timeouts, but as usual with `polystore` you can set/get any serializable value and set the timeout in a familiar format:
+Why? The Cloudflare native KV store only accepts strings and has you manually calculating timeouts, but as usual with `polystore` you can set/get any serializable value and set the timeout in a familiar format:
 
 ```js
 // GOOD - with polystore
@@ -329,4 +395,56 @@ const twoDaysInSeconds = 2 * 24 * 3600;
 await env.YOUR_KV_NAMESPACE.put("user", serialValue, {
   expirationTtl: twoDaysInSeconds,
 });
+```
+
+## Expiration explained
+
+While different engines do expiration slightly differently internally, in creating polystore we want to ensure certain constrains, which _can_ affect performance. For example, if you do this operation:
+
+```js
+// in-memory store
+const store = polystore(new Map());
+await store.set("a", "b", { expires: "1s" });
+
+// These checks of course work:
+console.log(await store.keys()); // ['a']
+console.log(await store.has("a")); // true
+console.log(await store.get("a")); // 'b'
+
+// Make sure the key is expired
+await delay(2000); // 2s
+
+// Not only the .get() is null, but `.has()` returns false, and .keys() ignores it
+console.log(await store.keys()); // []
+console.log(await store.has("a")); // false
+console.log(await store.get("a")); // null
+```
+
+This is great because with polystore we do ensure that if a key has expired, it doesn't show up in `.keys()`, `.entries()`, `.values()`, `.has()` or `.get()`.
+
+However, in some stores this does come with some potential performance disadvantages. For example, both the in-memory example above and localStorage _don't_ have a native expiration/eviction process, so we have to store that information as metadata, meaning that even to check if a key exists we need to read and decode its value. For one or few keys it's not a problem, but for large sets this can become an issue.
+
+For other stores like Redis this is not a problem, because the low-level operations already do them natively, so we don't need to worry about this for performance at the user-level. Instead, Redis and cookies have the problem that they only have expiration resolution at the second level. Meaning that 800ms is not a valid Redis expiration time, it has to be 1s, 2s, etc.
+
+## Creating a store
+
+A store needs at least 4 methods with these signatures:
+
+```js
+const store = {};
+store.get = (key: string) => Promise<any>;
+store.set = (key: string, value: any, { expires: number }) => Promise<string>;
+store.entries = (prefix: string = "") => Promise<[key:string, value:any][]>;
+store.clear = () => Promise<null>;
+```
+
+All of the other methods will be implemented on top of these if not available, but you can provide those as well for optimizations, incompatible APIs, etc. For example, `.set('a', null)` _should_ delete the key `a`, and for this you may provide a native implementation:
+
+```js
+const native = myNativeStore();
+
+const store = {};
+store.get = (key) => native.getItem(key);
+// ...
+store.del = (key) => native.deleteItem(key);
 ```

@@ -46,10 +46,20 @@ for (let [name, store] of stores) {
       expect(await store.has("a")).toBe(false);
     });
 
+    it("can add() arbitrary values", async () => {
+      const key = await store.add("b");
+      expect(typeof key).toBe("string");
+      expect(await store.get(key)).toBe("b");
+      expect(await store.has(key)).toBe(true);
+      expect(key.length).toBe(24);
+      expect(key).toMatch(/^[a-zA-Z0-9]{24}$/);
+    });
+
     it("can store values", async () => {
-      await store.set("a", "b");
+      const key = await store.set("a", "b");
       expect(await store.get("a")).toBe("b");
       expect(await store.has("a")).toBe(true);
+      expect(key).toBe("a");
     });
 
     it("can store basic types", async () => {
@@ -62,8 +72,8 @@ for (let [name, store] of stores) {
     });
 
     it("can store arrays of JSON values", async () => {
-      await store.set("a", ["b"]);
-      expect(await store.get("a")).toEqual(["b"]);
+      await store.set("a", ["b", "c"]);
+      expect(await store.get("a")).toEqual(["b", "c"]);
       expect(await store.has("a")).toBe(true);
     });
 
@@ -73,20 +83,81 @@ for (let [name, store] of stores) {
       expect(await store.has("a")).toBe(true);
     });
 
-    it("can retrieve the prefixed keys with colon", async () => {
+    it("can get the keys", async () => {
+      await store.set("a", "b");
+      await store.set("c", "d");
+      expect(await store.keys()).toEqual(["a", "c"]);
+    });
+
+    it("can get the values", async () => {
+      await store.set("a", "b");
+      await store.set("c", "d");
+      expect(await store.values()).toEqual(["b", "d"]);
+    });
+
+    it("can get the entries", async () => {
+      await store.set("a", "b");
+      await store.set("c", "d");
+      expect(await store.entries()).toEqual([
+        ["a", "b"],
+        ["c", "d"],
+      ]);
+    });
+
+    it("can get the keys with a colon prefix", async () => {
       await store.set("a:0", "a0");
       await store.set("a:1", "a1");
       await store.set("b:0", "b0");
-      await store.set("a:2", "b2");
+      await store.set("a:2", "a2");
       expect((await store.keys("a:")).sort()).toEqual(["a:0", "a:1", "a:2"]);
     });
 
-    it("can retrieve the prefixed keys with dash", async () => {
+    it("can get the values with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect((await store.values("a:")).sort()).toEqual(["a0", "a1", "a2"]);
+    });
+
+    it("can get the entries with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect((await store.entries("a:")).sort()).toEqual([
+        ["a:0", "a0"],
+        ["a:1", "a1"],
+        ["a:2", "a2"],
+      ]);
+    });
+
+    it("can get the keys with a dash prefix", async () => {
       await store.set("a-0", "a0");
       await store.set("a-1", "a1");
       await store.set("b-0", "b0");
-      await store.set("a-2", "b2");
+      await store.set("a-2", "a2");
       expect((await store.keys("a-")).sort()).toEqual(["a-0", "a-1", "a-2"]);
+    });
+
+    it("can get the values with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect((await store.values("a-")).sort()).toEqual(["a0", "a1", "a2"]);
+    });
+
+    it("can get the entries with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect((await store.entries("a-")).sort()).toEqual([
+        ["a-0", "a0"],
+        ["a-1", "a1"],
+        ["a-2", "a2"],
+      ]);
     });
 
     it("can delete the data", async () => {
@@ -94,12 +165,6 @@ for (let [name, store] of stores) {
       expect(await store.get("a")).toBe("b");
       await store.del("a");
       expect(await store.get("a")).toBe(null);
-    });
-
-    it("can get the keys", async () => {
-      await store.set("a", "b");
-      await store.set("c", "d");
-      expect(await store.keys()).toEqual(["a", "c"]);
     });
 
     it("can clear all the values", async () => {
@@ -116,6 +181,10 @@ for (let [name, store] of stores) {
       it("expires = 0 means immediately", async () => {
         await store.set("a", "b", { expires: 0 });
         expect(await store.get("a")).toBe(null);
+        expect(await store.has("a")).toBe(false);
+        expect(await store.keys()).toEqual([]);
+        expect(await store.values()).toEqual([]);
+        expect(await store.entries()).toEqual([]);
       });
 
       it("expires = potato means undefined = forever", async () => {
@@ -147,8 +216,9 @@ for (let [name, store] of stores) {
       });
 
       if (name !== "kv('cookie')" && name !== "kv(redis)") {
-        it("can use 10 expire", async () => {
-          await store.set("a", "b", { expires: 10 });
+        it("can use 0.01 expire", async () => {
+          // 10ms
+          await store.set("a", "b", { expires: 0.01 });
           expect(await store.get("a")).toBe("b");
           await delay(100);
           expect(await store.get("a")).toBe(null);
@@ -175,8 +245,8 @@ for (let [name, store] of stores) {
           expect(await store.get("a")).toBe(null);
         });
       } else {
-        it("can use 1000 expire", async () => {
-          await store.set("a", "b", { expires: 1000 });
+        it("can use 1 (second) expire", async () => {
+          await store.set("a", "b", { expires: 1 });
           expect(await store.get("a")).toBe("b");
           await delay(2000);
           expect(await store.get("a")).toBe(null);
