@@ -22,6 +22,7 @@ This is the [API](#api) with all of the methods (they are all `async`):
 - `.entries(prefix?): [string, any][]`: get a list of all the key-value pairs in the store.
 - `.clear()`: delete ALL of the data in the store, effectively resetting it.
 - `.close()`: (only _some_ stores) ends the connection to the store.
+- `.prefix(prefix): store`: create a new sub-instance of the store where all the keys have this prefix.
 
 Available stores:
 
@@ -224,9 +225,9 @@ Remove all of the data from the store:
 await store.clear();
 ```
 
-### .prefix() (TODO) (unstable)
+### .prefix() (unstable)
 
-Create a sub-store where all the operations use the given prefix:
+Create a sub-store where all the operations use the given prefix. This is **the only method** of the store that is sync and you don't need to await:
 
 ```js
 const store = kv(new Map());
@@ -248,8 +249,13 @@ await session.clear(); // delete only keys with the prefix
 This will probably never be stable given the nature of some engines, so as an alternative please consider using two stores instead of prefixes:
 
 ```js
+// Two in-memory stores
 const store = kv(new Map());
 const session = kv(new Map());
+
+// Two file-stores
+const users = kv(new URL(`file://${import.meta.dirname}/users.json`));
+const books = kv(new URL(`file://${import.meta.dirname}/books.json`));
 ```
 
 The main reason this is not stable is because [_some_ store engines don't allow for atomic deletion of keys given a prefix](https://stackoverflow.com/q/4006324/938236). While we do still clear them internally in those cases, that is a non-atomic operation and it could have some trouble if some other thread is reading/writing the data _at the same time_.
@@ -359,6 +365,7 @@ const store = kv(new URL("file:///Users/me/project/cache.json"));
 // Paths need to be absolute, but you can use process.cwd() to make
 // it relative to the current process:
 const store = kv(new URL(`file://${process.cwd()}/cache.json`));
+const store2 = kv(new URL(`file://${import.meta.dirname}/data.json`));
 ```
 
 ### Cloudflare KV

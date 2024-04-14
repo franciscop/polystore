@@ -385,6 +385,39 @@ export default function compat(storeClient = new Map()) {
     {},
     {
       get: (instance, key) => {
+        if (key === "prefix") {
+          const store = compat(storeClient);
+          return (prefix) => ({
+            get: (key) => store.get(prefix + key),
+            set: async (key, value, opts) => {
+              const id = await store.set(prefix + key, value, opts);
+              return id.slice(prefix.length);
+            },
+            add: async (value, opts) => {
+              const id = await store.set(prefix + generateId(), value, opts);
+              return id.slice(prefix.length);
+            },
+            has: (key) => store.has(prefix + key),
+            del: (key) => store.del(prefix + key),
+
+            keys: async (next = "") => {
+              const keys = await store.keys(prefix + next);
+              return keys.map((k) => k.slice(prefix.length));
+            },
+            values: (next = "") => store.values(prefix + next),
+            entries: async (next = "") => {
+              const entries = await store.entries(prefix + next);
+              return entries.map(([k, v]) => [k.slice(prefix.length), v]);
+            },
+
+            clear: async () => {
+              const keys = await store.keys(prefix);
+              await Promise.all(keys.map((key) => store.del(key)));
+            },
+            close: () => store.close(),
+          });
+        }
+
         return async (...args) => {
           // Only once, even if called twice in succession, since the
           // second time will go straight to the await
