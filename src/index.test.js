@@ -292,5 +292,61 @@ for (let [name, store] of stores) {
         });
       }
     });
+
+    describe(".prefix()", () => {
+      const session = store.prefix("session:");
+
+      it("has all the methods", () => {
+        expect(Object.keys(session)).toEqual([
+          "get",
+          "set",
+          "add",
+          "has",
+          "del",
+          "keys",
+          "values",
+          "entries",
+          "clear",
+          "close",
+        ]);
+      });
+
+      it("can write/read one", async () => {
+        const id = await session.set("a", "b");
+        expect(id).toBe("a");
+        expect(await session.get("a")).toBe("b");
+        expect(await store.get("session:a")).toBe("b");
+      });
+
+      it("can add with the prefix", async () => {
+        const id = await session.add("b");
+        expect(id.length).toBe(24);
+        expect(id).not.toMatch(/^session\:/);
+
+        const keys = await store.keys();
+        expect(keys[0]).toMatch(/^session\:/);
+      });
+
+      it("the group operations return the proper values", async () => {
+        await session.set("a", "b");
+
+        expect(await session.keys()).toEqual(["a"]);
+        expect(await session.values()).toEqual(["b"]);
+        expect(await session.entries()).toEqual([["a", "b"]]);
+
+        expect(await store.keys()).toEqual(["session:a"]);
+        expect(await store.values()).toEqual(["b"]);
+        expect(await store.entries()).toEqual([["session:a", "b"]]);
+      });
+
+      it("clears only the substore", async () => {
+        await store.set("a", "b");
+        await session.set("c", "d");
+
+        expect((await store.keys()).sort()).toEqual(["a", "session:c"]);
+        await session.clear();
+        expect(await store.keys()).toEqual(["a"]);
+      });
+    });
   });
 }
