@@ -124,12 +124,12 @@
   <div>
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
 
-      const store1 = kv(new Map());
-      const store2 = kv(localStorage);
-      const store3 = kv(redisClient);
-      const store4 = kv(&quot;cookie&quot;);
-      const store5 = kv(&quot;file:///users/me/data.json&quot;);
-      const store6 = kv(yourOwnStore);</code></pre>
+const store1 = kv(new Map());
+const store2 = kv(localStorage);
+const store3 = kv(redisClient);
+const store4 = kv(&quot;cookie&quot;);
+const store5 = kv(&quot;file:///users/me/data.json&quot;);
+const store6 = kv(yourOwnStore);</code></pre>
   </div>
 </section>
 
@@ -140,7 +140,7 @@
     <div class="content">
       <h2>🏖️ Clear and intuitive methods</h2>
       <p>
-        A set of high-performance atomic operations: <code>.add()</code>,
+        A set of high-performance atomic operations with <code>.add()</code>,
         <code>.set()</code>, <code>.get()</code>, <code>.has()</code> or
         <code>.del()</code>
       </p>
@@ -153,15 +153,13 @@
   </div>
   <div>
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
-
 const store = kv(new Map());
 
-const key1 = await store.set(&quot;key1&quot;, value1);
-const key2 = await store.add(&quot;value2&quot;);
-if (await store.has(&quot;key1&quot;)) {
-  const val1 = await store.get(&quot;key1&quot;);
-}
-const keys = await store.keys();
+const key1 = await store.add(&quot;value2&quot;);
+const key2 = await store.set(&quot;key1&quot;, &quot;value1&quot;);
+const isthere = await store.has(&quot;key1&quot;);
+
+const allKeys = await store.keys();
 const obj = await store.all();</code></pre>
   </div>
 </section>
