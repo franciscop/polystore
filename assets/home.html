@@ -1,0 +1,336 @@
+<br />
+
+<section class="hero flex center nowrap">
+  <div>
+    <h1>Polystore</h1>
+    <p style="max-width: 620px">
+      A universal library for standardizing any KV store to a common API.
+      Perfect both for users code where you don't want to depend on a specific
+      implementation, and for library builders that want to accept any KV store
+      available.
+    </p>
+    <pre class="small">npm install polystore</pre>
+    <div class="buttons">
+      <a class="button" href="/documentation">Documentation</a>
+      <a
+        class="pseudo button"
+        href="https://www.paypal.me/franciscopresencia/19"
+        >Donate</a
+      >
+    </div>
+  </div>
+  <div style="width: 530px; max-width: 100%">
+    <pre><code class="language-js">import kv from &quot;polystore&quot;;
+
+const store = kv(new Map()); // in-memory
+const store1 = kv(localStorage); // Persist in the browser
+const store2 = kv(redisClient); // Use a Redis client for backend persistence
+const store3 = kv(yourOwnStore); // Create a store based on your code</code></pre>
+  </div>
+</section>
+
+<div class="separator">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 20">
+    <circle cx="10" cy="10" r="3" />
+    <line x1="20" y1="10" x2="260" y2="10" />
+    <circle cx="270" cy="10" r="3" />
+    <circle class="empty" cx="283" cy="10" r="3" />
+    <circle class="empty" cx="300" cy="10" r="5" />
+    <circle class="empty" cx="317" cy="10" r="3" />
+    <circle cx="330" cy="10" r="3" />
+    <line x1="340" y1="10" x2="580" y2="10" />
+    <circle cx="590" cy="10" r="3" />
+  </svg>
+</div>
+
+<section class="features flex one two-500 three-900">
+  <div>
+    <div class="feature">
+      <header>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+        </svg>
+        <h3>Documented</h3>
+      </header>
+      <p>
+        <a href="/documentation#getting-started">Getting started</a>,
+        <a href="/documentation#api">API</a>,
+        <a href="/documentation#clients">Clients</a> and
+        <a href="/documentation#examples">examples</a> for your convenience
+      </p>
+    </div>
+  </div>
+  <div>
+    <div class="feature">
+      <header>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <h3>Stable and tested</h3>
+      </header>
+      <p>
+        With
+        <a
+          href="https://github.com/franciscop/polystore/actions"
+          target="_blank"
+          >400+ tests</a
+        >
+        to ensure everything works. We follow semver strictly
+      </p>
+    </div>
+  </div>
+  <div>
+    <div class="feature">
+      <header>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path
+            d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"
+          />
+        </svg>
+        <h3>Familiar</h3>
+      </header>
+      <p>
+        The concepts of a KV are well understood, we just make sure it's
+        standardized across libraries.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="separator">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 20">
+    <circle cx="10" cy="10" r="3" />
+    <line x1="20" y1="10" x2="260" y2="10" />
+    <circle cx="270" cy="10" r="3" />
+    <circle class="empty" cx="283" cy="10" r="3" />
+    <circle class="empty" cx="300" cy="10" r="5" />
+    <circle class="empty" cx="317" cy="10" r="3" />
+    <circle cx="330" cy="10" r="3" />
+    <line x1="340" y1="10" x2="580" y2="10" />
+    <circle cx="590" cy="10" r="3" />
+  </svg>
+</div>
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>🏖️ Clear and intuitive methods</h2>
+      <p>
+        A single API for all of the clients. You can operate on individual keys
+        with <code>.add()</code>, <code>.set()</code>, <code>.get()</code>,
+        <code>.has()</code> or <code>.del()</code>, or on all of the items with
+        <code>.keys()</code>, <code>.values()</code>, <code>.entries()</code>,
+        <code>.all()</code> or <code>.clear()</code>.
+      </p>
+      <p>
+        You can also create a substore and work with a subset of items with
+        <code>.prefix()</code>.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import $ from &quot;react-test&quot;;
+
+it(&quot;renders a simple title&quot;, () =&gt; {
+  const title = $(&lt;h1&gt;Hello&lt;/h1&gt;);
+  expect(title.text()).toBe(&quot;Hello&quot;);
+  expect(title.attr(&quot;id&quot;)).toBe(null);
+  expect(title.get(0).nodeName).toBe(&quot;H1&quot;);
+  // ...
+});</code></pre>
+  </div>
+</section>
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>🧩 Many different clients</h2>
+      <p>
+        We support 8+ clients, with a very clear documentation and easy way to
+        add new clients.
+      </p>
+      <p>
+        You only need to define 3 methods to create a new client,
+        <code>.get()</code>, <code>.set()</code> and <code>.entries()</code>.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import $ from &quot;react-test&quot;;
+
+it(&quot;renders a simple title&quot;, () =&gt; {
+  const title = $(&lt;h1&gt;Hello&lt;/h1&gt;);
+  expect(title.text()).toBe(&quot;Hello&quot;);
+  expect(title.attr(&quot;id&quot;)).toBe(null);
+  expect(title.get(0).nodeName).toBe(&quot;H1&quot;);
+  // ...
+});</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>
+        <img
+          width="26"
+          height="26"
+          style="vertical-align: middle"
+          src="https://raw.githubusercontent.com/franciscop/react-test/master/assets/jest.svg"
+        />
+        Clear Jest Matchers
+      </h2>
+      <p>
+        We've also created
+        <a href="/documentation#jest-matchers">a series of Jest Matchers</a>
+        (included by default if you use Jest) that makes the tests more readable
+        and the error messages when a test fails very clear.
+      </p>
+      <p>
+        They can be used in single elements and for a set of elements, both in
+        the affirmative and negative form.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import $ from &quot;react-test&quot;;
+
+it(&quot;renders a simple title&quot;, () =&gt; {
+  const title = $(&lt;h1&gt;Hello&lt;/h1&gt;);
+  expect(title).toHaveText(&quot;Hello&quot;);
+  expect(title).not.toHaveAttribute(&quot;id&quot;);
+  expect(title).toMatchSelector(&quot;h1&quot;);
+  // ...
+});</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>👆 Simulate user actions</h2>
+      <p>
+        This is where this library gets really valuable! Emulating user
+        interactions is as easy as it could ever be. There's
+        <a href="/documentation#library-api">multiple event helpers</a>
+        available.
+      </p>
+      <p>
+        For example, to <a href="/documentation#counter">test a Counter</a> that
+        increments when clicked: render and assert the initial status, then
+        await for a user click, and finally make more assertions.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import $ from &quot;react-test&quot;;
+import Counter from &quot;./Counter&quot;;
+
+it(&quot;Can increment a counter&quot;, async () =&gt; {
+  const counter = $(&lt;Counter /&gt;);
+  expect(counter).toHaveText(&quot;0&quot;);
+  await counter.click();
+  await counter.click();
+  expect(counter).toHaveText(&quot;2&quot;);
+});</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>⏱ Timers, async, etc.</h2>
+      <p>
+        There's other helpers for common React workflows: waiting for a network
+        call, for a specific DOM element, or for fixed amount of time before
+        doing assertions.
+      </p>
+      <p>
+        You can use <a href="/documentation#delay"><code>.delay()</code></a> for
+        a simple timer or
+        <a href="/documentation#until"><code>until()</code></a>
+        for more complex DOM behavior.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import $, {until } from &quot;react-test&quot;;
+import UserList from &quot;./UserList&quot;;
+
+it(&quot;waits for a DOM change&quot;, async () =&gt; {
+  const users = $(&lt;UserList /&gt;);
+  expect(users.find(&quot;li&quot;)).toHaveLength(0);
+  await until(users).find(&quot;li&quot;);
+  expect(users.find(&quot;li&quot;)).toHaveLength(10);
+});</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>✨ Magic Autocomplete</h2>
+      <p>
+        Added jsdocs so the expected parameters and return value will be clearly
+        defined in your IDE/Code Editor.
+      </p>
+      <p>
+        We added the <em>description</em>, a representative <em>example</em> and
+        even a <em>link</em> for more information for
+        <strong>every one</strong> of the methods available! We want you to have
+        the best development experience possible with React Test!
+      </p>
+    </div>
+  </div>
+  <div>
+    <div class="splash">
+      <img
+        width="535"
+        src="https://raw.githubusercontent.com/franciscop/react-test/master/assets/autocomplete.webp"
+      />
+    </div>
+  </div>
+</section>
+
+<div class="separator">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 20">
+    <circle cx="10" cy="10" r="3" />
+    <line x1="20" y1="10" x2="260" y2="10" />
+    <circle cx="270" cy="10" r="3" />
+    <circle class="empty" cx="283" cy="10" r="3" />
+    <circle class="empty" cx="300" cy="10" r="5" />
+    <circle class="empty" cx="317" cy="10" r="3" />
+    <circle cx="330" cy="10" r="3" />
+    <line x1="340" y1="10" x2="580" y2="10" />
+    <circle cx="590" cy="10" r="3" />
+  </svg>
+</div>
+
+<div style="text-align: center">
+  <p>
+    Created by <a href="https://francisco.io/" target="_blank">Francisco</a> and
+    <a
+      href="https://github.com/franciscop/react-test/graphs/contributors"
+      target="_blank"
+      >other contributors</a
+    >.
+  </p>
+  <p>
+    Need help?
+    <a
+      href="https://superpeer.com/francisco/-/javascript-and-react-help"
+      target="_blank"
+      >Book a call</a
+    >.
+  </p>
+</div>
