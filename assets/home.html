@@ -19,7 +19,12 @@
     </div>
   </div>
   <div style="width: 530px; max-width: 100%">
-    <pre><code class="language-js"></code></pre>
+    <pre><code class="language-js">import kv from &quot;polystore&quot;;
+
+const store = kv(new Map());
+
+const key = await store.set(&quot;key1&quot;, &quot;value1&quot;);
+const value = await store.get(&quot;key1&quot;);</code></pre>
   </div>
 </section>
 
