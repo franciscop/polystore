@@ -12,9 +12,9 @@ const store3 = kv(yourOwnStore); // Create a store based on your code
 
 This is the [API](#api) with all of the methods (they are all `async`):
 
-- [`.get(key): any`](#get): retrieve a single value, or `null` if it doesn't exist or is expired.
-- [`.set(key, value, options?)`](#set): save a single value, which can be anything that is serializable.
-- [`.add(value, options?)`](#add): same as with `.set()`, but auto-generate the key.
+- [`.get(key): any`](#get): read a single value, or `null` if it doesn't exist or is expired.
+- [`.set(key, value, options?)`](#set): save a single value that is serializable.
+- [`.add(value, options?)`](#add): same as `.set()`, but auto-generates the key.
 - [`.has(key): boolean`](#has): check whether the key is in the store or not.
 - [`.del(key)`](#del): delete a single value from the store.
 - [`.keys(): string[]`](#keys): get a list of all the available strings in the store.
