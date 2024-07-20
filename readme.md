@@ -19,8 +19,8 @@ This is the [API](#api) with all of the methods (they are all `async`):
 - [`.del(key)`](#del): delete a single value from the store.
 - [`.keys(): string[]`](#keys): get a list of all the available strings in the store.
 - [`.values(): any[]`](#values): get a list of all the values in the store.
-- [`.entries(): [string, any][]`](#entries): get a list of all the key-value pairs in the store.
-- [`.all(): { [key: string]: any }`](#all): get an object with the key:values mapped into the object.
+- [`.entries(): [string, any][]`](#entries): get a list of all the key-value pairs.
+- [`.all(): { [key: string]: any }`](#all): get an object with the key:values mapped.
 - [`.clear()`](#clear): delete ALL of the data in the store, effectively resetting it.
 - [`.close()`](#close): (only _some_ stores) ends the connection to the store.
 - [`.prefix(prefix): store`](#prefix): create a new sub-instance of the store that only manages a subset of keys (with the given prefix).
