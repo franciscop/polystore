@@ -93,7 +93,7 @@ const value = await store.get(&quot;key1&quot;);
       </header>
       <p>
         It's a KV library. It has <code>add()</code>, <code>set()</code>,
-        <code>get()</code>, <code>has()</code> and <code>del()</code>.
+        <code>get()</code>, <code>has()</code> and <code>del()</code>
       </p>
     </div>
   </div>
@@ -134,7 +134,7 @@ const store1 = kv(new Map());
 const store2 = kv(localStorage);
 const store3 = kv(redisClient);
 const store4 = kv(&quot;cookie&quot;);
-const store5 = kv(&quot;file:///users/me/data.json&quot;);
+const store5 = kv(&quot;file:///users/me/kv.json&quot;);
 const store6 = kv(yourOwnStore);</code></pre>
   </div>
 </section>
@@ -195,8 +195,7 @@ console.log(await auth.entries());
 // [[&quot;key1&quot;, &quot;value1&quot;]]
 
 console.log(await store.entries());
-// [[&quot;auth:key1&quot;, &quot;value1&quot;]]
-      </code></pre>
+// [[&quot;auth:key1&quot;, &quot;value1&quot;]]</code></pre>
   </div>
 </section>
 
