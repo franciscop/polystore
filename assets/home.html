@@ -19,12 +19,7 @@
     </div>
   </div>
   <div style="width: 530px; max-width: 100%">
-    <pre><code class="language-js">import kv from &quot;polystore&quot;;
-
-const store = kv(new Map()); // in-memory
-const store1 = kv(localStorage); // Persist in the browser
-const store2 = kv(redisClient); // Use a Redis client for backend persistence
-const store3 = kv(yourOwnStore); // Create a store based on your code</code></pre>
+    <pre><code class="language-js"></code></pre>
   </div>
 </section>
 
@@ -115,36 +110,6 @@ const store3 = kv(yourOwnStore); // Create a store based on your code</code></pr
 <section class="hero flex one two-900 center">
   <div>
     <div class="content">
-      <h2>🏖️ Clear and intuitive methods</h2>
-      <p>
-        A single API for all of the clients. You can operate on individual keys
-        with <code>.add()</code>, <code>.set()</code>, <code>.get()</code>,
-        <code>.has()</code> or <code>.del()</code>, or on all of the items with
-        <code>.keys()</code>, <code>.values()</code>, <code>.entries()</code>,
-        <code>.all()</code> or <code>.clear()</code>.
-      </p>
-      <p>
-        You can also create a substore and work with a subset of items with
-        <code>.prefix()</code>.
-      </p>
-    </div>
-  </div>
-  <div>
-    <pre><code class="language-js">import $ from &quot;react-test&quot;;
-
-it(&quot;renders a simple title&quot;, () =&gt; {
-  const title = $(&lt;h1&gt;Hello&lt;/h1&gt;);
-  expect(title.text()).toBe(&quot;Hello&quot;);
-  expect(title.attr(&quot;id&quot;)).toBe(null);
-  expect(title.get(0).nodeName).toBe(&quot;H1&quot;);
-  // ...
-});</code></pre>
-  </div>
-</section>
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
       <h2>🧩 Many different clients</h2>
       <p>
         We support 8+ clients, with a very clear documentation and easy way to
@@ -157,15 +122,14 @@ it(&quot;renders a simple title&quot;, () =&gt; {
     </div>
   </div>
   <div>
-    <pre><code class="language-js">import $ from &quot;react-test&quot;;
+    <pre><code class="language-js">import kv from &quot;polystore&quot;;
 
-it(&quot;renders a simple title&quot;, () =&gt; {
-  const title = $(&lt;h1&gt;Hello&lt;/h1&gt;);
-  expect(title.text()).toBe(&quot;Hello&quot;);
-  expect(title.attr(&quot;id&quot;)).toBe(null);
-  expect(title.get(0).nodeName).toBe(&quot;H1&quot;);
-  // ...
-});</code></pre>
+      const store1 = kv(new Map());
+      const store2 = kv(localStorage);
+      const store3 = kv(redisClient);
+      const store4 = kv(&quot;cookie&quot;);
+      const store5 = kv(&quot;file:///users/me/data.json&quot;);
+      const store6 = kv(yourOwnStore);</code></pre>
   </div>
 </section>
 
@@ -174,24 +138,47 @@ it(&quot;renders a simple title&quot;, () =&gt; {
 <section class="hero flex one two-900 center">
   <div>
     <div class="content">
-      <h2>
-        <img
-          width="26"
-          height="26"
-          style="vertical-align: middle"
-          src="https://raw.githubusercontent.com/franciscop/react-test/master/assets/jest.svg"
-        />
-        Clear Jest Matchers
-      </h2>
+      <h2>🏖️ Clear and intuitive methods</h2>
       <p>
-        We've also created
-        <a href="/documentation#jest-matchers">a series of Jest Matchers</a>
-        (included by default if you use Jest) that makes the tests more readable
-        and the error messages when a test fails very clear.
+        A set of high-performance atomic operations: <code>.add()</code>,
+        <code>.set()</code>, <code>.get()</code>, <code>.has()</code> or
+        <code>.del()</code>
       </p>
       <p>
-        They can be used in single elements and for a set of elements, both in
-        the affirmative and negative form.
+        You can also work with all of entries with <code>.keys()</code>,
+        <code>.values()</code>, <code>.entries()</code>, <code>.all()</code> and
+        <code>.clear()</code>.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import kv from &quot;polystore&quot;;
+
+const store = kv(new Map());
+
+const key1 = await store.set(&quot;key1&quot;, value1);
+const key2 = await store.add(&quot;value2&quot;);
+if (await store.has(&quot;key1&quot;)) {
+  const val1 = await store.get(&quot;key1&quot;);
+}
+const keys = await store.keys();
+const obj = await store.all();</code></pre>
+  </div>
+</section>
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>🛗 Operate on substores intuitively</h2>
+      <p>
+        We created the `.prefix()` to allow you to work with a subset of items
+        intuitively.
+      </p>
+      <p>
+        e.g. if you have a session store and want to create a subset of sessions
+        only for auth, you could do
+        <code>const auth = session.prefix('auth:');</code> and then use
+        <code>auth</code> like if it was an independent, KV store.
       </p>
     </div>
   </div>
