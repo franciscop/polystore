@@ -4,10 +4,10 @@ A small compatibility layer for many KV stores like localStorage, Redis, FileSys
 
 ```js
 import kv from "polystore";
-const store = kv(new Map()); // in-memory
-const store1 = kv(localStorage); // Persist in the browser
-const store2 = kv(redisClient); // Use a Redis client for backend persistence
-const store3 = kv(yourOwnStore); // Create a store based on your code
+const store1 = kv(new Map()); // in-memory
+const store2 = kv(localStorage); // Persist in the browser
+const store3 = kv(redisClient); // Use a Redis client for backend persistence
+const store4 = kv(yourOwnStore); // Create a store based on your code
 ```
 
 This is the [API](#api) with all of the methods (they are all `async`):

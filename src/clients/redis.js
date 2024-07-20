@@ -1,13 +1,15 @@
-import Client from "../Client.js";
-
-// A client that uses a single file (JSON) as a store
-export default class Redis extends Client {
+// Use a redis client to back up the store
+export default class Redis {
   // Indicate if this client handles expirations (true = it does)
   EXPIRES = true;
 
   // Check if this is the right class for the given client
   static test(client) {
     return client && client.pSubscribe && client.sSubscribe;
+  }
+
+  constructor(client) {
+    this.client = client;
   }
 
   async get(key) {

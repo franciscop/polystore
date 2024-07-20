@@ -1,7 +1,5 @@
-import Client from "../Client.js";
-
 // A client that uses a single file (JSON) as a store
-export default class Cookie extends Client {
+export default class Cookie {
   // Indicate if this client handles expirations (true = it does)
   EXPIRES = true;
 
