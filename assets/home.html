@@ -5,7 +5,7 @@
     <h1>Polystore</h1>
     <p style="max-width: 620px">
       A universal library for standardizing KV-stores. Great when you don't want
-      to depend on a specific implementation, and for library builders that want
+      to depend on a specific implementation, or for library builders that want
       to accept any KV store available.
     </p>
     <pre class="small">npm install polystore</pre>
@@ -23,8 +23,9 @@
 
 const store = kv(new Map());
 
-const key = await store.set(&quot;key1&quot;, &quot;value1&quot;);
-const value = await store.get(&quot;key1&quot;);</code></pre>
+await store.set(&quot;key1&quot;, &quot;value1&quot;);
+const value = await store.get(&quot;key1&quot;);
+// &quot;value1&quot;</code></pre>
   </div>
 </section>
 
