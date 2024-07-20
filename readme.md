@@ -23,7 +23,7 @@ This is the [API](#api) with all of the methods (they are all `async`):
 - [`.all(): {[key: string]: any}`](#all): get an object with the key:values mapped.
 - [`.clear()`](#clear): delete ALL of the data in the store, effectively resetting it.
 - [`.close()`](#close): (only _some_ stores) ends the connection to the store.
-- [`.prefix(prefix): store`](#prefix): create a new sub-instance of the store that only manages a subset of keys (with the given prefix).
+- [`.prefix(prefix): store`](#prefix): create a sub-store that only manages the keys with the given prefix.
 
 Available clients for the KV store:
 
