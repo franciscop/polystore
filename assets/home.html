@@ -23,9 +23,9 @@
 
 const store = kv(new Map());
 
-await store.set(&quot;key1&quot;, &quot;value1&quot;);
+await store.set(&quot;key1&quot;, { hello: &quot;world&quot; });
 const value = await store.get(&quot;key1&quot;);
-// &quot;value1&quot;</code></pre>
+// { hello: &quot;world&quot; }</code></pre>
   </div>
 </section>
 
