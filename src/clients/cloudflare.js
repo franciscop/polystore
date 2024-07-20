@@ -1,13 +1,15 @@
-import Client from "../Client.js";
-
 // Use Cloudflare's KV store
-export default class Cloudflare extends Client {
+export default class Cloudflare {
   // Indicate that the file handler does NOT handle expirations
   EXPIRES = true;
 
   // Check whether the given store is a FILE-type
   static test(store) {
     return store?.constructor?.name === "KvNamespace";
+  }
+
+  constructor(client) {
+    this.client = client;
   }
 
   async get(key) {
@@ -23,10 +25,6 @@ export default class Cloudflare extends Client {
     return key;
   }
 
-  async has(key) {
-    return Boolean(await this.client.get(key));
-  }
-
   async del(key) {
     return this.client.delete(key);
   }
@@ -37,9 +35,9 @@ export default class Cloudflare extends Client {
   }
 
   async entries(prefix = "") {
-    const all = await this.keys(prefix);
-    const values = await Promise.all(all.map((k) => get(k)));
-    return all.map((key, i) => [key, values[i]]);
+    const keys = await this.keys(prefix);
+    const values = await Promise.all(keys.map((k) => get(k)));
+    return keys.map((key, i) => [key, values[i]]);
   }
 
   async clear(prefix = "") {

@@ -1,14 +1,13 @@
-import Client from "../Client.js";
-
 // A client that uses a single file (JSON) as a store
-export default class WebStorage extends Client {
-  // Indicate if this client handles expirations (true = it does)
-  EXPIRES = false;
-
+export default class WebStorage {
   // Check if this is the right class for the given client
   static test(client) {
     if (typeof Storage === "undefined") return false;
     return client instanceof Storage;
+  }
+
+  constructor(client) {
+    this.client = client;
   }
 
   // Item methods

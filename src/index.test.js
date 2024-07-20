@@ -4,6 +4,8 @@ import localForage from "localforage";
 import { createClient } from "redis";
 
 import kv from "./";
+import customFull from "./test/customFull.js";
+import customSimple from "./test/customSimple.js";
 
 global.setImmediate = global.setImmediate || ((cb) => setTimeout(cb, 0));
 
@@ -21,16 +23,52 @@ if (process.env.REDIS) {
   stores.push(["kv(redis)", kv(createClient().connect())]);
 }
 stores.push(["kv('cookie')", kv("cookie")]);
+stores.push(["kv(customSimple)", kv(customSimple)]);
+stores.push(["kv(customFull)", kv(customFull)]);
 
 const delay = (t) => new Promise((done) => setTimeout(done, t));
+
+class Base {
+  get() {}
+  set() {}
+  entries() {}
+}
 
 describe("potato", () => {
   it("a potato is not a valid store", async () => {
     await expect(() => kv("potato").get("any")).rejects.toThrow();
   });
 
-  it("am empty object is not a valid store", async () => {
-    await expect(() => kv({}).get("any")).rejects.toThrow();
+  it("an empty object is not a valid store", async () => {
+    await expect(() => kv({}).get("any")).rejects.toThrow({
+      message: "A client should have at least a .get(), .set() and .entries()",
+    });
+  });
+
+  it("cannot handle no EXPIRES + keys", async () => {
+    await expect(() =>
+      kv(
+        class extends Base {
+          has() {}
+        }
+      ).get("any")
+    ).rejects.toThrow({
+      message:
+        "You can only define client.has() when the client manages the expiration; otherwise please do NOT define .has() and let us manage it",
+    });
+  });
+
+  it("cannot handle no EXPIRES + keys", async () => {
+    await expect(() =>
+      kv(
+        class extends Base {
+          keys() {}
+        }
+      ).get("any")
+    ).rejects.toThrow({
+      message:
+        "You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage them",
+    });
   });
 });
 
@@ -246,6 +284,15 @@ for (let [name, store] of stores) {
       expect(await store.get("a")).toBe("b");
       await store.del("a");
       expect(await store.get("a")).toBe(null);
+      expect(await store.keys()).toEqual([]);
+    });
+
+    it("can delete the data by setting it to null", async () => {
+      await store.set("a", "b");
+      expect(await store.get("a")).toBe("b");
+      await store.set("a", null);
+      expect(await store.get("a")).toBe(null);
+      expect(await store.keys()).toEqual([]);
     });
 
     it("can clear all the values", async () => {
@@ -300,42 +347,66 @@ for (let [name, store] of stores) {
         it("can use 0.01 expire", async () => {
           // 10ms
           await store.set("a", "b", { expires: 0.01 });
+          expect(await store.keys()).toEqual(["a"]);
+          expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
           await delay(100);
+          expect(await store.keys()).toEqual([]);
+          expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
         });
 
         it("can use 0.01s expire", async () => {
           await store.set("a", "b", { expires: "0.01s" });
+          expect(await store.keys()).toEqual(["a"]);
+          expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
           await delay(100);
+          expect(await store.keys()).toEqual([]);
+          expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
         });
 
         it("can use 0.01seconds expire", async () => {
           await store.set("a", "b", { expires: "0.01seconds" });
+          expect(await store.keys()).toEqual(["a"]);
+          expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
           await delay(100);
+          expect(await store.keys()).toEqual([]);
+          expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
         });
 
         it("can use 10ms expire", async () => {
           await store.set("a", "b", { expires: "10ms" });
+          expect(await store.keys()).toEqual(["a"]);
+          expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
           await delay(100);
+          expect(await store.keys()).toEqual([]);
+          expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
         });
       } else {
         it("can use 1 (second) expire", async () => {
           await store.set("a", "b", { expires: 1 });
+          expect(await store.keys()).toEqual(["a"]);
+          expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
           await delay(2000);
+          expect(await store.keys()).toEqual([]);
+          expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
         });
         it("can use 1s expire", async () => {
           await store.set("a", "b", { expires: "1s" });
+          expect(await store.keys()).toEqual(["a"]);
+          expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
           await delay(2000);
+          expect(await store.keys()).toEqual([]);
+          expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
         });
       }

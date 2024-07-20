@@ -1,10 +1,5 @@
-import Client from "../Client.js";
-
 // A client that uses a single file (JSON) as a store
-export default class File extends Client {
-  // Indicate if this client handles expirations (true = it does)
-  EXPIRES = false;
-
+export default class File {
   // Check if this is the right class for the given client
   static test(client) {
     if (typeof client === "string" && client.startsWith("file:")) return true;
@@ -12,7 +7,6 @@ export default class File extends Client {
   }
 
   constructor(file) {
-    super(file);
     this.file =
       typeof file === "string" ? file.slice("file://".length) : file.pathname;
 
@@ -57,14 +51,6 @@ export default class File extends Client {
     }
     await this.#write(data);
     return key;
-  }
-
-  async has(key) {
-    return (await this.get(key)) !== null;
-  }
-
-  async del(key) {
-    return this.set(key, null);
   }
 
   // Group methods

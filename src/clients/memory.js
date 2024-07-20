@@ -1,13 +1,12 @@
-import Client from "../Client.js";
-
 // Use a Map() as an in-memory client
-export default class Memory extends Client {
-  // Indicate if this client handles expirations (true = it does)
-  EXPIRES = false;
-
+export default class Memory {
   // Check if this is the right class for the given client
   static test(client) {
     return client instanceof Map;
+  }
+
+  constructor(client) {
+    this.client = client;
   }
 
   get(key) {
@@ -26,11 +25,6 @@ export default class Memory extends Client {
   entries(prefix = "") {
     const entries = [...this.client.entries()];
     return entries.filter((p) => p[0].startsWith(prefix));
-  }
-
-  keys(prefix = "") {
-    const entries = [...this.client.keys()];
-    return entries.filter((key) => key.startsWith(prefix));
   }
 
   clear(prefix = "") {

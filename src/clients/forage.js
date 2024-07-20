@@ -1,13 +1,12 @@
-import Client from "../Client.js";
-
-// A client that uses a single file (JSON) as a store
-export default class Forage extends Client {
-  // Indicate if this client handles expirations (true = it does)
-  EXPIRES = false;
-
+// Use localForage for managing the KV
+export default class Forage {
   // Check if this is the right class for the given client
   static test(client) {
     return client.defineDriver && client.dropInstance && client.INDEXEDDB;
+  }
+
+  constructor(client) {
+    this.client = client;
   }
 
   async get(key) {

@@ -12,17 +12,18 @@ const getClient = (store) => {
   // Already a fully compliant KV store
   if (store instanceof Store) return store.client;
 
+  // One of the supported ones, so we receive an instance and
+  // wrap it with the client wrapper
   for (let client of Object.values(clients)) {
     if (client.test && client.test(store)) {
-      if (isClass(client)) {
-        return new client(store);
-      } else {
-        return client(store);
-      }
+      return new client(store);
     }
   }
 
-  // A raw one
+  // A raw one, we just receive the single instance to use directly
+  if (isClass(store)) {
+    return new store();
+  }
   return store;
 };
 
@@ -32,9 +33,31 @@ class Store {
   constructor(clientPromise = new Map()) {
     this.promise = Promise.resolve(clientPromise).then((client) => {
       this.client = getClient(client);
+      this.#validate(this.client);
       this.promise = null;
       return client;
     });
+  }
+
+  #validate(client) {
+    if (!client.set || !client.get || !client.entries) {
+      throw new Error(
+        "A client should have at least a .get(), .set() and .entries()"
+      );
+    }
+
+    if (!client.EXPIRES) {
+      if (client.has) {
+        throw new Error(
+          `You can only define client.has() when the client manages the expiration; otherwise please do NOT define .has() and let us manage it`
+        );
+      }
+      if (client.keys) {
+        throw new Error(
+          `You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage them`
+        );
+      }
+    }
   }
 
   async add(data, options = {}) {
@@ -43,7 +66,14 @@ class Store {
 
     // Use the underlying one from the client if found
     if (this.client.add) {
-      return this.client.add(this.PREFIX, data, { expires });
+      if (this.client.EXPIRES) {
+        return this.client.add(this.PREFIX, data, { expires });
+      }
+
+      // In the data we need the timestamp since we need it "absolute":
+      const now = new Date().getTime();
+      const expDiff = expires === null ? null : now + expires * 1000;
+      return this.client.add(this.PREFIX, { expires: expDiff, value: data });
     }
 
     const id = createId();
@@ -58,7 +88,7 @@ class Store {
 
     // Quick delete
     if (data === null) {
-      await this.client.set(key, null);
+      await this.del(key, null);
       return id;
     }
 
@@ -130,6 +160,10 @@ class Store {
     await this.promise;
     const key = this.PREFIX + id;
 
+    if (this.client.has) {
+      return this.client.has(key);
+    }
+
     const value = await this.get(key);
     return value !== null;
   }
@@ -168,11 +202,11 @@ class Store {
         if (!data || data === null || data.value === null) return false;
 
         // It never expires, so keep it
-        const { expire } = data;
-        if (expire === null) return true;
+        const { expires } = data;
+        if (expires === null) return true;
 
         // It's expired, so remove it
-        if (expire <= now) return false;
+        if (expires <= now) return false;
 
         // It's not expired, keep it
         return true;
@@ -184,7 +218,25 @@ class Store {
     await this.promise;
 
     if (this.client.values) {
-      return this.client.values(this.PREFIX);
+      const list = this.client.values(this.PREFIX);
+      if (this.client.EXPIRES) return list;
+      const now = new Date().getTime();
+      return list
+        .filter((data) => {
+          // There's no data, so remove this
+          if (!data || data === null || data.value === null) return false;
+
+          // It never expires, so keep it
+          const { expires } = data;
+          if (expires === null) return true;
+
+          // It's expired, so remove it
+          if (expires <= now) return false;
+
+          // It's not expired, keep it
+          return true;
+        })
+        .map((data) => data.value);
     }
 
     const entries = await this.entries();
