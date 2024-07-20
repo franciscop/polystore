@@ -7,34 +7,38 @@ import kv from "polystore";
 const store = kv(new Map()); // in-memory
 const store1 = kv(localStorage); // Persist in the browser
 const store2 = kv(redisClient); // Use a Redis client for backend persistence
-// etc.
+const store3 = kv(yourOwnStore); // Create a store based on your code
 ```
 
 This is the [API](#api) with all of the methods (they are all `async`):
 
-- `.get(key): any`: retrieve a single value, or `null` if it doesn't exist or is expired.
-- `.set(key, value, options?)`: save a single value, which can be anything that is serializable.
-- `.add(value, options?)`: same as with `.set()`, but auto-generate the key.
-- `.has(key): boolean`: check whether the key is in the store or not.
-- `.del(key)`: delete a single value from the store.
-- `.keys(prefix?): string[]`: get a list of all the available strings in the store.
-- `.values(prefix?): any[]`: get a list of all the values in the store.
-- `.entries(prefix?): [string, any][]`: get a list of all the key-value pairs in the store.
-- `.clear()`: delete ALL of the data in the store, effectively resetting it.
-- `.close()`: (only _some_ stores) ends the connection to the store.
-- `.prefix(prefix): store`: create a new sub-instance of the store where all the keys have this prefix.
+- [`.get(key): any`](#get): retrieve a single value, or `null` if it doesn't exist or is expired.
+- [`.set(key, value, options?)`](#set): save a single value, which can be anything that is serializable.
+- [`.add(value, options?)`](#add): same as with `.set()`, but auto-generate the key.
+- [`.has(key): boolean`](#has): check whether the key is in the store or not.
+- [`.del(key)`](#del): delete a single value from the store.
+- [`.keys(): string[]`](#keys): get a list of all the available strings in the store.
+- [`.values(): any[]`](#values): get a list of all the values in the store.
+- [`.entries(): [string, any][]`](#entries): get a list of all the key-value pairs in the store.
+- [`.all(): { [key: string]: any }`](#all): get an object with the key:values mapped into the object.
+- [`.clear()`](#clear): delete ALL of the data in the store, effectively resetting it.
+- [`.close()`](#close): (only _some_ stores) ends the connection to the store.
+- [`.prefix(prefix): store`](#prefix): create a new sub-instance of the store that only manages a subset of keys (with the given prefix).
 
-Available stores:
+Available clients for the KV store:
 
-- **Memory** `new Map()` (fe+be): an in-memory API to keep your KV store
-- **Local Storage** `localStorage` (fe): persist the data in the browser's localStorage
-- **Session Storage** `sessionStorage` (fe): persist the data in the browser's sessionStorage
-- **Cookies** `"cookie"` (fe): persist the data using cookies
-- **LocalForage** `localForage` (fe): persist the data on IndexedDB
-- **FS File** `new URL('file:///...')` (be): store the data in a single JSON file
-- **Redis Client** `redisClient` (be): use the Redis instance that you connect to
-- **Cloudflare KV** `env.KV_NAMESPACE` (be): use Cloudflare's KV store
-- (WIP) **Consul KV** `new Consul()` (fe+be): use Hashicorp's Consul KV store (https://www.npmjs.com/package/consul#kv)
+- [**Memory** `new Map()`](#memory) (fe+be): an in-memory API to keep your KV store
+- [**Local Storage** `localStorage`](#local-storage) (fe): persist the data in the browser's localStorage
+- [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage
+- [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
+- [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
+- [**Filesystem** `new URL('file:///...')`](#filesystem) (be): store the data in a single JSON file
+- [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
+- [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
+- [(WIP) **Consul KV** `new Consul()`](#consul-kv) (fe+be): use Hashicorp's Consul KV store (https://www.npmjs.com/package/consul#kv)
+- [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
+
+> **Warning**: this library should work great for billions of items as a KV store with the atomic methods (GET/SET/ADD/HAS/DEL). However, some engines _might_ not be as performant if you have a dataset of _millions_ of items **and** use the group methods (KEYS/VALUES/ENTRIES/ALL/CLEAR) so if that's your usecase please make sure to read our documentation for client you use. Same for `.prefix()`, should be high-performance with atomic methods, but might not be as great for some clients.
 
 I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
@@ -164,7 +168,7 @@ if (await store.has('cookie-consent')) {
 
 ### .del()
 
-Remove a single key from the store:
+Remove a single key from the store and return the key itself:
 
 ```js
 await store.del(key: string);
@@ -225,7 +229,7 @@ Remove all of the data from the store:
 await store.clear();
 ```
 
-### .prefix() (unstable)
+### .prefix()
 
 Create a sub-store where all the operations use the given prefix. This is **the only method** of the store that is sync and you don't need to await:
 
@@ -237,16 +241,17 @@ const session = store.prefix("session:");
 Then all of the operations will be converted internally to add the prefix when reading, writing, etc:
 
 ```js
-const val = await session.get("key1"); // .get('session:key1');
-await session.set("key2", "some data"); // .set('session:key2', ...);
-const val = await session.has("key3"); // .has('session:key3');
-await session.del("key4"); // .del('session:key4');
-await session.keys(); // .keys('session:');
+const session = store.prefix("session:");
+const val = await session.get("key1"); // store.get('session:key1');
+await session.set("key2", "some data"); // store.set('session:key2', ...);
+const val = await session.has("key3"); // store.has('session:key3');
+await session.del("key4"); // store.del('session:key4');
+await session.keys(); // store.keys(); + filter
 // ['key1', 'key2', ...]   Note no prefix here
 await session.clear(); // delete only keys with the prefix
 ```
 
-This will probably never be stable given the nature of some engines, so as an alternative please consider using two stores instead of prefixes:
+Different clients have better/worse support for substores, and in some cases some operations might be slower. This should be documented on each client's documentation (see below). As an alternative, you can always create two different stores instead of a substore:
 
 ```js
 // Two in-memory stores
@@ -354,7 +359,7 @@ console.log(await store.get("key1"));
 
 > Note: the Redis client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
-### FS File
+### Filesystem
 
 ```js
 import kv from "polystore";
@@ -379,8 +384,8 @@ export default {
   async fetch(request, env, ctx) {
     const store = kv(env.YOUR_KV_NAMESPACE);
 
-    await store.set("KEY", "VALUE");
-    const value = await store.get("KEY");
+    await store.set("key", "value");
+    const value = await store.get("key");
 
     if (!value) {
       return new Response("Value not found", { status: 404 });
@@ -390,7 +395,7 @@ export default {
 };
 ```
 
-Why? The Cloudflare native KV store only accepts strings and has you manually calculating timeouts, but as usual with `polystore` you can set/get any serializable value and set the timeout in a familiar format:
+Why use polystore? The Cloudflare native KV store only accepts strings and has you manually calculating timeouts, but as usual with `polystore` you can set/get any serializable value and set the timeout in a familiar format:
 
 ```js
 // GOOD - with polystore
@@ -403,6 +408,10 @@ await env.YOUR_KV_NAMESPACE.put("user", serialValue, {
   expirationTtl: twoDaysInSeconds,
 });
 ```
+
+### Custom store
+
+Please see the [creating a store](#creating-a-store) section for more details!
 
 ## Expiration explained
 
@@ -435,23 +444,128 @@ For other stores like Redis this is not a problem, because the low-level operati
 
 ## Creating a store
 
-A store needs at least 4 methods with these signatures:
+To create a store, you define a class with these methods:
 
 ```js
-const store = {};
-store.get = (key: string) => Promise<any>;
-store.set = (key: string, value: any, { expires: number }) => Promise<string>;
-store.entries = (prefix: string = "") => Promise<[key:string, value:any][]>;
-store.clear = () => Promise<null>;
+class MyClient {
+  // If this is set to `true`, the CLIENT (you) handle the expiration, so
+  // the `.set()` and `.add()` receive a `expires` that is a `null` or `number`:
+  EXPIRES = false;
+
+  // Mandatory methods (2 item-methods, 2 group-methods)
+  get (key): Promise<any>;
+  set (key, value, { expires: null|number }): Promise<null>;
+  entries (prefix): Promise<[string, any][]>;
+
+  // Optional item methods (for optimization or customization)
+  add (prefix, data, { expires: null|number }): Promise<string>;
+  has (key): Promise<boolean>;
+  del (key): Promise<null>;
+
+  // Optional group methods
+  keys (prefix): Promise<string[]>;
+  values (prefix): Promise<any[]>;
+  clear (prefix): Promise<null>;
+
+  // Optional misc method
+  close (): Promise<null>;
+}
 ```
 
-All of the other methods will be implemented on top of these if not available, but you can provide those as well for optimizations, incompatible APIs, etc. For example, `.set('a', null)` _should_ delete the key `a`, and for this you may provide a native implementation:
+Note that this is NOT the public API, it's the internal **client** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
+
+**Expires**: if you set the `EXPIRES = true`, then you are indicating that the client WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the time when it will expire.
+
+**Prefix**: we manage the `prefix` as an invisible layer on top, you only need to be aware of it in the `.add()` method, as well as in the group methods:
 
 ```js
-const native = myNativeStore();
+// What the user of polystore does:
+const store = await kv(client).prefix("hello:").prefix("world:");
 
-const store = {};
-store.get = (key) => native.getItem(key);
-// ...
-store.del = (key) => native.deleteItem(key);
+// User calls this, then the client is called with that:
+const value = await store.get("a");
+// client.get("hello:world:a");
+
+// User calls this, then the client is called with that:
+const value = await store.entries();
+// client.entries("hello:world:");
+```
+
+> Note: all of the _group methods_ that return keys, should return them **with the prefix stripped**:
+
+```js
+// Example if your client works around a simple object {}, we want to remove
+// the `prefix` from the beginning of the keys returned:
+client.keys = (prefix) => {
+  return Object.keys(subStore)
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length)); // <= Important!
+};
+```
+
+You can and should just concatenate the `key + options.prefix`. We don't do it for two reasons: in some cases, like `.add()`, there's no key that we can use to concatenate, and also you might
+
+For example, if the user of `polystore` does `kv(client).prefix('hello:').get('a')`, your store will be directly called with `client.get('a', { prefix: 'hello:' })`. You can safely concatenate `options.prefix + key` since this library always ensures that the prefix is defined and defaults to `''`. We don't concatenate it interally because in some cases (like in `.add()`) it makes more sense that this is handled by the client as an optimization.
+
+While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
+
+### Example: Plain Object client
+
+This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own clients:
+
+```js
+const dataSource = {};
+
+class MyClient {
+  get(key) {
+    return dataSource[key];
+  }
+
+  // No need to stringify it or anything for a plain object storage
+  set(key, value) {
+    dataSource[key] = value;
+  }
+
+  // Filter them by the prefix, note that `prefix` will always be a string
+  entries(prefix) {
+    const entries = Object.entries(dataSource);
+    if (!prefix) return entries;
+    return entries.filter(([key, value]) => key.startsWith(prefix));
+  }
+}
+```
+
+We don't set `EXPIRES` to true since plain objects do NOT support expiration natively. So by not adding the `EXPIRES` property, it's the same as setting it to `false`, and polystore will manage all the expirations as a layer on top of the data. We could be more explicit and set it to `EXPIRES = false`, but it's not needed in this case.
+
+### Example: custom ID generation
+
+You might want to provide your custom key generation algorithm, which I'm going to call `customId()` for example purposes. The only place where `polystore` generates IDs is in `add`, so you can provide your client with a custom generator:
+
+```js
+class MyClient {
+
+  // Add the opt method .add() to have more control over the ID generation
+  async add (prefix, data, { expires }) {
+    const id = customId();
+    const key = prefix + id;
+    return this.set(key, data, { expires });
+  }
+
+  //
+  async set (...) {
+    // ...
+  }
+}
+```
+
+That way, when using the store, you can simply use `.add()` to generate it:
+
+```js
+import kv from "polystore";
+
+const store = kv(MyClient);
+const id = await store.add({ hello: "world" });
+// this is your own custom id
+const id2 = await store.prefix("hello:").add({ hello: "world" });
+// this is `hello:{your own custom id}`
 ```
