@@ -10,7 +10,7 @@ function isClass(func) {
 
 const getClient = (store) => {
   // Already a fully compliant KV store
-  if (store instanceof PolyStore) return store.client;
+  if (store instanceof Store) return store.client;
 
   for (let client of Object.values(clients)) {
     if (client.test && client.test(store)) {
@@ -26,7 +26,7 @@ const getClient = (store) => {
   return store;
 };
 
-class PolyStore {
+class Store {
   PREFIX = "";
 
   constructor(clientPromise = new Map()) {
@@ -81,11 +81,24 @@ class PolyStore {
     return id;
   }
 
-  async get(id) {
+  /**
+   * Read a single value from the KV store:
+   *
+   * ```js
+   * const key = await store.set("key1", "value1");
+   * const value = await store.get("key1");
+   * // "value1"
+   * ```
+   *
+   * **[→ Full .get() Docs](https://polystore.dev/documentation#get)**
+   * @param {(string)} key
+   * @returns {(any)} value
+   */
+  async get(key) {
     await this.promise;
-    const key = this.PREFIX + id;
+    const id = this.PREFIX + key;
 
-    const data = (await this.client.get(key)) ?? null;
+    const data = (await this.client.get(id)) ?? null;
 
     // No value; nothing to do/check
     if (data === null) return null;
@@ -106,7 +119,7 @@ class PolyStore {
 
     // Already expired! Return nothing, and remove the whole key
     if (expires <= new Date().getTime()) {
-      await this.del(id);
+      await this.del(key);
       return null;
     }
 
@@ -221,7 +234,7 @@ class PolyStore {
   }
 
   prefix(prefix = "") {
-    const store = new PolyStore(
+    const store = new Store(
       Promise.resolve(this.promise).then((client) => client || this.client)
     );
     store.PREFIX = this.PREFIX + prefix;
@@ -235,4 +248,4 @@ class PolyStore {
   }
 }
 
-export default kv = (client) => new PolyStore(client);
+export default kv = (client) => new Store(client);
