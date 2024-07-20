@@ -13,7 +13,7 @@
   "scripts": {
     "size": "echo $(gzip -c src/index.js | wc -c) bytes",
     "start": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --detectOpenHandles",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --detectOpenHandles && check-dts src/index.types.ts"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --ci --watchAll=false --detectOpenHandles && check-dts src/index.types.ts"
   },
   "keywords": [
     "kv",

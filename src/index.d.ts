@@ -8,9 +8,11 @@ type Store = {
   has: (key: Key) => Promise<boolean>;
   del: (key: Key) => Promise<null>;
 
-  keys: (prefix?: string) => Promise<string[]>;
-  values: (prefix?: string) => Promise<any[]>;
-  entries: (prefix?: string) => Promise<[key: string, value: any][]>;
+  keys: () => Promise<string[]>;
+  values: () => Promise<any[]>;
+  entries: () => Promise<[key: string, value: any][]>;
+
+  prefix: (prefix: string) => Store;
 
   clear: () => Promise<null>;
   close?: () => Promise<null>;
