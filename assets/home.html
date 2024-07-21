@@ -170,13 +170,12 @@ const value = await store.get(&quot;key1&quot;);
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="feather feather-type"
+          class="feather feather-clock"
         >
-          <polyline points="4 7 4 4 20 4 20 7"></polyline>
-          <line x1="9" y1="20" x2="15" y2="20"></line>
-          <line x1="12" y1="4" x2="12" y2="20"></line>
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <h3>Fully Typed</h3>
+        <h3>Intuitive expirations</h3>
       </header>
       <p>Every method has TS types and JSDocs for the best dev experience.</p>
     </div>
@@ -256,16 +255,48 @@ const obj = await store.all();
 <section class="hero flex one two-900 center">
   <div>
     <div class="content">
-      <h2>🛗 Operate on substores intuitively</h2>
+      <h2>🛗 Create substores</h2>
       <p>
-        We created the `.prefix()` to allow you to work with a subset of items
-        intuitively.
+        We include the `.prefix()` method to allow you to work with a subset of
+        items easily.
       </p>
       <p>
         e.g. if you have a session store and want to create a subset of sessions
-        only for auth, you could do
+        only for auth, you would do
         <code>const auth = session.prefix('auth:');</code> and then use
         <code>auth</code> like if it was an independent, KV store.
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">import kv from &quot;polystore&quot;;
+const store = kv(new Map());
+
+const auth = store.prefix(&quot;auth:&quot;);
+auth.set(&quot;key1&quot;, &quot;value1&quot;);
+console.log(await auth.entries());
+// [[&quot;key1&quot;, &quot;value1&quot;]]
+
+console.log(await store.entries());
+// [[&quot;auth:key1&quot;, &quot;value1&quot;]]</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>⏰ Easy expiration time</h2>
+      <p>
+        Unified expiration time so you can do
+        <code>{ expires: "1day" }</code> across ANY client. Forget about
+        calculating TTL, Unix time, etc. just write how long the cache lasts.
+      </p>
+      <p>
+        <a class="pseudo button" href="/documentation#expiration-explained">
+          Documentation
+        </a>
       </p>
     </div>
   </div>
