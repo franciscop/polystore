@@ -416,7 +416,7 @@ Please see the [creating a store](#creating-a-store) section for more details!
 
 ## Expiration explained
 
-While different engines do expiration slightly differently internally, in creating polystore we want to ensure certain constrains, which _can_ affect performance. For example, if you do this operation:
+We unify all of the clients diverse expiration methods into a single, easy one with `expires`:
 
 ```js
 // in-memory store
@@ -431,7 +431,7 @@ console.log(await store.get("a")); // 'b'
 // Make sure the key is expired
 await delay(2000); // 2s
 
-// Not only the .get() is null, but `.has()` returns false, and .keys() ignores it
+// The group methods also ignore expired keys
 console.log(await store.keys()); // []
 console.log(await store.has("a")); // false
 console.log(await store.get("a")); // null
@@ -510,7 +510,7 @@ For example, if the user of `polystore` does `kv(client).prefix('hello:').get('a
 
 While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
 
-### Example: Plain Object client
+#### Example: Plain Object client
 
 This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own clients:
 
@@ -538,7 +538,7 @@ class MyClient {
 
 We don't set `EXPIRES` to true since plain objects do NOT support expiration natively. So by not adding the `EXPIRES` property, it's the same as setting it to `false`, and polystore will manage all the expirations as a layer on top of the data. We could be more explicit and set it to `EXPIRES = false`, but it's not needed in this case.
 
-### Example: custom ID generation
+#### Example: custom ID generation
 
 You might want to provide your custom key generation algorithm, which I'm going to call `customId()` for example purposes. The only place where `polystore` generates IDs is in `add`, so you can provide your client with a custom generator:
 
