@@ -7,7 +7,11 @@ export default class MyClient {
 
   // No need to stringify it or anything for a plain object storage
   set(key, value) {
-    dataSource[key] = value;
+    if (value === null) {
+      delete dataSource[key];
+    } else {
+      dataSource[key] = value;
+    }
   }
 
   // Filter them by the prefix, note that `prefix` will always be a string

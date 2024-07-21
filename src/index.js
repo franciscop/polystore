@@ -57,6 +57,11 @@ class Store {
           `You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage them`
         );
       }
+      if (client.values) {
+        console.warn(
+          `Since this KV client does not manage expiration, it's better not to define client.values() since it doesn't allow us to evict expired keys`
+        );
+      }
     }
   }
 
@@ -197,16 +202,19 @@ class Store {
     // We need to do manual expiration checking
     const now = new Date().getTime();
     return list
-      .filter(([, data]) => {
-        // There's no data, so remove this
-        if (!data || data === null || data.value === null) return false;
+      .filter(([key, data]) => {
+        // Should never happen
+        if (!data || data.value === null) return false;
 
         // It never expires, so keep it
         const { expires } = data;
         if (expires === null) return true;
 
         // It's expired, so remove it
-        if (expires <= now) return false;
+        if (expires <= now) {
+          this.del(key);
+          return false;
+        }
 
         // It's not expired, keep it
         return true;
@@ -224,13 +232,14 @@ class Store {
       return list
         .filter((data) => {
           // There's no data, so remove this
-          if (!data || data === null || data.value === null) return false;
+          if (!data || data.value === null) return false;
 
           // It never expires, so keep it
           const { expires } = data;
           if (expires === null) return true;
 
           // It's expired, so remove it
+          // We cannot unfortunately evict it since we don't know the key!
           if (expires <= now) return false;
 
           // It's not expired, keep it
