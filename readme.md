@@ -1,6 +1,6 @@
 # Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://github.com/franciscop/polystore/blob/master/src/index.js)
 
-A small compatibility layer for many KV stores like localStorage, Redis, FileSystem, etc:
+A key-value library to unify the API of many clients, like localStorage, Redis, FileSystem, etc:
 
 ```js
 import kv from "polystore";
@@ -8,28 +8,29 @@ const store1 = kv(new Map()); // in-memory
 const store2 = kv(localStorage); // Persist in the browser
 const store3 = kv(redisClient); // Use a Redis client for backend persistence
 const store4 = kv(yourOwnStore); // Create a store based on your code
+// Many more here
 ```
 
-This is the [API](#api) with all of the methods (they are all `async`):
+These are all the methods of the [API](#api) (they are all `async`):
 
-- [`.get(key): any`](#get): read a single value, or `null` if it doesn't exist or is expired.
+- [`.get(key)`](#get): read a single value, or `null` if it doesn't exist or is expired.
 - [`.set(key, value, options?)`](#set): save a single value that is serializable.
 - [`.add(value, options?)`](#add): same as `.set()`, but auto-generates the key.
-- [`.has(key): boolean`](#has): check whether the key is in the store or not.
+- [`.has(key)`](#has): check whether a key exists or not.
 - [`.del(key)`](#del): delete a single value from the store.
-- [`.keys(): string[]`](#keys): get a list of all the available strings in the store.
-- [`.values(): any[]`](#values): get a list of all the values in the store.
-- [`.entries(): [string, any][]`](#entries): get a list of all the key-value pairs.
-- [`.all(): {[key: string]: any}`](#all): get an object with the key:values mapped.
+- [`.keys()`](#keys): get a list of all the available strings in the store.
+- [`.values()`](#values): get a list of all the values in the store.
+- [`.entries()`](#entries): get a list of all the key-value pairs.
+- [`.all()`](#all): get an object with the key:values mapped.
 - [`.clear()`](#clear): delete ALL of the data in the store, effectively resetting it.
 - [`.close()`](#close): (only _some_ stores) ends the connection to the store.
-- [`.prefix(prefix): store`](#prefix): create a sub-store that only manages the keys with the given prefix.
+- [`.prefix(prefix)`](#prefix): create a sub-store that only manages the keys with the given prefix.
 
 Available clients for the KV store:
 
-- [**Memory** `new Map()`](#memory) (fe+be): an in-memory API to keep your KV store
-- [**Local Storage** `localStorage`](#local-storage) (fe): persist the data in the browser's localStorage
-- [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage
+- [**Memory** `new Map()`](#memory) (fe+be): an in-memory API to keep your KV store.
+- [**Local Storage** `localStorage`](#local-storage) (fe): persist the data in the browser's localStorage.
+- [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage.
 - [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
 - [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
 - [**Filesystem** `new URL('file:///...')`](#filesystem) (be): store the data in a single JSON file
