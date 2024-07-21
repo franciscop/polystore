@@ -31,9 +31,15 @@ class Store {
   PREFIX = "";
 
   constructor(clientPromise = new Map()) {
-    this.promise = Promise.resolve(clientPromise).then((client) => {
+    this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = getClient(client);
       this.#validate(this.client);
+      if (this.client.open) {
+        await this.client.open();
+      }
+      if (this.client.connect) {
+        await this.client.connect();
+      }
       this.promise = null;
       return client;
     });

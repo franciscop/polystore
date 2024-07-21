@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import { jest } from "@jest/globals";
 import { EdgeKVNamespace as KVNamespace } from "edge-mock";
+import { Etcd3 } from "etcd3";
+import { Level } from "level";
 import localForage from "localforage";
 import { createClient } from "redis";
 
@@ -21,11 +23,15 @@ const path = `file://${process.cwd()}/src/test/data.json`;
 stores.push([`kv(new URL("${path}"))`, kv(new URL(path))]);
 const path2 = `file://${process.cwd()}/src/test/data.json`;
 stores.push([`kv("${path2}")`, kv(path2)]);
+stores.push([`kv("cookie")`, kv("cookie")]);
+stores.push(["kv(new KVNamespace())", kv(new KVNamespace())]);
+stores.push([`kv(new Level("data"))`, kv(new Level("data"))]);
 if (process.env.REDIS) {
   stores.push(["kv(redis)", kv(createClient().connect())]);
 }
-stores.push(["kv('cookie')", kv("cookie")]);
-stores.push(["kv(new KVNamespace())", kv(new KVNamespace())]);
+if (process.env.ETCD) {
+  stores.push(["kv(new Etcd3())", kv(new Etcd3())]);
+}
 
 stores.push(["kv(customSimple)", kv(customSimple)]);
 stores.push(["kv(customFull)", kv(customFull)]);
@@ -103,6 +109,14 @@ for (let [name, store] of stores) {
     afterAll(async () => {
       await store.clear();
       await store.close();
+    });
+
+    it("can perform a CRUD", async () => {
+      expect(await store.get("a")).toBe(null);
+      expect(await store.set("a", "b")).toBe("a");
+      expect(await store.get("a")).toBe("b");
+      expect(await store.del("a")).toBe("a");
+      expect(await store.get("a")).toBe(null);
     });
 
     it("is empty on the start", async () => {
@@ -372,7 +386,11 @@ for (let [name, store] of stores) {
         expect(await store.get("a")).toBe("b");
       });
 
-      if (name !== "kv('cookie')" && name !== "kv(redis)") {
+      if (
+        name !== `kv("cookie")` &&
+        name !== `kv(redis)` &&
+        name !== `kv(new Etcd3())`
+      ) {
         it("can use 0.01 expire", async () => {
           // 10ms
           await store.set("a", "b", { expires: 0.01 });
