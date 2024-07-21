@@ -1,6 +1,6 @@
 # Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://github.com/franciscop/polystore/blob/master/src/index.js)
 
-A key-value library to unify the API of many clients, like localStorage, Redis, FileSystem, etc:
+A key-value library to unify the API of [many clients](#clients), like localStorage, Redis, FileSystem, etc:
 
 ```js
 import kv from "polystore";
@@ -55,7 +55,7 @@ MyApi({ cache: env.KV_NAMESPACE }); // OR
 
 ## API
 
-See how to initialize each store [in the Stores list documentation](#stores). But basically for every store, it's like this:
+See how to initialize each store [in the Clients list documentation](#clients). But basically for every store, it's like this:
 
 ```js
 import kv from "polystore";
@@ -266,9 +266,11 @@ const books = kv(new URL(`file://${import.meta.dirname}/books.json`));
 
 The main reason this is not stable is because [_some_ store engines don't allow for atomic deletion of keys given a prefix](https://stackoverflow.com/q/4006324/938236). While we do still clear them internally in those cases, that is a non-atomic operation and it could have some trouble if some other thread is reading/writing the data _at the same time_.
 
-## Stores
+## Clients
 
-Accepts directly the store, or a promise that resolves into a store. All of the stores, including those that natively _don't_ support it, are enhanced with `Promises` and `expires` times, so they all work the same way.
+A client is the library that manages the low-level store operations. For example, the Redis Client, or the browser's `localStorage` API. In some exceptions it's just a string and we do a bit more work on Polystore, like with `"cookie"` or `"file:///users/me/data.json"`.
+
+Polystore provides a unified API you can use `Promises`, `expires` and `.prefix()` even with those stores that do not support these operations natively.
 
 ### Memory
 
@@ -288,6 +290,15 @@ const store = kv(new Map());
 await store.set("key1", "Hello world");
 console.log(await store.get("key1"));
 ```
+
+<details>
+  <summary>Why use polystore with <code>new Map()</code>?</summary>
+  <p>Besides the other benefits already documented elsewhere, these are the ones specifically for wrapping Map() with polystore:</p>
+  <ul>
+    <li><strong>Expiration</strong>: you can now set lifetime to your values so that they are automatically evicted when the time passes. <a href="#expiration-explained">Expiration explained</a>.</li>
+    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
+  </ul>
+</details>
 
 ### Local Storage
 
