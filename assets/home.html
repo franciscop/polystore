@@ -304,16 +304,14 @@ console.log(await store.entries());
     </div>
   </div>
   <div>
-    <pre><code class="language-js">import kv from "polystore";
-const store = kv(new Map());
+    <pre><code class="language-js">store.get("key");  // null
 
-const auth = store.prefix(&quot;auth:&quot;);
-auth.set(&quot;key1&quot;, &quot;value1&quot;);
-console.log(await auth.entries());
-// [[&quot;key1&quot;, &quot;value1&quot;]]
+store.set("key", "value", { expires: "1s" });
+await store.get("key");  // "value"
 
-console.log(await store.entries());
-// [[&quot;auth:key1&quot;, &quot;value1&quot;]]</code></pre>
+await sleep(2000);
+
+await store.get("key");  // null</code></pre>
   </div>
 </section>
 
