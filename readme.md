@@ -33,10 +33,11 @@ Available clients for the KV store:
 - [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage.
 - [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
 - [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
-- [**Filesystem** `new URL('file:///...')`](#filesystem) (be): store the data in a single JSON file
+- [**File** `new URL('file:///...')`](#file) (be): store the data in a single JSON file in your FS
 - [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
-- [(WIP) **Consul KV** `new Consul()`](#consul-kv) (fe+be): use Hashicorp's Consul KV store (https://www.npmjs.com/package/consul#kv)
+- [**Level** `new Level('example', { valueEncoding: 'json' })`](#level): support the whole Level ecosystem
+- [**Etcd** `new Etcd3()`](#etcd): the Microsoft's high performance KV store.
 - [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
 
 > This library should be as performant as the client you use with the item methods (GET/SET/ADD/HAS/DEL). For other and advanced cases, see [the performance considerations](#performance) and read the docs on your client.
@@ -281,16 +282,20 @@ An in-memory KV store, with promises and expiration time:
 ```js
 import kv from "polystore";
 
-// This already works, by default if there's nothing it'll use
-// a new Map()
-const store = kv();
-await store.set("key1", "Hello world");
-console.log(await store.get("key1"));
-
-// Or you can be explicit:
 const store = kv(new Map());
-await store.set("key1", "Hello world");
+
+await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
+// "Hello world"
+```
+
+It can also be initialized empty, then it'll use the in-memory store:
+
+```js
+import kv from "polystore";
+
+const store = kv();
+const store = kv(new Map());
 ```
 
 <details>
@@ -310,8 +315,10 @@ The traditional localStorage that we all know and love, this time with a unified
 import kv from "polystore";
 
 const store = kv(localStorage);
-await store.set("key1", "Hello world");
+
+await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
+// "Hello world"
 ```
 
 Same limitations as always apply to localStorage, if you think you are going to use too much storage try instead our integration with [Local Forage](#local-forage)!
@@ -324,8 +331,10 @@ Same as localStorage, but now for the session only:
 import kv from "polystore";
 
 const store = kv(sessionStorage);
-await store.set("key1", "Hello world");
+
+await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
+// "Hello world"
 ```
 
 ### Cookies
@@ -335,9 +344,11 @@ Supports native browser cookies, including setting the expire time:
 ```js
 import kv from "polystore";
 
-const store = kv("cookie"); // yes, just a plain string
-await store.set("key1", "Hello world");
+const store = kv("cookie"); // just a plain string
+
+await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
+// "Hello world"
 ```
 
 It is fairly limited for how powerful cookies are, but in exchange it has the same API as any other method or KV store. It works with browser-side Cookies (no http-only).
@@ -353,8 +364,10 @@ import kv from "polystore";
 import localForage from "localforage";
 
 const store = kv(localForage);
+
 await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
+// "Hello world"
 ```
 
 ### Redis Client
@@ -365,25 +378,37 @@ Supports the official Node Redis Client. You can pass either the client or the p
 import kv from "polystore";
 import { createClient } from "redis";
 
-// Note: no need for await or similar
 const store = kv(createClient().connect());
-await store.set("key1", "Hello world");
+
+await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
+// "Hello world"
 ```
+
+You don't need to `await` for the connect or similar, this will process it properly.
 
 > Note: the Redis client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
-### Filesystem
+### File
+
+Treat a JSON file in your filesystem as the source for the KV store:
 
 ```js
 import kv from "polystore";
 
-// Create a url with the file protocol:
 const store = kv(new URL("file:///Users/me/project/cache.json"));
 
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+You can also create multiple stores:
+
+```js
 // Paths need to be absolute, but you can use process.cwd() to make
 // it relative to the current process:
-const store = kv(new URL(`file://${process.cwd()}/cache.json`));
+const store1 = kv(new URL(`file://${process.cwd()}/cache.json`));
 const store2 = kv(new URL(`file://${import.meta.dirname}/data.json`));
 ```
 
@@ -398,13 +423,11 @@ export default {
   async fetch(request, env, ctx) {
     const store = kv(env.YOUR_KV_NAMESPACE);
 
-    await store.set("key", "value");
-    const value = await store.get("key");
+    await store.set("key1", "Hello world", { expires: "1h" });
+    console.log(await store.get("key1"));
+    // "Hello world"
 
-    if (!value) {
-      return new Response("Value not found", { status: 404 });
-    }
-    return new Response(value);
+    return new Response("My response");
   },
 };
 ```
@@ -421,6 +444,36 @@ const twoDaysInSeconds = 2 * 24 * 3600;
 await env.YOUR_KV_NAMESPACE.put("user", serialValue, {
   expirationTtl: twoDaysInSeconds,
 });
+```
+
+### Level
+
+Support [the Level ecosystem](https://github.com/Level/level), which is itself composed of modular methods:
+
+```js
+import kv from "polystore";
+import { Level } from "level";
+
+const store = kv(new Level("example", { valueEncoding: "json" }));
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+### Etcd
+
+Connect to Microsoft's Etcd Key-Value store:
+
+```js
+import kv from "polystore";
+import { Etcd3 } from "etcd3";
+
+const store = kv(new Etcd3());
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
 ```
 
 ### Custom store

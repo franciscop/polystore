@@ -6,6 +6,10 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
+# Some things created automatically
+data/*
+default.etcd
+
 .DS_Store
 
 # Runtime data

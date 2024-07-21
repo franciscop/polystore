@@ -2,7 +2,7 @@
 export default class Forage {
   // Check if this is the right class for the given client
   static test(client) {
-    return client.defineDriver && client.dropInstance && client.INDEXEDDB;
+    return client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
   }
 
   constructor(client) {

@@ -23,19 +23,23 @@
     "value"
   ],
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
     "check-dts": "^0.7.2",
     "dotenv": "^16.3.1",
     "edge-mock": "^0.0.15",
     "esbuild": "^0.19.4",
+    "etcd3": "^1.1.2",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "level": "^8.0.1",
     "localforage": "^1.10.0",
     "redis": "^4.6.10"
   },
   "jest": {
     "testEnvironment": "jsdom",
+    "setupFiles": [
+      "./src/test/setup.js"
+    ],
     "transform": {},
     "modulePathIgnorePatterns": [
       "src/test/"
