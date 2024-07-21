@@ -4,8 +4,11 @@ export default class Cloudflare {
   EXPIRES = true;
 
   // Check whether the given store is a FILE-type
-  static test(store) {
-    return store?.constructor?.name === "KvNamespace";
+  static test(client) {
+    return (
+      client?.constructor?.name === "KvNamespace" ||
+      client?.constructor?.name === "EdgeKVNamespace"
+    );
   }
 
   constructor(client) {
@@ -19,7 +22,6 @@ export default class Cloudflare {
   }
 
   async set(key, value, { expires } = {}) {
-    if (value === null || expires === 0) return del(key);
     const expirationTtl = expires ? Math.round(expires) : undefined;
     this.client.put(key, JSON.stringify(value), { expirationTtl });
     return key;
@@ -31,17 +33,17 @@ export default class Cloudflare {
 
   async keys(prefix = "") {
     const raw = await this.client.list({ prefix });
-    return raw.keys;
+    return raw.keys.map((k) => k.name);
   }
 
   async entries(prefix = "") {
     const keys = await this.keys(prefix);
-    const values = await Promise.all(keys.map((k) => get(k)));
+    const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((key, i) => [key, values[i]]);
   }
 
   async clear(prefix = "") {
     const list = await this.keys(prefix);
-    return Promise.all(list.map(del));
+    return Promise.all(list.map((k) => this.del(k)));
   }
 }

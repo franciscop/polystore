@@ -1,5 +1,7 @@
 import "dotenv/config";
 
+import { jest } from "@jest/globals";
+import { EdgeKVNamespace as KVNamespace } from "edge-mock";
 import localForage from "localforage";
 import { createClient } from "redis";
 
@@ -23,6 +25,8 @@ if (process.env.REDIS) {
   stores.push(["kv(redis)", kv(createClient().connect())]);
 }
 stores.push(["kv('cookie')", kv("cookie")]);
+stores.push(["kv(new KVNamespace())", kv(new KVNamespace())]);
+
 stores.push(["kv(customSimple)", kv(customSimple)]);
 stores.push(["kv(customFull)", kv(customFull)]);
 
@@ -33,6 +37,11 @@ class Base {
   set() {}
   entries() {}
 }
+
+global.console = {
+  ...console,
+  warn: jest.fn(),
+};
 
 describe("potato", () => {
   it("a potato is not a valid store", async () => {
@@ -69,6 +78,19 @@ describe("potato", () => {
       message:
         "You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage them",
     });
+  });
+
+  it("warns the user with no EXPIRES + .values()", async () => {
+    const warn = jest
+      .spyOn(console, "warn")
+      .mockImplementationOnce(() => "Hello");
+    await kv(
+      class extends Base {
+        values() {}
+      }
+    ).get("any");
+    expect(warn).toHaveBeenCalled(); // But at least we warn them
+    warn.mockClear();
   });
 });
 
@@ -306,6 +328,13 @@ for (let [name, store] of stores) {
     });
 
     describe("expires", () => {
+      // The mock implementation does NOT support expiration 😪
+      if (name === "kv(new KVNamespace())") return;
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
       it("expires = 0 means immediately", async () => {
         await store.set("a", "b", { expires: 0 });
         expect(await store.get("a")).toBe(null);
@@ -387,6 +416,40 @@ for (let [name, store] of stores) {
           expect(await store.keys()).toEqual([]);
           expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
+        });
+
+        it("removes the expired key with .get()", async () => {
+          await store.set("a", "b", { expires: "10ms" });
+          const spy = jest.spyOn(store, "del");
+          expect(spy).not.toHaveBeenCalled();
+          await delay(100);
+          expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
+          expect(await store.get("a")).toBe(null);
+          expect(spy).toHaveBeenCalled();
+        });
+
+        it("removes the expired key with .keys()", async () => {
+          await store.set("a", "b", { expires: "10ms" });
+          const spy = jest.spyOn(store, "del");
+          expect(spy).not.toHaveBeenCalled();
+          await delay(100);
+          expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
+          expect(await store.keys()).toEqual([]);
+          expect(spy).toHaveBeenCalled();
+        });
+
+        it("CANNOT remove the expired key with .values()", async () => {
+          await store.set("a", "b", { expires: "10ms" });
+          const spy = jest.spyOn(store, "del");
+          expect(spy).not.toHaveBeenCalled();
+          await delay(100);
+          expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
+          expect(await store.values()).toEqual([]);
+          if (!store.client.EXPIRES && store.client.values) {
+            expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪😪
+          } else {
+            expect(spy).toHaveBeenCalled();
+          }
         });
       } else {
         it("can use 1 (second) expire", async () => {

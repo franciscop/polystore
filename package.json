@@ -26,6 +26,7 @@
   "devDependencies": {
     "check-dts": "^0.7.2",
     "dotenv": "^16.3.1",
+    "edge-mock": "^0.0.15",
     "esbuild": "^0.19.4",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",

@@ -39,7 +39,7 @@ Available clients for the KV store:
 - [(WIP) **Consul KV** `new Consul()`](#consul-kv) (fe+be): use Hashicorp's Consul KV store (https://www.npmjs.com/package/consul#kv)
 - [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
 
-> **Warning**: this library should work great for billions of items as a KV store with the atomic methods (GET/SET/ADD/HAS/DEL). However, some engines _might_ not be as performant if you have a dataset of _millions_ of items **and** use the group methods (KEYS/VALUES/ENTRIES/ALL/CLEAR) so if that's your usecase please make sure to read our documentation for client you use. Same for `.prefix()`, should be high-performance with atomic methods, but might not be as great for some clients.
+> This library should be as performant as the client you use with the item methods (GET/SET/ADD/HAS/DEL). For other and advanced cases, see [the performance considerations](#performance) and read the docs on your client.
 
 I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
@@ -232,7 +232,9 @@ await store.clear();
 
 ### .prefix()
 
-Create a sub-store where all the operations use the given prefix. This is **the only method** of the store that is sync and you don't need to await:
+> There's [an in-depth explanation about Substores](#substores) that is very informative for production usage.
+
+Creates **a new instance** of the Store, _with the same client_ as you provided, but now any key you read, write, etc. will be passed with the given prefix to the client. You only write `.prefix()` once and then don't need to worry about any prefix for any method anymore, it's all automatic. It's **the only method** that you don't need to await:
 
 ```js
 const store = kv(new Map());
@@ -425,7 +427,21 @@ await env.YOUR_KV_NAMESPACE.put("user", serialValue, {
 
 Please see the [creating a store](#creating-a-store) section for more details!
 
-## Expiration explained
+## Performance
+
+> TL;DR: if you only use the item operations (add,set,get,has,del) and your store supports expiration natively, you have nothing to worry about!
+
+While all of our stores support `expires`, `.prefix()` and group operations, the nature of those makes them to have different performance characteristics.
+
+**Expires** we polyfill expiration when the underlying library does not support it. The impact on read/write operations and on data size of each key should be minimal. However, it can have a big impact in storage size, since the expired keys are not evicted automatically. Note that when attempting to read an expired key, polystore **will delete that key**. However, if an expired key is never read, it would remain in the datastore and could create some old-data issues. This is **especially important where sensitive data is involved**! To fix this, the easiest way is calling `await store.entries();` on a cron job and that should evict all of the old keys (this operation is O(n) though, so not suitable for calling it on EVERY API call, see the next point).
+
+**Group operations** these are there mostly for small datasets only, for one-off scripts or for dev purposes, since by their own nature they can _never_ be high performance. But this is normal if you think about traditional DBs, reading a single record by its ID is O(1), while reading all of the IDs in the DB into an array is going to be O(n). Same applies with polystore.
+
+**Substores** when dealing with a `.prefix()` substore, the same applies. Item operations should see no performance degradation from `.prefix()`, but group operations follow the above performance considerations. Some engines might have native prefix support, so performance in those is better for group operations in a substore than the whole store. But in general you should consider `.prefix()` as a convenient way of classifying your keys and not as a performance fix for group operations.
+
+## Expires
+
+> Warning: if a client doesn't support expiration natively, we will hide expired keys on the API calls for a nice DX, but _old data might not be evicted automatically_, which is relevant especially for sensitive information. You'd want to set up a cron job to evict it manually, since for large datasets it might be more expensive (O(n)).
 
 We unify all of the clients diverse expiration methods into a single, easy one with `expires`:
 
@@ -453,6 +469,20 @@ This is great because with polystore we do ensure that if a key has expired, it 
 However, in some stores this does come with some potential performance disadvantages. For example, both the in-memory example above and localStorage _don't_ have a native expiration/eviction process, so we have to store that information as metadata, meaning that even to check if a key exists we need to read and decode its value. For one or few keys it's not a problem, but for large sets this can become an issue.
 
 For other stores like Redis this is not a problem, because the low-level operations already do them natively, so we don't need to worry about this for performance at the user-level. Instead, Redis and cookies have the problem that they only have expiration resolution at the second level. Meaning that 800ms is not a valid Redis expiration time, it has to be 1s, 2s, etc.
+
+## Substores
+
+> There's some [basic `.prefix()` API info](#prefix) for everyday usage, this section is the in-depth explanation.
+
+What `.prefix()` does is it creates **a new instance** of the Store, _with the same client_ as you provided, but now any key you read, write, etc. will be passed with the given prefix to the client. The issue is that support from the underlying clients is inconsistent.
+
+When dealing with large or complex amounts of data in a KV store, some times it's useful to divide them by categories. Some examples might be:
+
+- You use KV as a cache, and have different categories of data.
+- You use KV as a session store, and want to differentiate different kinds of sessions.
+- You use KV as a primary data store, and have different types of datasets.
+
+For these and more situations, you can use `.prefix()` to simplify your life further.
 
 ## Creating a store
 
