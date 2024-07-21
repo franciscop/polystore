@@ -315,4 +315,4 @@ class Store {
   }
 }
 
-export default kv = (client) => new Store(client);
+export default (client) => new Store(client);
