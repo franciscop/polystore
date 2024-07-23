@@ -260,8 +260,9 @@ await store.del(key1);</code></pre>
     <div class="content">
       <h2>🛗 Create substores</h2>
       <p>
-        Create a substore with <code>.prefix()</code>, then ignore anything
-        prefix-related and treat it as if it was a brand new store.
+        Create a new substore with <code>.prefix()</code>, then you can ignore
+        anything related to the prefix and treat it as if it was a brand new
+        store.
       </p>
       <p>
         <a class="pseudo button" href="/documentation#substores"
@@ -272,6 +273,7 @@ await store.del(key1);</code></pre>
   </div>
   <div>
     <pre><code class="language-js">const session = store.prefix("session:");
+
 session.set("key1", "value1");
 console.log(await session.all());
 // { "key1": "value1" }
