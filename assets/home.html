@@ -272,8 +272,7 @@ await store.del(key1);</code></pre>
     </div>
   </div>
   <div>
-    <pre><code class="language-js">import kv from &quot;polystore&quot;;
-const store = kv(new Map());
+    <pre><code class="language-js">const store = kv(new Map());
 
 const auth = store.prefix(&quot;auth:&quot;);
 auth.set(&quot;key1&quot;, &quot;value1&quot;);
