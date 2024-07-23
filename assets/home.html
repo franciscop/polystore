@@ -4,8 +4,8 @@
   <div>
     <h1>Polystore</h1>
     <p style="max-width: 620px">
-      A universal library for standardizing KV-stores. Write code that works on
-      any KV store, both on the front-end and backend.
+      A universal library for standardizing KV-stores. Write intuitive code that
+      works on any KV store, both on the front-end and backend.
     </p>
     <pre class="small">npm install polystore</pre>
     <div class="buttons">
@@ -24,7 +24,7 @@ import { createClient } from "redis";
 const REDIS = process.env.REDIS_URL;
 const store = kv(createClient(REDIS));
 
-await store.set(&quot;key1&quot;, { hello: &quot;world&quot; });
+await store.set(&quot;key1&quot;, data, { expires: "1h" });
 console.log(await store.get(&quot;key1&quot;));
 // { hello: &quot;world&quot; }</code></pre>
   </div>
