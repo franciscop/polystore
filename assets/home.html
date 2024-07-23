@@ -23,9 +23,9 @@
 import { createClient } from "redis";
 
 const REDIS = process.env.REDIS_URL;
-const redisClient = createClient(REDIS).connect();
+const client = createClient(REDIS).connect();
 
-const store = kv(redisClient);
+const store = kv(client);
 
 await store.set(&quot;key1&quot;, { hello: &quot;world&quot; });
 console.log(await store.get(&quot;key1&quot;));
