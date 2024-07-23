@@ -239,7 +239,7 @@ const store6 = kv(yourOwnStore);</code></pre>
         data easily.
       </p>
       <p>
-        <a class="pseudo button" href="/documentation#api"> API Docs </a>
+        <a class="pseudo button" href="/documentation#api">API Docs</a>
       </p>
     </div>
   </div>
@@ -261,13 +261,13 @@ await store.del(key1);</code></pre>
       <h2>🛗 Create substores</h2>
       <p>
         We include the `.prefix()` method to allow you to work with a subset of
-        items easily.
+        items easily. Then the prefix becomes invisible and you just work as if
+        it was a new store.
       </p>
       <p>
-        e.g. if you have a session store and want to create a subset of sessions
-        only for auth, you would do
-        <code>const auth = session.prefix('auth:');</code> and then use
-        <code>auth</code> like if it was an independent, KV store.
+        <a class="pseudo button" href="/documentation#substores"
+          >Substore Docs
+        </a>
       </p>
     </div>
   </div>
