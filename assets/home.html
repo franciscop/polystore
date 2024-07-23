@@ -273,8 +273,8 @@ await store.del(key1);</code></pre>
   </div>
   <div>
     <pre><code class="language-js">const session = store.prefix("session:");
-
 session.set("key1", "value1");
+
 console.log(await session.all());
 // { "key1": "value1" }
 
