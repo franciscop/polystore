@@ -21,9 +21,11 @@
   <div style="width: 570px; max-width: 100%">
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
 import { createClient } from "redis";
-const REDIS = process.env.REDIS_URL;
 
-const store = kv(createClient(REDIS).connect());
+const REDIS = process.env.REDIS_URL;
+const redisClient = createClient(REDIS).connect();
+
+const store = kv(redisClient);
 
 await store.set(&quot;key1&quot;, { hello: &quot;world&quot; });
 console.log(await store.get(&quot;key1&quot;));
