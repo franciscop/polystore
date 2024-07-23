@@ -260,9 +260,8 @@ await store.del(key1);</code></pre>
     <div class="content">
       <h2>🛗 Create substores</h2>
       <p>
-        We include the <code>.prefix()</code> method to allow you to work with a
-        subset of items easily. Then you treat this substore as a fully-fledged
-        store, ignoring the prefix and working with it as if it was a new store.
+        You can create substores with a <code>.prefix()</code>, then you can
+        ignore the prefix and work with it as if it was a brand new store.
       </p>
       <p>
         <a class="pseudo button" href="/documentation#substores"
@@ -272,9 +271,7 @@ await store.del(key1);</code></pre>
     </div>
   </div>
   <div>
-    <pre><code class="language-js">const store = kv(new Map());
-
-const session = store.prefix(&quot;session:&quot;);
+    <pre><code class="language-js">const session = store.prefix(&quot;session:&quot;);
 session.set(&quot;key1&quot;, &quot;value1&quot;);
 console.log(await session.entries());
 // [[&quot;key1&quot;, &quot;value1&quot;]]
