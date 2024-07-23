@@ -248,13 +248,11 @@ const store6 = kv(yourOwnStore);</code></pre>
     </div>
   </div>
   <div>
-    <pre><code class="language-js">const key1 = await store.add(&quot;value2&quot;);
-const key2 = await store.set(&quot;key1&quot;, &quot;value1&quot;);
+    <pre><code class="language-js">const key1 = await store.add(&quot;value1&quot;);
+const key2 = await store.set(&quot;key2&quot;, &quot;value2&quot;);
+const val1 = await store.get(&quot;key1&quot;);
 const isthere = await store.has(&quot;key1&quot;);
-
-const allKeys = await store.keys();
-const allValues = await store.values();
-const obj = await store.all();
+await store.del(key1);
 // etc</code></pre>
   </div>
 </section>
