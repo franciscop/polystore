@@ -67,6 +67,18 @@ const store = kv(MyClientOrStoreInstance);
 // use the store
 ```
 
+If the instance you pass contains a `connect()` or `open()` method, polystore **will** call that without any argument:
+
+```js
+// Simpler
+const store = kv(createClient());
+
+// NO NEED
+const client = createClient();
+client.connect();
+const store = kv(client);
+```
+
 While you can keep a reference to the store and access it directly, we strongly recommend if you are going to use a store, to only access it through `polystore`, since we do add custom serialization and extra properties for e.g. expiration time:
 
 ```js

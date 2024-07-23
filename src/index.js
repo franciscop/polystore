@@ -32,14 +32,11 @@ class Store {
 
   constructor(clientPromise = new Map()) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
-      this.client = getClient(client);
-      this.#validate(this.client);
-      if (this.client.open) {
-        await this.client.open();
-      }
-      if (this.client.connect) {
-        await this.client.connect();
-      }
+      if (client?.open) await client.open();
+      if (client?.connect) await client.connect();
+      client = getClient(client);
+      this.#validate(client);
+      this.client = client;
       this.promise = null;
       return client;
     });
@@ -309,6 +306,8 @@ class Store {
   }
 
   async close() {
+    await this.promise;
+
     if (this.client.close) {
       return this.client.close();
     }

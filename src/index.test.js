@@ -27,7 +27,7 @@ stores.push([`kv("cookie")`, kv("cookie")]);
 stores.push(["kv(new KVNamespace())", kv(new KVNamespace())]);
 stores.push([`kv(new Level("data"))`, kv(new Level("data"))]);
 if (process.env.REDIS) {
-  stores.push(["kv(redis)", kv(createClient().connect())]);
+  stores.push(["kv(redis)", kv(createClient())]);
 }
 if (process.env.ETCD) {
   stores.push(["kv(new Etcd3())", kv(new Etcd3())]);
