@@ -235,15 +235,19 @@ const store6 = kv(yourOwnStore);</code></pre>
       <p>
         A set of high-performance item operations with <code>.add()</code>,
         <code>.set()</code>, <code>.get()</code>, <code>.has()</code> or
-        <code>.del()</code>
+        <code>.del()</code>.
       </p>
+      <p>There are also group operations to manage your data.</p>
       <p>
         <a class="pseudo button" href="/documentation#api"> API Docs </a>
       </p>
     </div>
   </div>
   <div>
-    <pre><code class="language-js">const key1 = await store.add(&quot;value1&quot;);
+    <pre><code class="language-js">import kv from "polystore";
+const store = kv(new Map());
+      
+const key1 = await store.add(&quot;value1&quot;);
 const key2 = await store.set(&quot;key2&quot;, &quot;value2&quot;);
 const val1 = await store.get(&quot;key1&quot;);
 const isthere = await store.has(&quot;key1&quot;);
