@@ -18,12 +18,12 @@
       >
     </div>
   </div>
-  <div style="width: 550px; max-width: 100%">
+  <div style="width: 570px; max-width: 100%">
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
 import { createClient } from "redis";
+const REDIS = process.env.REDIS_URL;
 
-const client = createClient(process.env.REDIS);
-const store = kv(client.connect());
+const store = kv(createClient(REDIS).connect());
 
 await store.set(&quot;key1&quot;, { hello: &quot;world&quot; });
 console.log(await store.get(&quot;key1&quot;));
