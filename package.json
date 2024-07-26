@@ -9,6 +9,7 @@
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
   "main": "src/index.js",
   "type": "module",
+  "types": "src/index.d.ts",
   "scripts": {
     "size": "echo $(gzip -c src/index.js | wc -c) bytes",
     "start": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --detectOpenHandles",

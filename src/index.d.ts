@@ -1,12 +1,12 @@
-type Key = string;
 type Options = { expires?: number | string | null };
+type Value = null | string | { [key: string]: Value } | Value[];
 
 type Store = {
-  get: (key: Key) => Promise<any>;
-  add: (value: any, options?: Options) => Promise<Key>;
-  set: (key: Key, value: any, options?: Options) => Promise<Key>;
-  has: (key: Key) => Promise<boolean>;
-  del: (key: Key) => Promise<null>;
+  get: (key: string) => Promise<Value>;
+  add: (value: any, options?: Options) => Promise<string>;
+  set: (key: string, value: any, options?: Options) => Promise<string>;
+  has: (key: string) => Promise<boolean>;
+  del: (key: string) => Promise<null>;
 
   keys: () => Promise<string[]>;
   values: () => Promise<any[]>;
