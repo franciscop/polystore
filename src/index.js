@@ -123,14 +123,17 @@ class Store {
    * Read a single value from the KV store:
    *
    * ```js
-   * const key = await store.set("key1", "value1");
-   * const value = await store.get("key1");
-   * // "value1"
+   * const value1 = await store.get("key1");
+   * // null (it doesn't exist, or it has expired)
+   * const value2 = await store.get("key2");
+   * // "value2"
+   * const value3 = await store.get("key3");
+   * // { hello: "world" }
    * ```
    *
    * **[→ Full .get() Docs](https://polystore.dev/documentation#get)**
    * @param {(string)} key
-   * @returns {(any)} value
+   * @returns {Promise<(Value)>}
    */
   async get(key) {
     await this.promise;

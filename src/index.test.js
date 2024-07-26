@@ -7,7 +7,7 @@ import { Level } from "level";
 import localForage from "localforage";
 import { createClient } from "redis";
 
-import kv from "./";
+import kv from "./index.js";
 import customFull from "./test/customFull.js";
 import customSimple from "./test/customSimple.js";
 
