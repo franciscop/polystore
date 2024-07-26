@@ -10,7 +10,7 @@ parse.year = parse.yr = parse.y = parse.d * 365.25;
 parse.month = parse.b = parse.y / 12;
 
 // Returns the time in milliseconds
-function parse(str) {
+export function parse(str) {
   if (str === null || str === undefined) return null;
   if (typeof str === "number") return str;
   // ignore commas/placeholders
@@ -28,7 +28,7 @@ function parse(str) {
 const urlAlphabet =
   "useandom26T198340PX75pxJACKVERYMINDBUSHWOLFGQZbfghjklqvwyzrict";
 
-function createId() {
+export function createId() {
   let size = 24;
   let id = "";
   let bytes = crypto.getRandomValues(new Uint8Array(size));
@@ -41,4 +41,9 @@ function createId() {
   return id;
 }
 
-export { parse, createId };
+export function isClass(func) {
+  return (
+    typeof func === "function" &&
+    /^class\s/.test(Function.prototype.toString.call(func))
+  );
+}

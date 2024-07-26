@@ -175,8 +175,29 @@ Check whether the key is available in the store and not expired:
 ```js
 await store.has(key: string);
 
-if (await store.has('cookie-consent')) {
+if (await store.has("cookie-consent")) {
   loadCookies();
+}
+```
+
+In many cases, internally the check for `.has()` is the same as `.get()`, so if you are going to use the value straight away it's usually better to just read it:
+
+```js
+const val = await store.get("key1");
+if (val) { ... }
+```
+
+An example of an exception of the above is when you use it as a cache, then you can write code like this:
+
+```js
+// First time for a given user does a network roundtrip, while
+// the second time for the same user gets it from cache
+async function fetchUser(id) {
+  if (!(await store.has(id))) {
+    const { data } = await axios.get(`/users/${id}`);
+    await store.set(id, data, { expires: "1h" });
+  }
+  return store.get(id);
 }
 ```
 

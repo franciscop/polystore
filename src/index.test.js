@@ -113,7 +113,9 @@ for (let [name, store] of stores) {
 
     it("can perform a CRUD", async () => {
       expect(await store.get("a")).toBe(null);
+      expect(await store.has("a")).toBe(false);
       expect(await store.set("a", "b")).toBe("a");
+      expect(await store.has("a")).toBe(true);
       expect(await store.get("a")).toBe("b");
       expect(await store.del("a")).toBe("a");
       expect(await store.get("a")).toBe(null);
@@ -508,6 +510,12 @@ for (let [name, store] of stores) {
         expect(id).toBe("a");
         expect(await session.get("a")).toBe("b");
         expect(await store.get("session:a")).toBe("b");
+      });
+
+      it("checks the has properly", async () => {
+        expect(await session.has("a")).toBe(false);
+        await session.set("a", "b");
+        expect(await session.has("a")).toBe(true);
       });
 
       it("can add with the prefix", async () => {
