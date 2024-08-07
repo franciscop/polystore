@@ -1,3 +1,8 @@
+/**
+ * A number, or a string containing a number.
+ * @typedef {(number|string|object|array)} Value
+ */
+
 import clients from "./clients/index.js";
 import { createId, isClass, parse } from "./utils.js";
 
@@ -151,7 +156,7 @@ class Store {
    *
    * ```js
    * const value1 = await store.get("key1");
-   * // null (it doesn't exist, or it has expired)
+   * // null (doesn't exist or has expired)
    * const value2 = await store.get("key2");
    * // "value2"
    * const value3 = await store.get("key3");
@@ -302,6 +307,34 @@ class Store {
       .map(([key, data]) => [key, data.value]);
   }
 
+  // #region .keys()
+  /**
+   * Return an array of the keys in the store:
+   *
+   * ```js
+   * const keys = await store.keys();
+   * // ["key1", "key2", ...]
+   *
+   * // To limit it to a given prefix, use `.prefix()`:
+   * const sessions = await store.prefix("session:").keys();
+   * ```
+   *
+   * **[→ Full .keys() Docs](https://polystore.dev/documentation#keys)**
+   * @returns {Promise<string[]>}
+   */
+  async keys() {
+    await this.promise;
+
+    if (this.client.keys) {
+      const list = await this.client.keys(this.PREFIX);
+      if (!this.PREFIX) return list;
+      return list.map((k) => k.slice(this.PREFIX.length));
+    }
+
+    const entries = await this.entries();
+    return entries.map((e) => e[0]);
+  }
+
   // #region .values()
   /**
    * Return an array of the values in the store:
@@ -345,34 +378,6 @@ class Store {
 
     const entries = await this.entries();
     return entries.map((e) => e[1]);
-  }
-
-  // #region .keys()
-  /**
-   * Return an array of the keys in the store:
-   *
-   * ```js
-   * const keys = await store.keys();
-   * // ["key1", "key2", ...]
-   *
-   * // To limit it to a given prefix, use `.prefix()`:
-   * const sessions = await store.prefix("session:").keys();
-   * ```
-   *
-   * **[→ Full .keys() Docs](https://polystore.dev/documentation#keys)**
-   * @returns {Promise<string[]>}
-   */
-  async keys() {
-    await this.promise;
-
-    if (this.client.keys) {
-      const list = await this.client.keys(this.PREFIX);
-      if (!this.PREFIX) return list;
-      return list.map((k) => k.slice(this.PREFIX.length));
-    }
-
-    const entries = await this.entries();
-    return entries.map((e) => e[0]);
   }
 
   // #region .all()
@@ -458,6 +463,18 @@ class Store {
   }
 
   // #region .close()
+  /**
+   * Stop the connection to the store, if any:
+   *
+   * ```js
+   * await session.set("key1", "value1");
+   * await store.close();
+   * await session.set("key2", "value2");  // error
+   * ```
+   *
+   * **[→ Full .close() Docs](https://polystore.dev/documentation#close)**
+   * @returns {Store}
+   */
   async close() {
     await this.promise;
 

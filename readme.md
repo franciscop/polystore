@@ -36,13 +36,13 @@ Available clients for the KV store:
 - [**File** `new URL('file:///...')`](#file) (be): store the data in a single JSON file in your FS
 - [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
-- [**Level** `new Level('example', { valueEncoding: 'json' })`](#level): support the whole Level ecosystem
-- [**Etcd** `new Etcd3()`](#etcd): the Microsoft's high performance KV store.
+- [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
+- [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
 - [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
 
 > This library should be as performant as the client you use with the item methods (GET/SET/ADD/HAS/DEL). For other and advanced cases, see [the performance considerations](#performance) and read the docs on your client.
 
-I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
+I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js, Bun and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
@@ -52,6 +52,38 @@ MyApi({ cache: localStorage }); // OR
 MyApi({ cache: redisClient }); // OR
 MyApi({ cache: env.KV_NAMESPACE }); // OR
 // ...
+```
+
+## Getting started
+
+First, install `polystore` and whatever [supported client](#clients) that you prefer. Let's see Redis as an example here:
+
+```
+npm i polystore redis
+```
+
+Then import both, initialize the Redis client and pass it to Polystore:
+
+```js
+import kv from "polystore";
+import { createClient } from "redis";
+
+// Import the Redis configuration
+const REDIS = process.env.REDIS_URL;
+
+// Wrap the redis creation with Polystore (kv())
+const store = kv(createClient(REDIS).connect());
+```
+
+Now your store is ready to use! Add, set, get, del different keys. [See full API](#api).
+
+```js
+const key = await store.add("Hello");
+
+console.log(await store.get(key));
+// Hello
+
+await store.del(key);
 ```
 
 ## API
@@ -79,7 +111,7 @@ client.connect();
 const store = kv(client);
 ```
 
-While you can keep a reference to the store and access it directly, we strongly recommend if you are going to use a store, to only access it through `polystore`, since we do add custom serialization and extra properties for e.g. expiration time:
+While you can keep a reference to the store and access it directly, we strongly recommend if you are going to use a store, to only access it through `polystore`, since we might add custom serialization and extra properties for e.g. expiration time:
 
 ```js
 const map = new Map();
@@ -515,19 +547,19 @@ Please see the [creating a store](#creating-a-store) section for more details!
 
 ## Performance
 
-> TL;DR: if you only use the item operations (add,set,get,has,del) and your store supports expiration natively, you have nothing to worry about!
+> TL;DR: if you only use the item operations (add,set,get,has,del) and your client supports expiration natively, you have nothing to worry about!
 
 While all of our stores support `expires`, `.prefix()` and group operations, the nature of those makes them to have different performance characteristics.
 
-**Expires** we polyfill expiration when the underlying library does not support it. The impact on read/write operations and on data size of each key should be minimal. However, it can have a big impact in storage size, since the expired keys are not evicted automatically. Note that when attempting to read an expired key, polystore **will delete that key**. However, if an expired key is never read, it would remain in the datastore and could create some old-data issues. This is **especially important where sensitive data is involved**! To fix this, the easiest way is calling `await store.entries();` on a cron job and that should evict all of the old keys (this operation is O(n) though, so not suitable for calling it on EVERY API call, see the next point).
+**Expires** we polyfill expiration when the underlying client library does not support it. The impact on read/write operations and on data size of each key should be minimal. However, it can have a big impact in storage size, since the expired keys are not evicted automatically. Note that when attempting to read an expired key, polystore **will delete that key**. However, if an expired key is never read, it would remain in the datastore and could create some old-data issues. This is **especially important where sensitive data is involved**! To fix this, the easiest way is calling `await store.entries();` on a cron job and that should evict all of the old keys (this operation is O(n) though, so not suitable for calling it on EVERY API call, see the next point).
 
-**Group operations** these are there mostly for small datasets only, for one-off scripts or for dev purposes, since by their own nature they can _never_ be high performance. But this is normal if you think about traditional DBs, reading a single record by its ID is O(1), while reading all of the IDs in the DB into an array is going to be O(n). Same applies with polystore.
+**Group operations** these are there mostly for small datasets only, for one-off scripts or for dev purposes, since by their own nature they can _never_ be high performance in the general case. But this is normal if you think about traditional DBs, reading a single record by its ID is O(1), while reading all of the IDs in the DB into an array is going to be O(n). Same applies with polystore.
 
 **Substores** when dealing with a `.prefix()` substore, the same applies. Item operations should see no performance degradation from `.prefix()`, but group operations follow the above performance considerations. Some engines might have native prefix support, so performance in those is better for group operations in a substore than the whole store. But in general you should consider `.prefix()` as a convenient way of classifying your keys and not as a performance fix for group operations.
 
 ## Expires
 
-> Warning: if a client doesn't support expiration natively, we will hide expired keys on the API calls for a nice DX, but _old data might not be evicted automatically_, which is relevant especially for sensitive information. You'd want to set up a cron job to evict it manually, since for large datasets it might be more expensive (O(n)).
+> Warning: if a client doesn't support expiration natively, we will hide expired keys on the API calls for a nice DX, but _old data might not be evicted automatically_. See [the notes in Performance](#performance) for details on how to work around this.
 
 We unify all of the clients diverse expiration methods into a single, easy one with `expires`:
 
@@ -572,7 +604,7 @@ For these and more situations, you can use `.prefix()` to simplify your life fur
 
 ## Creating a store
 
-To create a store, you define a class with these methods:
+To create a store, you define a class with these properties and methods:
 
 ```js
 class MyClient {
@@ -580,7 +612,7 @@ class MyClient {
   // the `.set()` and `.add()` receive a `expires` that is a `null` or `number`:
   EXPIRES = false;
 
-  // Mandatory methods (2 item-methods, 2 group-methods)
+  // Mandatory methods
   get (key): Promise<any>;
   set (key, value, { expires: null|number }): Promise<null>;
   entries (prefix): Promise<[string, any][]>;
@@ -600,7 +632,7 @@ class MyClient {
 }
 ```
 
-Note that this is NOT the public API, it's the internal **client** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
+Note that this is NOT the public API, it's the internal **client** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. for the client, the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's public API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
 
 **Expires**: if you set the `EXPIRES = true`, then you are indicating that the client WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the time when it will expire.
 
@@ -619,21 +651,14 @@ const value = await store.entries();
 // client.entries("hello:world:");
 ```
 
-> Note: all of the _group methods_ that return keys, should return them **with the prefix stripped**:
+> Note: all of the _group methods_ that return keys, should return them **with the prefix**:
 
 ```js
-// Example if your client works around a simple object {}, we want to remove
-// the `prefix` from the beginning of the keys returned:
 client.keys = (prefix) => {
-  return Object.keys(subStore)
-    .filter((key) => key.startsWith(prefix))
-    .map((key) => key.slice(prefix.length)); // <= Important!
+  // Filter the keys, and return them INCLUDING the prefix!
+  return Object.keys(subStore).filter((key) => key.startsWith(prefix));
 };
 ```
-
-You can and should just concatenate the `key + options.prefix`. We don't do it for two reasons: in some cases, like `.add()`, there's no key that we can use to concatenate, and also you might
-
-For example, if the user of `polystore` does `kv(client).prefix('hello:').get('a')`, your store will be directly called with `client.get('a', { prefix: 'hello:' })`. You can safely concatenate `options.prefix + key` since this library always ensures that the prefix is defined and defaults to `''`. We don't concatenate it interally because in some cases (like in `.add()`) it makes more sense that this is handled by the client as an optimization.
 
 While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
 
