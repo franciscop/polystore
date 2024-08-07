@@ -24,6 +24,7 @@
     "value"
   ],
   "license": "MIT",
+  "dependencies": {},
   "devDependencies": {
     "@deno/kv": "^0.8.1",
     "check-dts": "^0.8.0",
