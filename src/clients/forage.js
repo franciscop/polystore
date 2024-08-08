@@ -14,12 +14,11 @@ export default class Forage {
   }
 
   async set(key, value) {
-    if (value === null) {
-      await this.client.removeItem(key);
-    } else {
-      await this.client.setItem(key, value);
-    }
-    return key;
+    return this.client.setItem(key, value);
+  }
+
+  async del(key) {
+    return this.client.removeItem(key);
   }
 
   async *iterate(prefix = "") {

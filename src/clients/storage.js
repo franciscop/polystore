@@ -17,27 +17,20 @@ export default class WebStorage {
   }
 
   set(key, data) {
-    if (data === null) {
-      this.client.removeItem(key);
-    } else {
-      this.client.setItem(key, JSON.stringify(data));
-    }
-    return key;
+    return this.client.setItem(key, JSON.stringify(data));
+  }
+
+  del(key) {
+    return this.client.removeItem(key);
   }
 
   *iterate(prefix = "") {
-    const entries = this.entries(prefix);
-    for (const entry of entries) {
-      yield entry;
+    for (const key of Object.keys(this.client)) {
+      if (!key.startsWith(prefix)) continue;
+      const value = this.get(key);
+      if (!value) continue;
+      yield [key, value];
     }
-  }
-
-  // Group methods
-  entries(prefix = "") {
-    const entries = Object.entries(this.client);
-    return entries
-      .map((p) => [p[0], p[1] ? JSON.parse(p[1]) : null])
-      .filter((p) => p[0].startsWith(prefix));
   }
 
   clear(prefix = "") {
@@ -45,6 +38,8 @@ export default class WebStorage {
     if (!prefix) return this.client.clear();
 
     // Delete them in a map
-    return this.entries(prefix).map((e) => this.set(e[0], null));
+    return Object.keys(this.client)
+      .filter((k) => k.startsWith(prefix))
+      .map((k) => this.del(k));
   }
 }

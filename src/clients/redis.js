@@ -19,13 +19,12 @@ export default class Redis {
   }
 
   async set(key, value, { expires } = {}) {
-    if (value === null || expires === 0) {
-      return this.client.del(key);
-    }
-
     const EX = expires ? Math.round(expires) : undefined;
-    await this.client.set(key, JSON.stringify(value), { EX });
-    return key;
+    return this.client.set(key, JSON.stringify(value), { EX });
+  }
+
+  async del(key) {
+    return this.client.del(key);
   }
 
   async has(key) {
@@ -42,6 +41,8 @@ export default class Redis {
     const MATCH = prefix + "*";
     for await (const key of this.client.scanIterator({ MATCH })) {
       const value = await this.get(key);
+      // By the time this specific value is read, it could be gone!
+      if (!value) continue;
       yield [key, value];
     }
   }
@@ -68,7 +69,7 @@ export default class Redis {
     if (!prefix) return this.client.flushAll();
 
     const list = await this.keys(prefix);
-    return Promise.all(list.map((k) => this.set(k, null)));
+    return Promise.all(list.map((k) => this.client.del(k)));
   }
 
   async close() {

@@ -31,22 +31,19 @@ export default class Cookie {
 
   set(key, data = null, { expires } = {}) {
     // Setting it to null deletes it
-    if (data === null) {
-      data = "";
-      expires = -100;
-    }
-
     let expireStr = "";
     // NOTE: 0 is already considered here!
     if (expires !== null) {
-      const now = new Date().getTime();
-      const time = new Date(now + expires * 1000).toUTCString();
+      const time = new Date(Date.now() + expires * 1000).toUTCString();
       expireStr = `; expires=${time}`;
     }
 
-    const value = encodeURIComponent(JSON.stringify(data));
+    const value = encodeURIComponent(JSON.stringify(data || ""));
     document.cookie = encodeURIComponent(key) + "=" + value + expireStr;
-    return key;
+  }
+
+  del(key) {
+    this.set(key, "", { expires: -100 });
   }
 
   async *iterate(prefix = "") {

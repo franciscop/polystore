@@ -14,11 +14,11 @@ export default class Etcd {
   }
 
   async set(key, value) {
-    if (value === null) {
-      return this.client.delete().key(key).exec();
-    }
+    return this.client.put(key).value(JSON.stringify(value));
+  }
 
-    await this.client.put(key).value(JSON.stringify(value));
+  async del(key) {
+    return this.client.delete().key(key).exec();
   }
 
   async *iterate(prefix = "") {
@@ -28,19 +28,18 @@ export default class Etcd {
     }
   }
 
+  async keys(prefix = "") {
+    return this.client.getAll().prefix(prefix).keys();
+  }
+
   async entries(prefix = "") {
-    const keys = await this.client.getAll().prefix(prefix).keys();
+    const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
   }
 
   async clear(prefix = "") {
     if (!prefix) return this.client.delete().all();
-
     return this.client.delete().prefix(prefix);
-  }
-
-  async close() {
-    // return this.client.close();
   }
 }

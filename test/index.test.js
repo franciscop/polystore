@@ -25,7 +25,7 @@ stores.push([`kv("cookie")`, kv("cookie")]);
 stores.push(["kv(new KVNamespace())", kv(new KVNamespace())]);
 stores.push([`kv(new Level("data"))`, kv(new Level("data"))]);
 if (process.env.REDIS) {
-  stores.push(["kv(redis)", kv(createClient())]);
+  stores.push(["kv(redis)", kv(createClient().connect())]);
 }
 if (process.env.ETCD) {
   // Note: need to add to .env "ETCD=true" and run `etcd` in the terminal
@@ -59,7 +59,7 @@ describe("potato", () => {
     });
   });
 
-  it("cannot handle no EXPIRES + keys", async () => {
+  it("cannot handle no EXPIRES + has", async () => {
     await expect(() =>
       kv(
         class extends Base {
@@ -81,21 +81,21 @@ describe("potato", () => {
       ).get("any")
     ).rejects.toThrow({
       message:
-        "You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage them",
+        "You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage it",
     });
   });
 
-  it("warns the user with no EXPIRES + .values()", async () => {
-    const warn = jest
-      .spyOn(console, "warn")
-      .mockImplementationOnce(() => "Hello");
-    await kv(
-      class extends Base {
-        values() {}
-      }
-    ).get("any");
-    expect(warn).toHaveBeenCalled(); // But at least we warn them
-    warn.mockClear();
+  it("cannot handle no EXPIRES + values", async () => {
+    await expect(() =>
+      kv(
+        class extends Base {
+          values() {}
+        }
+      ).get("any")
+    ).rejects.toThrow({
+      message:
+        "You can only define client.values() when the client manages the expiration; otherwise please do NOT define .values() and let us manage it",
+    });
   });
 });
 
