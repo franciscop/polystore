@@ -26,6 +26,14 @@ export default class Level {
     return this.client.del(key);
   }
 
+  async *iterate(prefix = "") {
+    const keys = await this.client.keys().all();
+    const list = keys.filter((k) => k.startsWith(prefix));
+    for (const key of list) {
+      yield [key, await this.get(key)];
+    }
+  }
+
   async entries(prefix = "") {
     const keys = await this.client.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));

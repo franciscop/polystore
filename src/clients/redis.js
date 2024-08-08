@@ -37,10 +37,31 @@ export default class Redis {
     return this.client.keys(prefix + "*");
   }
 
+  // Go through each of the [key, value] in the set
+  async *iterate(prefix = "") {
+    const MATCH = prefix + "*";
+    for await (const key of this.client.scanIterator({ MATCH })) {
+      const value = await this.get(key);
+      yield [key, value];
+    }
+  }
+
+  // Optimizing the retrieval of them all in bulk by loading the values
+  // in parallel
   async entries(prefix = "") {
-    const keys = await this.client.keys(prefix + "*");
+    const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
+  }
+
+  // Optimizing the retrieval of them by not getting their values
+  async keys(prefix = "") {
+    const MATCH = prefix + "*";
+    const keys = [];
+    for await (const key of this.client.scanIterator({ MATCH })) {
+      keys.push(key);
+    }
+    return keys;
   }
 
   async clear(prefix = "") {

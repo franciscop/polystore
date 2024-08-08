@@ -241,6 +241,26 @@ Remove a single key from the store and return the key itself:
 await store.del(key: string);
 ```
 
+It will ignore the operation if the key or value don't exist already (but won't thorw).
+
+### _Iterator_
+
+You can iterate over the whole store with an async iterator:
+
+```js
+for await (const [key, value] of store) {
+  // ...
+}
+```
+
+This is very useful for performance resons. You can also iterate on a subset of the entries with .prefix:
+
+```js
+for await (const [key, value] of store.prefix("session:")) {
+  // ...
+}
+```
+
 ### .keys()
 
 Get all of the keys in the store, optionally filtered by a prefix:
@@ -615,7 +635,7 @@ class MyClient {
   // Mandatory methods
   get (key): Promise<any>;
   set (key, value, { expires: null|number }): Promise<null>;
-  entries (prefix): Promise<[string, any][]>;
+  iterate(prefix): AyncIterator<[string, any]>
 
   // Optional item methods (for optimization or customization)
   add (prefix, data, { expires: null|number }): Promise<string>;
@@ -623,6 +643,7 @@ class MyClient {
   del (key): Promise<null>;
 
   // Optional group methods
+  entries (prefix): Promise<[string, any][]>;
   keys (prefix): Promise<string[]>;
   values (prefix): Promise<any[]>;
   clear (prefix): Promise<null>;
@@ -647,8 +668,9 @@ const value = await store.get("a");
 // client.get("hello:world:a");
 
 // User calls this, then the client is called with that:
-const value = await store.entries();
-// client.entries("hello:world:");
+for await (const entry of store.iterate()) {
+}
+// client.iterate("hello:world:");
 ```
 
 > Note: all of the _group methods_ that return keys, should return them **with the prefix**:
@@ -680,10 +702,12 @@ class MyClient {
   }
 
   // Filter them by the prefix, note that `prefix` will always be a string
-  entries(prefix) {
-    const entries = Object.entries(dataSource);
-    if (!prefix) return entries;
-    return entries.filter(([key, value]) => key.startsWith(prefix));
+  *iterate(prefix) {
+    for (const [key, value] of Object.entries(dataSource)) {
+      if (key.startsWith(prefix)) {
+        yield [key, value];
+      }
+    }
   }
 }
 ```

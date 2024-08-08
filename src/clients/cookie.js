@@ -8,9 +8,25 @@ export default class Cookie {
     return client === "cookie" || client === "cookies";
   }
 
+  // Group methods
+  #read() {
+    const all = {};
+    for (let entry of document.cookie.split(";")) {
+      try {
+        const [rawKey, rawValue] = entry.split("=");
+        const key = decodeURIComponent(rawKey.trim());
+        const value = JSON.parse(decodeURIComponent(rawValue.trim()));
+        all[key] = value;
+      } catch (error) {
+        // no-op (some 3rd party can set cookies independently)
+      }
+    }
+    return all;
+  }
+
   // For cookies, an empty value is the same as null, even `""`
   get(key) {
-    return this.all()[key] || null;
+    return this.#read()[key] || null;
   }
 
   set(key, data = null, { expires } = {}) {
@@ -33,23 +49,10 @@ export default class Cookie {
     return key;
   }
 
-  // Group methods
-  all(prefix = "") {
-    const all = {};
-    for (let entry of document.cookie.split(";")) {
-      const [key, data] = entry.split("=");
-      const name = decodeURIComponent(key.trim());
-      if (!name.startsWith(prefix)) continue;
-      try {
-        all[name] = JSON.parse(decodeURIComponent(data.trim()));
-      } catch (error) {
-        // no-op (some 3rd party can set cookies independently)
-      }
+  async *iterate(prefix = "") {
+    for (let [key, value] of Object.entries(this.#read())) {
+      if (!key.startsWith(prefix)) continue;
+      yield [key, value];
     }
-    return all;
-  }
-
-  entries(prefix = "") {
-    return Object.entries(this.all(prefix));
   }
 }

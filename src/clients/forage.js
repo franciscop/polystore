@@ -22,12 +22,18 @@ export default class Forage {
     return key;
   }
 
+  async *iterate(prefix = "") {
+    const keys = await this.client.keys();
+    const list = keys.filter((k) => k.startsWith(prefix));
+    for (const key of list) {
+      yield [key, await this.get(key)];
+    }
+  }
+
   async entries(prefix = "") {
     const all = await this.client.keys();
     const keys = all.filter((k) => k.startsWith(prefix));
-    const values = await Promise.all(
-      keys.map((key) => this.client.getItem(key))
-    );
+    const values = await Promise.all(keys.map((key) => this.get(key)));
     return keys.map((key, i) => [key, values[i]]);
   }
 

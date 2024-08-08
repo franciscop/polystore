@@ -15,9 +15,13 @@ export default class MyClient {
   }
 
   // Filter them by the prefix, note that `prefix` will always be a string
-  entries(prefix) {
-    const entries = Object.entries(dataSource);
-    if (!prefix) return entries;
-    return entries.filter(([key, value]) => key.startsWith(prefix));
+  *iterate(prefix) {
+    const raw = Object.entries(dataSource);
+    const entries = prefix
+      ? raw.filter(([key, value]) => key.startsWith(prefix))
+      : raw;
+    for (const entry of entries) {
+      yield entry;
+    }
   }
 }
