@@ -13,7 +13,7 @@ interface Store {
    *
    * **[→ Full .add() Docs](https://polystore.dev/documentation#add)**
    */
-  add: (value: Value, options?: Options) => Promise<string>;
+  add: <T = Value>(value: T, options?: Options) => Promise<string>;
 
   /**
    * Save the data on the given key, can add expiration as well:
@@ -26,7 +26,7 @@ interface Store {
    *
    * **[→ Full .set() Docs](https://polystore.dev/documentation#set)**
    */
-  set: (key: string, value: Value, options?: Options) => Promise<string>;
+  set: <T = Value>(key: string, value: T, options?: Options) => Promise<string>;
 
   /**
    * Read a single value from the KV store:
@@ -42,7 +42,7 @@ interface Store {
    *
    * **[→ Full .get() Docs](https://polystore.dev/documentation#get)**
    */
-  get: (key: string) => Promise<Value>;
+  get: <T = Value>(key: string) => Promise<T>;
 
   /**
    * Check whether a key exists or not:
@@ -72,7 +72,7 @@ interface Store {
    *
    * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
    */
-  del: (key: string) => Promise<null>;
+  del: (key: string) => Promise<string>;
 
   /**
    * Return an array of the entries, in the [key, value] format:
@@ -87,7 +87,7 @@ interface Store {
    *
    * **[→ Full .entries() Docs](https://polystore.dev/documentation#entries)**
    */
-  entries: () => Promise<[key: string, value: Value][]>;
+  entries: <T = Value>() => Promise<[key: string, value: T][]>;
 
   /**
    * Return an array of the keys in the store:
@@ -117,7 +117,7 @@ interface Store {
    *
    * **[→ Full .values() Docs](https://polystore.dev/documentation#values)**
    */
-  values: () => Promise<Value[]>;
+  values: <T = Value>() => Promise<T[]>;
 
   /**
    * Return an object with the keys:values in the store:
@@ -132,7 +132,7 @@ interface Store {
    *
    * **[→ Full .all() Docs](https://polystore.dev/documentation#all)**
    */
-  all: () => Promise<{ [key: string]: Value }>;
+  all: <T = Value>() => Promise<{ [key: string]: T }>;
 
   /**
    * Delete all of the records of the store:
@@ -176,6 +176,21 @@ interface Store {
    * **[→ Full .close() Docs](https://polystore.dev/documentation#close)**
    */
   close?: () => Promise<null>;
+
+  /**
+   * An iterator that goes through all of the key:value pairs in the client
+   *
+   * ```js
+   * for await (const [key, value] of store) {
+   *   console.log(key, value);
+   * }
+   * ```
+   *
+   * **[→ Full Iterator Docs](https://polystore.dev/documentation#iterator)**
+   */
+  [Symbol.asyncIterator]: <T = Value>() => {
+    next: () => Promise<{ value: [string, T] }>;
+  };
 }
 
 export default function (store?: any): Store;
