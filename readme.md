@@ -249,17 +249,28 @@ You can iterate over the whole store with an async iterator:
 
 ```js
 for await (const [key, value] of store) {
-  // ...
+  console.log(key, value);
 }
 ```
 
-This is very useful for performance resons. You can also iterate on a subset of the entries with .prefix:
+This is very useful for performance resons since it will retrieve the data sequentially, avoiding blocking the client while retrieving it all at once. The main disadvantage is if you keep writing data while the async iterator is running.
+
+You can also iterate on a subset of the entries with `.prefix()` (the prefix is stripped from the key here, see [.`prefix()`](#prefix)):
 
 ```js
+const session = store.prefix("session:");
+for await (const [key, value] of session) {
+  console.log(key, value);
+}
+
+// Same as this (both have the prefix stripped):
+
 for await (const [key, value] of store.prefix("session:")) {
-  // ...
+  console.log(key, value);
 }
 ```
+
+There are also methods to retrieve all of the keys, values, or entries at once below, but those [have worse performance](#performance).
 
 ### .keys()
 

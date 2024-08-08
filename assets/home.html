@@ -251,11 +251,11 @@ const store6 = kv(yourOwnStore);</code></pre>
     <pre><code class="language-js">import kv from "polystore";
 const store = kv(new Map());
       
-const key1 = await store.add(&quot;value1&quot;);
-const key2 = await store.set(&quot;key2&quot;, &quot;value2&quot;);
-const val1 = await store.get(&quot;key1&quot;);
-const isthere = await store.has(&quot;key1&quot;);
-await store.del(key1);</code></pre>
+const key1 = await store.add("value1");
+const key2 = await store.set("key2", "value2");
+const val1 = await store.get("key1");
+const has1 = await store.has("key1");
+const key1 = await store.del("key1");</code></pre>
   </div>
 </section>
 
@@ -288,6 +288,33 @@ console.log(await store.all());
 </section>
 
 <br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>🏃‍♂️‍➡️ Iterate over the data</h2>
+      <p>
+        Iterate asynchronously straight on the store! It will return a pair of
+        [key, value] for each of the entries. Use it in a substore as well:
+      </p>
+      <p>
+        <a class="pseudo button" href="/documentation#iterator">
+          Iterator docs
+        </a>
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">for await (const [key, value] of store) {
+  console.log(key, value);
+}
+
+const session = store.prefix('session:');
+for await (const [key, value] of session) {
+  console.log(key, value);
+}</code></pre>
+  </div>
+</section>
 
 <section class="hero flex one two-900 center">
   <div>
