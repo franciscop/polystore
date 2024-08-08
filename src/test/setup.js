@@ -14,3 +14,10 @@ if (typeof TextDecoder === "undefined") {
     value: util.TextDecoder,
   });
 }
+
+if (typeof setImmediate === "undefined") {
+  Object.defineProperty(window, "setImmediate", {
+    writable: true,
+    value: (cb) => setTimeout(cb, 0),
+  });
+}

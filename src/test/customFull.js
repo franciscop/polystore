@@ -19,6 +19,13 @@ export default class MyClient {
     delete dataSource[key];
   }
 
+  *iterate(prefix) {
+    const entries = this.entries(prefix);
+    for (const entry of entries) {
+      yield entry;
+    }
+  }
+
   // Filter them by the prefix, note that `prefix` will always be a string
   entries(prefix) {
     const entries = Object.entries(dataSource);

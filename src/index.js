@@ -43,9 +43,9 @@ class Store {
 
   // #region #validate()
   #validate(client) {
-    if (!client.set || !client.get || !client.entries) {
+    if (!client.set || !client.get || !client.iterate) {
       throw new Error(
-        "A client should have at least a .get(), .set() and .entries()"
+        "A client should have at least a .get(), .set() and .iterate()"
       );
     }
 
@@ -66,6 +66,31 @@ class Store {
         );
       }
     }
+  }
+
+  #unix(expires) {
+    const now = new Date().getTime();
+    return expires === null ? null : now + expires * 1000;
+  }
+
+  // Check if the given data is fresh or not; if
+  #isFresh(data, key) {
+    // Should never happen, but COULD happen; schedule it for
+    // removal and mark it as stale
+    if (!data || !data.value || typeof data !== "object") {
+      if (key) this.del(key);
+      return false;
+    }
+
+    // It never expires, so keep it
+    if (data.expires === null) return true;
+
+    // It's fresh, keep it
+    if (data.expires > Date.now()) return true;
+
+    // It's expired, remove it
+    if (key) this.del(key);
+    return false;
   }
 
   // #region .add()
@@ -94,9 +119,10 @@ class Store {
       }
 
       // In the data we need the timestamp since we need it "absolute":
-      const now = new Date().getTime();
-      const expDiff = expires === null ? null : now + expires * 1000;
-      return this.client.add(this.PREFIX, { expires: expDiff, value });
+      return this.client.add(this.PREFIX, {
+        expires: this.#unix(expires),
+        value,
+      });
     }
 
     const id = createId();
@@ -126,7 +152,7 @@ class Store {
     const expires = parse(options.expire ?? options.expires);
 
     // Quick delete
-    if (value === null) {
+    if (value === null || (typeof expires === "number" && expires <= 0)) {
       await this.del(id);
       return key;
     }
@@ -137,16 +163,8 @@ class Store {
       return key;
     }
 
-    // Already expired, then delete it
-    if (expires === 0) {
-      await this.del(id);
-      return key;
-    }
-
     // In the data we need the timestamp since we need it "absolute":
-    const now = new Date().getTime();
-    const expDiff = expires === null ? null : now + expires * 1000;
-    await this.client.set(id, { expires: expDiff, value });
+    await this.client.set(id, { expires: this.#unix(expires), value });
     return key;
   }
 
@@ -180,23 +198,8 @@ class Store {
     // so we can assume it's the raw user data
     if (this.client.EXPIRES) return data;
 
-    // Make sure that if there's no data by now, empty is returned
-    if (!data) return null;
-
-    // We manage expiration manually, so we know it should have this structure
-    // TODO: ADD A CHECK HERE
-    const { expires, value } = data;
-
-    // It never expires
-    if (expires === null) return value ?? null;
-
-    // Already expired! Return nothing, and remove the whole key
-    if (expires <= new Date().getTime()) {
-      await this.del(key);
-      return null;
-    }
-
-    return value;
+    if (!this.#isFresh(data, key)) return null;
+    return data.value;
   }
 
   // #region .has()
@@ -256,6 +259,19 @@ class Store {
     return key;
   }
 
+  async *[Symbol.asyncIterator]() {
+    await this.promise;
+
+    for await (const [name, data] of this.client.iterate(this.PREFIX)) {
+      const key = name.slice(this.PREFIX.length);
+      if (this.client.EXPIRES) {
+        yield [key, data];
+      } else if (this.#isFresh(data, key)) {
+        yield [key, data.value];
+      }
+    }
+  }
+
   // #region .entries()
   /**
    * Return an array of the entries, in the [key, value] format:
@@ -274,36 +290,25 @@ class Store {
   async entries() {
     await this.promise;
 
-    const entries = await this.client.entries(this.PREFIX);
-    const list = entries.map(([key, data]) => [
-      key.slice(this.PREFIX.length),
-      data,
-    ]);
+    let list = [];
+    if (this.client.entries) {
+      list = (await this.client.entries(this.PREFIX)).map(([key, value]) => [
+        key.slice(this.PREFIX.length),
+        value,
+      ]);
+    } else {
+      for await (const [key, value] of this.client.iterate(this.PREFIX)) {
+        list.push([key.slice(this.PREFIX.length), value]);
+      }
+    }
 
     // The client already manages the expiration, so we can assume
     // that at this point, all entries are not-expired
     if (this.client.EXPIRES) return list;
 
     // We need to do manual expiration checking
-    const now = new Date().getTime();
     return list
-      .filter(([key, data]) => {
-        // Should never happen
-        if (!data || data.value === null) return false;
-
-        // It never expires, so keep it
-        const { expires } = data;
-        if (expires === null) return true;
-
-        // It's expired, so remove it
-        if (expires <= now) {
-          this.del(key);
-          return false;
-        }
-
-        // It's not expired, keep it
-        return true;
-      })
+      .filter(([key, data]) => this.#isFresh(data, key))
       .map(([key, data]) => [key, data.value]);
   }
 
@@ -356,23 +361,8 @@ class Store {
     if (this.client.values) {
       const list = this.client.values(this.PREFIX);
       if (this.client.EXPIRES) return list;
-      const now = new Date().getTime();
       return list
-        .filter((data) => {
-          // There's no data, so remove this
-          if (!data || data.value === null) return false;
-
-          // It never expires, so keep it
-          const { expires } = data;
-          if (expires === null) return true;
-
-          // It's expired, so remove it
-          // We cannot unfortunately evict it since we don't know the key!
-          if (expires <= now) return false;
-
-          // It's not expired, keep it
-          return true;
-        })
+        .filter((data) => this.#isFresh(data))
         .map((data) => data.value);
     }
 

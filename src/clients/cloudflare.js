@@ -31,9 +31,33 @@ export default class Cloudflare {
     return this.client.delete(key);
   }
 
+  // Since we have pagination, we don't want to get all of the
+  // keys at once if we can avoid it
+  async *iterate(prefix = "") {
+    let cursor;
+    do {
+      const raw = await this.client.list({ prefix, cursor });
+      const keys = raw.keys.map((k) => k.name);
+      for (let key of keys) {
+        const value = await this.get(key);
+        // By the time this specific value is read, it could
+        // already be gone!
+        if (!value) continue;
+        yield [key, value];
+      }
+      cursor = raw.list_complete ? null : raw.cursor;
+    } while (cursor);
+  }
+
   async keys(prefix = "") {
-    const raw = await this.client.list({ prefix });
-    return raw.keys.map((k) => k.name);
+    const keys = [];
+    let cursor;
+    do {
+      const raw = await this.client.list({ prefix, cursor });
+      keys.push(...raw.keys.map((k) => k.name));
+      cursor = raw.list_complete ? null : raw.cursor;
+    } while (cursor);
+    return keys;
   }
 
   async entries(prefix = "") {

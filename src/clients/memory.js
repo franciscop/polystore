@@ -21,6 +21,14 @@ export default class Memory {
     this.client.delete(key);
   }
 
+  *iterate(prefix = "") {
+    const entries = this.entries();
+    for (const entry of entries) {
+      if (!entry[0].startsWith(prefix)) continue;
+      yield entry;
+    }
+  }
+
   // Group methods
   entries(prefix = "") {
     const entries = [...this.client.entries()];

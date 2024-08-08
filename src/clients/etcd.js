@@ -21,6 +21,13 @@ export default class Etcd {
     await this.client.put(key).value(JSON.stringify(value));
   }
 
+  async *iterate(prefix = "") {
+    const keys = await this.client.getAll().prefix(prefix).keys();
+    for (const key of keys) {
+      yield [key, await this.get(key)];
+    }
+  }
+
   async entries(prefix = "") {
     const keys = await this.client.getAll().prefix(prefix).keys();
     const values = await Promise.all(keys.map((k) => this.get(k)));

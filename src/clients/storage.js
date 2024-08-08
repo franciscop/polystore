@@ -25,6 +25,13 @@ export default class WebStorage {
     return key;
   }
 
+  *iterate(prefix = "") {
+    const entries = this.entries(prefix);
+    for (const entry of entries) {
+      yield entry;
+    }
+  }
+
   // Group methods
   entries(prefix = "") {
     const entries = Object.entries(this.client);

@@ -11,8 +11,6 @@ import kv from "./index.js";
 import customFull from "./test/customFull.js";
 import customSimple from "./test/customSimple.js";
 
-global.setImmediate = global.setImmediate || ((cb) => setTimeout(cb, 0));
-
 const stores = [];
 stores.push(["kv()", kv()]);
 stores.push(["kv(new Map())", kv(new Map())]);
@@ -30,6 +28,7 @@ if (process.env.REDIS) {
   stores.push(["kv(redis)", kv(createClient())]);
 }
 if (process.env.ETCD) {
+  // Note: need to add to .env "ETCD=true" and run `etcd` in the terminal
   stores.push(["kv(new Etcd3())", kv(new Etcd3())]);
 }
 
@@ -41,7 +40,7 @@ const delay = (t) => new Promise((done) => setTimeout(done, t));
 class Base {
   get() {}
   set() {}
-  entries() {}
+  *iterate() {}
 }
 
 global.console = {
@@ -56,7 +55,7 @@ describe("potato", () => {
 
   it("an empty object is not a valid store", async () => {
     await expect(() => kv({}).get("any")).rejects.toThrow({
-      message: "A client should have at least a .get(), .set() and .entries()",
+      message: "A client should have at least a .get(), .set() and .iterate()",
     });
   });
 
@@ -341,6 +340,42 @@ for (let [name, store] of stores) {
       expect(await store.get("a")).toBe(null);
       await store.set("a", "b");
       expect(await store.get("a")).toBe("b");
+    });
+
+    describe("iteration", () => {
+      beforeEach(async () => {
+        await store.clear();
+      });
+
+      it("supports raw iteration", async () => {
+        await store.set("a", "b");
+        await store.set("c", "d");
+
+        const entries = [];
+        for await (const entry of store) {
+          entries.push(entry);
+        }
+        expect(entries).toEqual([
+          ["a", "b"],
+          ["c", "d"],
+        ]);
+      });
+
+      it("supports raw prefix iteration", async () => {
+        await store.set("a:a", "b");
+        await store.set("b:a", "d");
+        await store.set("a:c", "d");
+        await store.set("b:c", "d");
+
+        const entries = [];
+        for await (const entry of store.prefix("a:")) {
+          entries.push(entry);
+        }
+        expect(entries.sort()).toEqual([
+          ["a", "b"],
+          ["c", "d"],
+        ]);
+      });
     });
 
     describe("expires", () => {

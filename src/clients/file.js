@@ -53,10 +53,12 @@ export default class File {
     return key;
   }
 
-  // Group methods
-  async entries(prefix = "") {
+  async *iterate(prefix = "") {
     const data = await this.#read();
-    return Object.entries(data).filter((p) => p[0].startsWith(prefix));
+    const entries = Object.entries(data).filter((p) => p[0].startsWith(prefix));
+    for (const entry of entries) {
+      yield entry;
+    }
   }
 
   async clear(prefix = "") {
