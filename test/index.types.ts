@@ -1,11 +1,11 @@
-// tslint:disable:no-unused-variable
+import type { Store } from "../";
 import kv from "..";
 
 type Obj = { [key: string]: any };
 type Counter = { count: number };
 type Names = string[];
 
-const stores = [
+const stores: Store[] = [
   kv(),
   kv().prefix("session:"),
   kv().prefix("session:").prefix("auth:"),
@@ -33,11 +33,13 @@ const stores = [
     const set8: string = await store.set<Counter>("key", { count: 2 });
     const set9: string = await store.set<Names>("key", ["value"]);
 
-    const val1 = await store.get("key");
-    const val2: string = await store.get<string>("key");
-    const val3: Obj = await store.get<Obj>("key");
-    const val4: Counter = await store.get<Counter>("key");
-    const val5: Names = await store.get<Names>("key");
+    const get1 = await store.get("key");
+    const get2: null = await store.get("key");
+    const get3: any = await store.get("key");
+    const get4: string | null = await store.get<string>("key");
+    const get5: Obj | null = await store.get<Obj>("key");
+    const get6: Counter | null = await store.get<Counter>("key");
+    const get7: Names | null = await store.get<Names>("key");
 
     const has1: boolean = await store.has("key");
     const del1: string = await store.del("key");
@@ -45,50 +47,30 @@ const stores = [
     for await (const [key, value] of store) {
       console.log(key, value);
     }
-    for await (const [key, value] of store) {
-      console.log(key, value);
-    }
     for await (const [key, value] of store.prefix("session:")) {
       console.log(key, value);
     }
 
+    // These 2 don't return `null` as values (those are skipped)
     const ent1 = await store.entries();
-    const ent2: [string, string][] = await store.entries<string>();
-    const ent3: [string, Obj][] = await store.entries<Obj>();
-    const ent4: [string, Counter][] = await store.entries<Counter>();
-    const ent5: [string, Names][] = await store.entries<Names>();
+    const ent2: [string, any][] = await store.entries();
+    const ent3: [string, string][] = await store.entries<string>();
+    const ent4: [string, Obj][] = await store.entries<Obj>();
+    const ent5: [string, Counter][] = await store.entries<Counter>();
+    const ent6: [string, Names][] = await store.entries<Names>();
 
-    // console.log(
-    //   add1,
-    //   add2,
-    //   add3,
-    //   add4,
-    //   add5,
-    //   add6,
-    //   add7,
-    //   add8,
-    //   add9,
-    //   set1,
-    //   set2,
-    //   set3,
-    //   set4,
-    //   set5,
-    //   set6,
-    //   set7,
-    //   set8,
-    //   set9,
-    //   val1,
-    //   val2,
-    //   val3,
-    //   val4,
-    //   val5,
-    //   has1,
-    //   del1,
-    //   ent1,
-    //   ent2,
-    //   ent3,
-    //   ent4,
-    //   ent5
-    // );
+    const val1 = await store.values();
+    const val2: any[] = await store.values();
+    const val3: string[] = await store.values<string>();
+    const val4: Obj[] = await store.values<Obj>();
+    const val5: Counter[] = await store.values<Counter>();
+    const val6: Names[] = await store.values<Names>();
+
+    console.log(add1, add2, add3, add4, add5, add6, add7, add8, add9);
+    console.log(set1, set2, set3, set4, set5, set6, set7, set8, set9);
+    console.log(get1, get2, get3, get4, get5, get6, get7);
+    console.log(has1, del1);
+    console.log(ent1, ent2, ent3, ent4, ent5, ent6);
+    console.log(val1, val2, val3, val4, val5, val6);
   }
 })();
