@@ -15,8 +15,9 @@
   ],
   "scripts": {
     "size": "echo $(gzip -c src/index.js | wc -c) bytes",
+    "lint": "check-dts test/index.types.ts",
     "start": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --detectOpenHandles",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --ci --watchAll=false --detectOpenHandles && check-dts test/index.types.ts"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --ci --watchAll=false --detectOpenHandles"
   },
   "keywords": [
     "kv",
