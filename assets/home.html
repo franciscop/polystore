@@ -292,33 +292,6 @@ console.log(await store.all());
 <section class="hero flex one two-900 center">
   <div>
     <div class="content">
-      <h2>🏃‍♂️‍➡️ Iterate over the data</h2>
-      <p>
-        Iterate asynchronously straight on the store! It will return a pair of
-        [key, value] for each of the entries. Use it in a substore as well:
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#iterator">
-          Iterator docs
-        </a>
-      </p>
-    </div>
-  </div>
-  <div>
-    <pre><code class="language-js">for await (const [key, value] of store) {
-  console.log(key, value);
-}
-
-const session = store.prefix('session:');
-for await (const [key, value] of session) {
-  console.log(key, value);
-}</code></pre>
-  </div>
-</section>
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
       <h2>⏰ Easy expiration time</h2>
       <p>
         Simply write <code>{ expires: "1day" }</code> with ANY client and forget
@@ -340,6 +313,35 @@ await store.get("key");  // "value"
 await sleep(2000);
 
 await store.get("key");  // null</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
+      <h2>🏃‍♂️‍➡️ Iterate over the data</h2>
+      <p>
+        Iterate asynchronously straight on the store! It will return a pair of
+        [key, value] for each of the entries. Use it in a substore as well:
+      </p>
+      <p>
+        <a class="pseudo button" href="/documentation#iterator">
+          Iterator docs
+        </a>
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">for await (const [key, value] of store) {
+  console.log(key, value);
+}
+
+const session = store.prefix('session:');
+for await (const [key, value] of session) {
+  console.log(key, value);
+}</code></pre>
   </div>
 </section>
 
