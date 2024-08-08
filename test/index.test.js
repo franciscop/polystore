@@ -7,9 +7,9 @@ import { Level } from "level";
 import localForage from "localforage";
 import { createClient } from "redis";
 
-import kv from "./index.js";
-import customFull from "./test/customFull.js";
-import customSimple from "./test/customSimple.js";
+import kv from "../src/index.js";
+import customFull from "./customFull.js";
+import customSimple from "./customSimple.js";
 
 const stores = [];
 stores.push(["kv()", kv()]);
@@ -17,9 +17,9 @@ stores.push(["kv(new Map())", kv(new Map())]);
 stores.push(["kv(localStorage)", kv(localStorage)]);
 stores.push(["kv(sessionStorage)", kv(sessionStorage)]);
 stores.push(["kv(localForage)", kv(localForage)]);
-const path = `file://${process.cwd()}/src/test/data.json`;
+const path = `file://${process.cwd()}/data/kv.json`;
 stores.push([`kv(new URL("${path}"))`, kv(new URL(path))]);
-const path2 = `file://${process.cwd()}/src/test/data.json`;
+const path2 = `file://${process.cwd()}/data/kv.json`;
 stores.push([`kv("${path2}")`, kv(path2)]);
 stores.push([`kv("cookie")`, kv("cookie")]);
 stores.push(["kv(new KVNamespace())", kv(new KVNamespace())]);
