@@ -6,8 +6,6 @@ class Store {
 
   constructor(clientPromise = new Map()) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
-      if (client?.open) await client.open();
-      if (client?.connect) await client.connect();
       this.client = this.#find(client);
       this.#validate(this.client);
       this.promise = null;
@@ -42,20 +40,12 @@ class Store {
     }
 
     if (!client.EXPIRES) {
-      if (client.has) {
-        throw new Error(
-          `You can only define client.has() when the client manages the expiration; otherwise please do NOT define .has() and let us manage it`
-        );
-      }
-      if (client.keys) {
-        throw new Error(
-          `You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage them`
-        );
-      }
-      if (client.values) {
-        console.warn(
-          `Since this KV client does not manage expiration, it's better not to define client.values() since it doesn't allow us to evict expired keys`
-        );
+      for (let method of ["has", "keys", "values"]) {
+        if (client[method]) {
+          throw new Error(
+            `You can only define client.${method}() when the client manages the expiration; otherwise please do NOT define .${method}() and let us manage it`
+          );
+        }
       }
     }
   }

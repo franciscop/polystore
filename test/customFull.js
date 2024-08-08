@@ -32,14 +32,4 @@ export default class MyClient {
     if (!prefix) return entries;
     return entries.filter(([key]) => key.startsWith(prefix));
   }
-
-  values(prefix) {
-    const list = this.entries(prefix);
-    return list.map((e) => e[1]);
-  }
-
-  // Cannot have a keys() if it's an unamanaged store
-  // keys(prefix) {
-  //   // This should throw
-  // }
 }

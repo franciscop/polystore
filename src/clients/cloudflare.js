@@ -23,8 +23,7 @@ export default class Cloudflare {
 
   async set(key, value, { expires } = {}) {
     const expirationTtl = expires ? Math.round(expires) : undefined;
-    this.client.put(key, JSON.stringify(value), { expirationTtl });
-    return key;
+    return this.client.put(key, JSON.stringify(value), { expirationTtl });
   }
 
   async del(key) {
@@ -40,8 +39,7 @@ export default class Cloudflare {
       const keys = raw.keys.map((k) => k.name);
       for (let key of keys) {
         const value = await this.get(key);
-        // By the time this specific value is read, it could
-        // already be gone!
+        // By the time this specific value is read, it could be gone!
         if (!value) continue;
         yield [key, value];
       }
@@ -63,7 +61,7 @@ export default class Cloudflare {
   async entries(prefix = "") {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
-    return keys.map((key, i) => [key, values[i]]);
+    return keys.map((k, i) => [k, values[i]]);
   }
 
   async clear(prefix = "") {

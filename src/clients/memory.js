@@ -14,25 +14,18 @@ export default class Memory {
   }
 
   set(key, data) {
-    this.client.set(key, data);
+    return this.client.set(key, data);
   }
 
   del(key) {
-    this.client.delete(key);
+    return this.client.delete(key);
   }
 
   *iterate(prefix = "") {
-    const entries = this.entries();
-    for (const entry of entries) {
+    for (const entry of this.client.entries()) {
       if (!entry[0].startsWith(prefix)) continue;
       yield entry;
     }
-  }
-
-  // Group methods
-  entries(prefix = "") {
-    const entries = [...this.client.entries()];
-    return entries.filter((p) => p[0].startsWith(prefix));
   }
 
   clear(prefix = "") {
@@ -40,7 +33,8 @@ export default class Memory {
     if (!prefix) return this.client.clear();
 
     // Delete them in a map
-    const list = this.entries(prefix);
-    return Promise.all(list.map((e) => e[0]).map((k) => this.del(k)));
+    return [...this.client.keys()]
+      .filter((k) => k.startsWith(prefix))
+      .map((k) => this.del(k));
   }
 }
