@@ -57,6 +57,9 @@
     "setupFiles": [
       "./test/setup.js"
     ],
-    "transform": {}
+    "transform": {},
+    "modulePathIgnorePatterns": [
+      "test/cloudflare"
+    ]
   }
 }
