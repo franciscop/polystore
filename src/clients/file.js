@@ -12,11 +12,15 @@ export default class File {
 
     // Run this once on launch; import the FS module and reset the file
     this.promise = (async () => {
-      const fsp = await import("node:fs/promises");
+      const [fsp, path] = await Promise.all([
+        import("node:fs/promises"),
+        import("node:path"),
+      ]);
 
       // We want to make sure the file already exists, so attempt to
-      // create it (but not OVERWRITE it, that's why the x flag) and
-      // it fails if it already exists
+      // create the folders and the file (but not OVERWRITE it, that's why the x flag)
+      // It fails if it already exists, hence the catch case
+      await fsp.mkdir(path.dirname(this.file), { recursive: true });
       await fsp.writeFile(this.file, "{}", { flag: "wx" }).catch((err) => {
         if (err.code !== "EEXIST") throw err;
       });
