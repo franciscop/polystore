@@ -4,7 +4,7 @@ import { createId, isClass, parse } from "./utils.js";
 class Store {
   PREFIX = "";
 
-  constructor(clientPromise = new Map()) {
+  constructor(clientPromise) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = this.#find(client);
       this.#validate(this.client);
@@ -33,10 +33,9 @@ class Store {
   }
 
   #validate(client) {
+    if (!client) throw new Error("No client received");
     if (!client.set || !client.get || !client.iterate) {
-      throw new Error(
-        "A client should have at least a .get(), .set() and .iterate()"
-      );
+      throw new Error("Client should have .get(), .set() and .iterate()");
     }
 
     if (!client.EXPIRES) {

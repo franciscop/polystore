@@ -23,6 +23,9 @@ export default class Cloudflare {
 
   async set(key, value, { expires } = {}) {
     const expirationTtl = expires ? Math.round(expires) : undefined;
+    if (expirationTtl && expirationTtl < 60) {
+      throw new Error("Cloudflare's min expiration is '60s'");
+    }
     return this.client.put(key, JSON.stringify(value), { expirationTtl });
   }
 

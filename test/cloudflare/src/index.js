@@ -17,18 +17,19 @@ const test = async (store) => {
 		assert(await store.get('test'), null);
 	});
 
-	await describe('Expires', async () => {
-		await store.set('test', 'hello cloudflare', { expires: '1s' });
-		assert(await store.get('test'), 'hello cloudflare');
-		await new Promise((done) => setTimeout(done, 2000));
-		assert(await store.get('test'), null);
-	});
+	// Cloudflare's min TTL is 60s 🤷‍♂️
+	// await describe('Expires', async () => {
+	// 	await store.set('test', 'hello cloudflare', { expires: '1s' });
+	// 	assert(await store.get('test'), 'hello cloudflare');
+	// 	await new Promise((done) => setTimeout(done, 2000));
+	// 	assert(await store.get('test'), null);
+	// });
 };
 
 export default {
 	async fetch(request, env, ctx) {
 		try {
-			const store = kv(env.STORE);
+			const store = kv(env.POLYSTORE);
 			await test(store);
 
 			return new Response('Hello World!');

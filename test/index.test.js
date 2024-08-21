@@ -12,7 +12,6 @@ import customFull from "./customFull.js";
 import customSimple from "./customSimple.js";
 
 const stores = [];
-stores.push(["kv()", kv()]);
 stores.push(["kv(new Map())", kv(new Map())]);
 stores.push(["kv(localStorage)", kv(localStorage)]);
 stores.push(["kv(sessionStorage)", kv(sessionStorage)]);
@@ -53,9 +52,15 @@ describe("potato", () => {
     await expect(() => kv("potato").get("any")).rejects.toThrow();
   });
 
+  it("no client is not a valid store", async () => {
+    await expect(() => kv().get("any")).rejects.toThrow({
+      message: "No client received",
+    });
+  });
+
   it("an empty object is not a valid store", async () => {
     await expect(() => kv({}).get("any")).rejects.toThrow({
-      message: "A client should have at least a .get(), .set() and .iterate()",
+      message: "Client should have .get(), .set() and .iterate()",
     });
   });
 
