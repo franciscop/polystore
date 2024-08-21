@@ -99,18 +99,6 @@ const store = kv(MyClientOrStoreInstance);
 // use the store
 ```
 
-If the instance you pass contains a `connect()` or `open()` method, polystore **will** call that without any argument:
-
-```js
-// Simpler
-const store = kv(createClient());
-
-// NO NEED
-const client = createClient();
-client.connect();
-const store = kv(client);
-```
-
 While you can keep a reference to the store and access it directly, we strongly recommend if you are going to use a store, to only access it through `polystore`, since we might add custom serialization and extra properties for e.g. expiration time:
 
 ```js
@@ -141,7 +129,7 @@ console.log(await store.get("key3"));  // { name: "Francisco" }
 
 If the value is returned, it can be a simple type like `boolean`, `string` or `number`, or it can be a plain Object or Array, or a combination of those.
 
-> The value cannot be more complex or non-serializable values like a `Date()`, `Infinity`, `undefined` (casted to `null`), a Symbol, etc.
+> The value cannot be more complex or non-serializable values like a `Date()`, `Infinity`, `undefined`, a `Symbol`, etc.
 
 ### .set()
 
@@ -152,7 +140,7 @@ await store.set(key: string, value: any, options?: { expires: number|string });
 
 await store.set("key1", "Hello World");
 await store.set("key2", ["my", "grocery", "list"], { expires: "1h" });
-await store.set("key3", { name: "Francisco" }, { expires: 60 * 60 * 1000  });
+await store.set("key3", { name: "Francisco" }, { expires: 60 * 60 });
 ```
 
 The value can be a simple type like `boolean`, `string` or `number`, or it can be a plain Object or Array, or a combination of those. It **cannot** be a more complex or non-serializable values like a `Date()`, `Infinity`, `undefined` (casted to `null`), a `Symbol`, etc.
@@ -176,7 +164,7 @@ When the `expires` option is set, it can be a number (**seconds**) or a string r
 "5d" - expire after 5 days
 ```
 
-\* not all stores support sub-second expirations, notably Redis and Cookies don't, so it's safer to always use an integer or an amount larger than 1s
+\* not all stores support sub-second expirations, notably Redis and Cookies don't, so it's safer to always use an integer or an amount larger than 1s. There will be a note in each store for this.
 
 These are all the units available:
 
@@ -191,7 +179,7 @@ const key:string = await store.add(value: any, options?: { expires: number|strin
 
 const key1 = await store.add("Hello World");
 const key2 = await store.add(["my", "grocery", "list"], { expires: "1h" });
-const key3 = await store.add({ name: "Francisco" }, { expires: 60 * 60 * 1000  });
+const key3 = await store.add({ name: "Francisco" }, { expires: 60 * 60  });
 ```
 
 The generated key is 24 AlphaNumeric characters (including upper and lower case) generated with random cryptography to make sure it's unguessable, high entropy and safe to use in most contexts like URLs, queries, etc. We use [`nanoid`](https://github.com/ai/nanoid/) with a custom dictionary, so you can check the entropy [in this dictionary](https://zelark.github.io/nano-id-cc/) by removing the "\_" and "-", and setting it to 24 characters.
@@ -200,9 +188,26 @@ Here is the safety: "If you generate 1 million keys/second, it will take ~14 mil
 
 > Note: please make sure to read the [`.set()`](#set) section for all the details, since `.set()` and `.add()` behave the same way except for the first argument.
 
+The main reason why `.add()` exists is to allow it to work with the prefix seamlessly:
+
+```js
+const session = store.prefix("session:");
+
+// Creates a key with the prefix (returns only the key)
+const key1 = await session.add("value1");
+// "c4ONlvweshXPUEy76q3eFHPL"
+
+console.log(await session.keys()); // on the "session" store
+// ["c4ONlvweshXPUEy76q3eFHPL"]
+console.log(await store.keys()); // on the root store
+// ["session:c4ONlvweshXPUEy76q3eFHPL"]
+```
+
+Remember that [substores with `.prefix()`](#prefix) behave as if they were an independent store, so when adding, manipulating, etc. a value you should treat the key as if it had no prefix. This is explained in detail in the [.prefix()](#prefix) documentation.
+
 ### .has()
 
-Check whether the key is available in the store and not expired:
+Check whether the key:value is available in the store and not expired:
 
 ```js
 await store.has(key: string);
@@ -233,6 +238,17 @@ async function fetchUser(id) {
 }
 ```
 
+An example with a prefix:
+
+```js
+const session = store.prefix("session:");
+
+// These three perform the same operation internally
+const has1 = await session.has("key1");
+const has2 = await store.prefix("session:").has("key1");
+const has3 = await store.has("session:key1");
+```
+
 ### .del()
 
 Remove a single key from the store and return the key itself:
@@ -241,7 +257,24 @@ Remove a single key from the store and return the key itself:
 await store.del(key: string);
 ```
 
-It will ignore the operation if the key or value don't exist already (but won't thorw).
+It will ignore the operation if the key or value don't exist already (but won't thorw). The API makes it easy to delete multiple keys at once:
+
+```js
+const keys = ["key1", "key2"];
+await Promise.all(keys.map(store.del));
+console.log(done);
+```
+
+An example with a prefix:
+
+```js
+const session = store.prefix("session:");
+
+// These three perform the same operation internally
+await session.del("key1");
+await store.prefix("session:").del("key1");
+await store.del("session:key1");
+```
 
 ### _Iterator_
 
@@ -383,15 +416,6 @@ const store = kv(new Map());
 await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
 // "Hello world"
-```
-
-It can also be initialized empty, then it'll use the in-memory store:
-
-```js
-import kv from "polystore";
-
-const store = kv();
-const store = kv(new Map());
 ```
 
 <details>

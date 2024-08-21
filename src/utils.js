@@ -9,7 +9,7 @@ parse.week = parse.wk = parse.w = parse.d * 7;
 parse.year = parse.yr = parse.y = parse.d * 365.25;
 parse.month = parse.b = parse.y / 12;
 
-// Returns the time in milliseconds
+// Returns the time in seconds
 export function parse(str) {
   if (str === null || str === undefined) return null;
   if (typeof str === "number") return str;
