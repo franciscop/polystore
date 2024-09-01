@@ -1,5 +1,5 @@
 import clients from "./clients/index.js";
-import { createId, isClass, parse } from "./utils.js";
+import { createId, isClass, parse, unix } from "./utils.js";
 
 class Store {
   PREFIX = "";
@@ -42,16 +42,11 @@ class Store {
       for (let method of ["has", "keys", "values"]) {
         if (client[method]) {
           throw new Error(
-            `You can only define client.${method}() when the client manages the expiration; otherwise please do NOT define .${method}() and let us manage it`
+            `You can only define client.${method}() when the client manages the expiration; otherwise please do NOT define .${method}() and let us manage it`,
           );
         }
       }
     }
-  }
-
-  #unix(expires) {
-    const now = new Date().getTime();
-    return expires === null ? null : now + expires * 1000;
   }
 
   // Check if the given data is fresh or not; if
@@ -76,30 +71,29 @@ class Store {
 
   async add(value, options = {}) {
     await this.promise;
-    const expires = parse(options.expire ?? options.expires);
+    let expires = parse(options.expire ?? options.expires);
 
     // Use the underlying one from the client if found
     if (this.client.add) {
       if (this.client.EXPIRES) {
-        return this.client.add(this.PREFIX, value, { expires });
+        return await this.client.add(this.PREFIX, value, { expires });
       }
 
       // In the data we need the timestamp since we need it "absolute":
-      return this.client.add(this.PREFIX, {
-        expires: this.#unix(expires),
-        value,
-      });
+      expires = unix(expires);
+      const key = await this.client.add(this.PREFIX, { expires, value });
+      return key;
     }
 
-    const id = createId();
-    await this.set(id, value, { expires });
-    return id; // The plain one without the prefix
+    const key = createId();
+    await this.set(key, value, { expires });
+    return key; // The plain one without the prefix
   }
 
   async set(key, value, options = {}) {
     await this.promise;
     const id = this.PREFIX + key;
-    const expires = parse(options.expire ?? options.expires);
+    let expires = parse(options.expire ?? options.expires);
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
@@ -114,7 +108,8 @@ class Store {
     }
 
     // In the data we need the timestamp since we need it "absolute":
-    await this.client.set(id, { expires: this.#unix(expires), value });
+    expires = unix(expires);
+    await this.client.set(id, { expires, value });
     return key;
   }
 
@@ -258,7 +253,7 @@ class Store {
 
   prefix(prefix = "") {
     const store = new Store(
-      Promise.resolve(this.promise).then((client) => client || this.client)
+      Promise.resolve(this.promise).then((client) => client || this.client),
     );
     store.PREFIX = this.PREFIX + prefix;
     return store;

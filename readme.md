@@ -354,7 +354,7 @@ const sessions = Object.fromEntries(sessionEntries);
 
 ### .clear()
 
-Remove all of the data from the store:
+Remove all of the data from the store and resets it to the original state:
 
 ```js
 await store.clear();
