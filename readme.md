@@ -42,7 +42,7 @@ Available clients for the KV store:
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
 - [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
 
-I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js, Bun and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
+I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js, Bun and the Browser) and tiny (~3KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
