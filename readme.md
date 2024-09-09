@@ -24,7 +24,9 @@ These are all the methods of the [API](#api) (they are all `async`):
 - [`.all()`](#all): get an object with the key:values mapped.
 - [`.clear()`](#clear): delete ALL of the data in the store, effectively resetting it.
 - [`.close()`](#close): (only _some_ stores) ends the connection to the store.
-- [`.prefix(prefix)`](#prefix): create a sub-store that only manages the keys with the given prefix.
+- [`.prefix(prefix)`](#prefix): create a sub-store that manages the keys with that prefix.
+
+> This library has very high performance with the item methods (GET/SET/ADD/HAS/DEL). For other methods or to learn more, see [the performance considerations](#performance) and read the docs on your specific client.
 
 Available clients for the KV store:
 
@@ -39,8 +41,6 @@ Available clients for the KV store:
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
 - [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
-
-> This library should be as performant as the client you use with the item methods (GET/SET/ADD/HAS/DEL). For other and advanced cases, see [the performance considerations](#performance) and read the docs on your client.
 
 I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js, Bun and the Browser) and tiny (~2KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
@@ -127,9 +127,9 @@ console.log(await store.get("key2"));  // ["my", "grocery", "list"]
 console.log(await store.get("key3"));  // { name: "Francisco" }
 ```
 
-If the value is returned, it can be a simple type like `boolean`, `string` or `number`, or it can be a plain Object or Array, or a combination of those.
+If the value is returned, it can be a simple type like `boolean`, `string` or `number`, or it can be a plain `Object` or `Array`, or any combination of those.
 
-> The value cannot be more complex or non-serializable values like a `Date()`, `Infinity`, `undefined`, a `Symbol`, etc.
+When there's no value (either never set, or expired), `null` will be returned from the operation.
 
 ### .set()
 
@@ -143,7 +143,7 @@ await store.set("key2", ["my", "grocery", "list"], { expires: "1h" });
 await store.set("key3", { name: "Francisco" }, { expires: 60 * 60 });
 ```
 
-The value can be a simple type like `boolean`, `string` or `number`, or it can be a plain Object or Array, or a combination of those. It **cannot** be a more complex or non-serializable values like a `Date()`, `Infinity`, `undefined` (casted to `null`), a `Symbol`, etc.
+The value can be a simple type like `boolean`, `string` or `number`, or it can be a plain `Object` or `Array`, or a combination of those. It **cannot** be a more complex or non-serializable values like a `Date()`, `Infinity`, `undefined` (casted to `null`), a `Symbol`, etc.
 
 - By default the keys _don't expire_.
 - Setting the `value` to `null`, or the `expires` to `0` is the equivalent of deleting the key+value.
@@ -182,11 +182,16 @@ const key2 = await store.add(["my", "grocery", "list"], { expires: "1h" });
 const key3 = await store.add({ name: "Francisco" }, { expires: 60 * 60  });
 ```
 
-The generated key is 24 AlphaNumeric characters (including upper and lower case) generated with random cryptography to make sure it's unguessable, high entropy and safe to use in most contexts like URLs, queries, etc. We use [`nanoid`](https://github.com/ai/nanoid/) with a custom dictionary, so you can check the entropy [in this dictionary](https://zelark.github.io/nano-id-cc/) by removing the "\_" and "-", and setting it to 24 characters.
+The options and details are similar to [`.set()`](#set), except for the lack of the first argument, since `.add()` will generate the key automatically.
 
-Here is the safety: "If you generate 1 million keys/second, it will take ~14 million years in order to have a 1% probability of at least one collision."
+The default key will be 24 AlphaNumeric characters (upper+lower case), however this can change if you are using a `.prefix()` or some clients might generate it differently (only custom clients can do that right now).
 
-> Note: please make sure to read the [`.set()`](#set) section for all the details, since `.set()` and `.add()` behave the same way except for the first argument.
+<details>
+  <summary>Key Generation details</summary>
+  The default key will be 24 AlphaNumeric characters (including upper and lower case) generated with random cryptography to make sure it's unguessable, high entropy and safe to use in most contexts like URLs, queries, etc. We use [`nanoid`](https://github.com/ai/nanoid/) with a custom dictionary, so you can check the entropy [in this dictionary](https://zelark.github.io/nano-id-cc/) by removing the "\_" and "-", and setting it to 24 characters.
+
+  Here is the safety: "If you generate 1 million keys/second, it will take ~14 million years in order to have a 1% probability of at least one collision."
+</details>
 
 The main reason why `.add()` exists is to allow it to work with the prefix seamlessly:
 
