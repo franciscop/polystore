@@ -586,6 +586,16 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
+Why use polystore? The main reason is that we add expiration on top of Level, which is not supported by Level:
+
+```js
+// GOOD - with polystore
+await store.set("user", { hello: 'world' }, { expires: "2days" });
+
+// With Level:
+?? // Just not possible
+```
+
 ### Etcd
 
 Connect to Microsoft's Etcd Key-Value store:
@@ -603,15 +613,15 @@ console.log(await store.get("key1"));
 
 ### Custom store
 
-Please see the [creating a store](#creating-a-store) section for more details!
+Please see the [creating a store](#creating-a-store) section for all the details!
 
 ## Performance
 
-> TL;DR: if you only use the item operations (add,set,get,has,del) and your client supports expiration natively, you have nothing to worry about!
+> TL;DR: if you only use the item operations (add,set,get,has,del) and your client supports expiration natively, you have nothing to worry about! Otherwise, please read on.
 
 While all of our stores support `expires`, `.prefix()` and group operations, the nature of those makes them to have different performance characteristics.
 
-**Expires** we polyfill expiration when the underlying client library does not support it. The impact on read/write operations and on data size of each key should be minimal. However, it can have a big impact in storage size, since the expired keys are not evicted automatically. Note that when attempting to read an expired key, polystore **will delete that key**. However, if an expired key is never read, it would remain in the datastore and could create some old-data issues. This is **especially important where sensitive data is involved**! To fix this, the easiest way is calling `await store.entries();` on a cron job and that should evict all of the old keys (this operation is O(n) though, so not suitable for calling it on EVERY API call, see the next point).
+**Expires** we polyfill expiration when the underlying client library does not support it. The impact on read/write operations and on data size of each key should be minimal. However, it can have a big impact in storage size, since the expired keys are not evicted automatically. Note that when attempting to read *an expired key*, polystore **will delete that key**. However, if an expired key is never read, it would remain in the datastore and could create some old-data issues. This is **especially important where sensitive data is involved**! To fix this, the easiest way is calling `await store.entries();` on a cron job and that should evict all of the old keys (this operation is O(n) though, so not suitable for calling it on EVERY API call, see the next point).
 
 **Group operations** these are there mostly for small datasets only, for one-off scripts or for dev purposes, since by their own nature they can _never_ be high performance in the general case. But this is normal if you think about traditional DBs, reading a single record by its ID is O(1), while reading all of the IDs in the DB into an array is going to be O(n). Same applies with polystore.
 

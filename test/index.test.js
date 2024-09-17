@@ -196,19 +196,22 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
   it("can get the keys", async () => {
     await store.set("a", "b");
     await store.set("c", "d");
-    expect(await store.keys()).toEqual(["a", "c"]);
+    const keys = await store.keys();
+    expect(keys.sort()).toEqual(["a", "c"]);
   });
 
   it("can get the values", async () => {
     await store.set("a", "b");
     await store.set("c", "d");
-    expect(await store.values()).toEqual(["b", "d"]);
+    const values = await store.values();
+    expect(values.sort()).toEqual(["b", "d"]);
   });
 
   it("can get the entries", async () => {
     await store.set("a", "b");
     await store.set("c", "d");
-    expect(await store.entries()).toEqual([
+    const entries = await store.entries();
+    expect(entries.sort((a, b) => a[0].localeCompare(b[0]))).toEqual([
       ["a", "b"],
       ["c", "d"],
     ]);
@@ -358,7 +361,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
       for await (const entry of store) {
         entries.push(entry);
       }
-      expect(entries).toEqual([
+      expect(entries.sort((a, b) => a[0].localeCompare(b[0]))).toEqual([
         ["a", "b"],
         ["c", "d"],
       ]);
