@@ -23,7 +23,7 @@ export default class Folder {
   constructor(folder) {
     this.folder =
       typeof folder === "string"
-        ? folder.slice("folder://".length).replace(/\/$/, "") + "/"
+        ? folder.slice("file://".length).replace(/\/$/, "") + "/"
         : folder.pathname.replace(/\/$/, "") + "/";
 
     // Run this once on launch; import the FS module and reset the file
