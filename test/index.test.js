@@ -438,35 +438,35 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
       name !== `kv(redis)` &&
       name !== `kv(new Etcd3())`
     ) {
-      it("can use 0.01 expire", async () => {
+      it("can use 0.1 expire", async () => {
         // 10ms
-        await store.set("a", "b", { expires: 0.01 });
+        await store.set("a", "b", { expires: 0.1 });
         expect(await store.keys()).toEqual(["a"]);
         expect(await store.values()).toEqual(["b"]);
         expect(await store.get("a")).toBe("b");
-        await delay(100);
+        await delay(200);
         expect(await store.keys()).toEqual([]);
         expect(await store.values()).toEqual([]);
         expect(await store.get("a")).toBe(null);
       });
 
-      it("can use 0.01s expire", async () => {
-        await store.set("a", "b", { expires: "0.01s" });
+      it("can use 0.1s expire", async () => {
+        await store.set("a", "b", { expires: "0.1s" });
         expect(await store.keys()).toEqual(["a"]);
         expect(await store.values()).toEqual(["b"]);
         expect(await store.get("a")).toBe("b");
-        await delay(100);
+        await delay(200);
         expect(await store.keys()).toEqual([]);
         expect(await store.values()).toEqual([]);
         expect(await store.get("a")).toBe(null);
       });
 
-      it("can use 0.01seconds expire", async () => {
-        await store.set("a", "b", { expires: "0.01seconds" });
+      it("can use 0.1seconds expire", async () => {
+        await store.set("a", "b", { expires: "0.1seconds" });
         expect(await store.keys()).toEqual(["a"]);
         expect(await store.values()).toEqual(["b"]);
         expect(await store.get("a")).toBe("b");
-        await delay(100);
+        await delay(200);
         expect(await store.keys()).toEqual([]);
         expect(await store.values()).toEqual([]);
         expect(await store.get("a")).toBe(null);
