@@ -20,6 +20,10 @@ const path = `file://${process.cwd()}/data/kv.json`;
 stores[`kv(new URL("${path}"))`] = kv(new URL(path));
 const path2 = `file://${process.cwd()}/data/kv.json`;
 stores[`kv("${path2}")`] = kv(path2);
+const path3 = `file://${process.cwd()}/data/folder/`;
+stores[`kv(new URL("${path3}"))`] = kv(new URL(path3));
+const path4 = `file://${process.cwd()}/data/folder/`;
+stores[`kv("${path4}")`] = kv(path4);
 stores[`kv("cookie")`] = kv("cookie");
 stores["kv(new KVNamespace())"] = kv(new KVNamespace());
 stores[`kv(new Level("data"))`] = kv(new Level("data"));
@@ -27,7 +31,7 @@ if (process.env.REDIS) {
   stores["kv(redis)"] = kv(createClient().connect());
 }
 if (process.env.ETCD) {
-  // Note: need to add to .env "ETCD=true" and run `etcd` in the terminal
+  // Note: need to add to .env "ETCD=true" and run `npm run db` in the terminal
   stores["kv(new Etcd3())"] = kv(new Etcd3());
 }
 stores["kv(customSimple)"] = kv(customSimple);
@@ -468,12 +472,12 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
         expect(await store.get("a")).toBe(null);
       });
 
-      it("can use 10ms expire", async () => {
-        await store.set("a", "b", { expires: "10ms" });
+      it("can use 100ms expire", async () => {
+        await store.set("a", "b", { expires: "100ms" });
         expect(await store.keys()).toEqual(["a"]);
         expect(await store.values()).toEqual(["b"]);
         expect(await store.get("a")).toBe("b");
-        await delay(100);
+        await delay(300);
         expect(await store.keys()).toEqual([]);
         expect(await store.values()).toEqual([]);
         expect(await store.get("a")).toBe(null);

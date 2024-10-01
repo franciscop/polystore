@@ -36,13 +36,14 @@ Available clients for the KV store:
 - [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
 - [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
 - [**File** `new URL('file:///...')`](#file) (be): store the data in a single JSON file in your FS
+- [**Folder** `new URL('file:///...')`](#folder) (be): store each key in a folder as json files
 - [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
-- [**_Custom_** `{}`](#creating-a-store) (?): create your own store with just 3 methods!
+- [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 3 methods!
 
-I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's isomorphic (Node.js, Bun and the Browser) and tiny (~3KB). For example, let's say you create an API library, then you can accept the stores from your client:
+I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser) and tiny (~3KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
@@ -312,29 +313,38 @@ There are also methods to retrieve all of the keys, values, or entries at once b
 
 ### .keys()
 
-Get all of the keys in the store, optionally filtered by a prefix:
+Get all of the keys in the store as a simple array of strings:
 
 ```js
-await store.keys(filter?: string);
+await store.keys();
+// ["keyA", "keyB", "keyC", ...]
+```
+
+If you want to filter for a particular prefix, use `.prefix()`, which will return the values with the keys with that prefix (the keys have the prefix stripped!):
+
+```js
+const sessions = await store.prefix("session:").keys();
+// ["keyA", "keyB"]
 ```
 
 > We ensure that all of the keys returned by this method are _not_ expired, while discarding any potentially expired key. See [**expiration explained**](#expiration-explained) for more details.
 
 ### .values()
 
-Get all of the values in the store, optionally filtered by a **key** prefix:
+Get all of the values in the store as a simple array with all the values:
 
 ```js
-await store.values(filter?: string);
+await store.values();
+// ["valueA", "valueB", { hello: "world" }, ...]
 ```
 
-This is useful specially when you already have the id/key within the value as an object, then you can just get a list of all of them:
+If you want to filter for a particular prefix, use `.prefix()`, which will return the values with the keys with that prefix:
 
 ```js
-const sessions = await store.values("session:");
+const sessions = await store.prefix("session:").values();
 // A list of all the sessions
 
-const companies = await store.values("company:");
+const companies = await store.prefix("company:").values();
 // A list of all the companies
 ```
 
@@ -342,20 +352,44 @@ const companies = await store.values("company:");
 
 ### .entries()
 
-Get all of the entries (key:value tuples) in the store, optionally filtered by a **key** prefix:
+Get all of the entries (key:value tuples) in the store:
 
 ```js
-await store.entries(filter?: string);
+const entries = await store.entries();
+// [["keyA", "valueA"], ["keyB", "valueB"], ["keyC", { hello: "world" }], ...]
 ```
 
-It is in a format that you can easily build an object out of it:
+It's in the same format as `Object.entries(obj)`, so it's an array of [key, value] tuples.
+
+If you want to filter for a particular prefix, use `.prefix()`, which will return the entries that have that given prefix (the keys have the prefix stripped!):
 
 ```js
-const sessionEntries = await store.entries("session:");
-const sessions = Object.fromEntries(sessionEntries);
+const sessionEntries = await store.prefix('session:').entries();
+// [["keyA", "valueA"], ["keyB", "valueB"]]
 ```
 
 > We ensure that all of the entries returned by this method are _not_ expired, while discarding any potentially expired key. See [**expiration explained**](#expiration-explained) for more details.
+
+### .all()
+
+Get all of the entries (key:value) in the store as an object:
+
+```js
+const obj = await store.all(filter?: string);
+// { keyA: "valueA", keyB: "valueB", keyC: { hello: "world" }, ... }
+```
+
+It's in the format of a normal key:value object, where the object key is the store's key and the object value is the store's value.
+
+If you want to filter for a particular prefix, use `.prefix()`, which will return the object with only the keys that have that given prefix (stripping the keys of the prefix!):
+
+```js
+const sessionObj = await store.prefix('session:').entries();
+// { keyA: "valueA", keyB: "valueB" }
+```
+
+> We ensure that all of the entries returned by this method are _not_ expired, while discarding any potentially expired key. See [**expiration explained**](#expiration-explained) for more details.
+
 
 ### .clear()
 
@@ -387,6 +421,9 @@ await session.del("key4"); // store.del('session:key4');
 await session.keys(); // store.keys(); + filter
 // ['key1', 'key2', ...]   Note no prefix here
 await session.clear(); // delete only keys with the prefix
+for await (const [key, value] of session) {
+  console.log(key, value);
+}
 ```
 
 Different clients have better/worse support for substores, and in some cases some operations might be slower. This should be documented on each client's documentation (see below). As an alternative, you can always create two different stores instead of a substore:
@@ -528,6 +565,8 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
+> Note: an extension is needed, to desambiguate with "folder"
+
 You can also create multiple stores:
 
 ```js
@@ -535,6 +574,31 @@ You can also create multiple stores:
 // it relative to the current process:
 const store1 = kv(new URL(`file://${process.cwd()}/cache.json`));
 const store2 = kv(new URL(`file://${import.meta.dirname}/data.json`));
+```
+
+### Folder
+
+Treat a single folder in your filesystem as the source for the KV store, with each key being within a file:
+
+```js
+import kv from "polystore";
+
+const store = kv(new URL("file:///Users/me/project/data/"));
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+> Note: the ending slash `/` is needed, to desambiguate with "file"
+
+You can also create multiple stores:
+
+```js
+// Paths need to be absolute, but you can use process.cwd() to make
+// it relative to the current process:
+const store1 = kv(new URL(`file://${process.cwd()}/cache/`));
+const store2 = kv(new URL(`file://${import.meta.dirname}/data/`));
 ```
 
 ### Cloudflare KV

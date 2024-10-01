@@ -2,6 +2,7 @@ import cloudflare from "./cloudflare.js";
 import cookie from "./cookie.js";
 import etcd from "./etcd.js";
 import file from "./file.js";
+import folder from "./folder.js";
 import forage from "./forage.js";
 import level from "./level.js";
 import memory from "./memory.js";
@@ -13,6 +14,7 @@ export default {
   cookie,
   etcd,
   file,
+  folder,
   forage,
   level,
   memory,

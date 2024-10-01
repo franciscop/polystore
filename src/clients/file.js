@@ -2,8 +2,17 @@
 export default class File {
   // Check if this is the right class for the given client
   static test(client) {
-    if (typeof client === "string" && client.startsWith("file:")) return true;
-    return client instanceof URL && client.protocol === "file:";
+    if (
+      typeof client === "string" &&
+      client.startsWith("file:") &&
+      client.includes(".")
+    )
+      return true;
+    return (
+      client instanceof URL &&
+      client.protocol === "file:" &&
+      client.pathname.includes(".")
+    );
   }
 
   constructor(file) {
