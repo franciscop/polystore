@@ -12,30 +12,30 @@ import customFull from "./customFull.js";
 import customSimple from "./customSimple.js";
 
 const stores = {};
-// stores["kv(new Map())"] = kv(new Map());
-// stores["kv(localStorage)"] = kv(localStorage);
-// stores["kv(sessionStorage)"] = kv(sessionStorage);
-// stores["kv(localForage)"] = kv(localForage);
-// const path = `file://${process.cwd()}/data/kv.json`;
-// stores[`kv(new URL("${path}"))`] = kv(new URL(path));
-// const path2 = `file://${process.cwd()}/data/kv.json`;
-// stores[`kv("${path2}")`] = kv(path2);
+stores["kv(new Map())"] = kv(new Map());
+stores["kv(localStorage)"] = kv(localStorage);
+stores["kv(sessionStorage)"] = kv(sessionStorage);
+stores["kv(localForage)"] = kv(localForage);
+const path = `file://${process.cwd()}/data/kv.json`;
+stores[`kv(new URL("${path}"))`] = kv(new URL(path));
+const path2 = `file://${process.cwd()}/data/kv.json`;
+stores[`kv("${path2}")`] = kv(path2);
 const path3 = `file://${process.cwd()}/data/folder/`;
 stores[`kv(new URL("${path3}"))`] = kv(new URL(path3));
 const path4 = `file://${process.cwd()}/data/folder/`;
 stores[`kv("${path4}")`] = kv(path4);
-// stores[`kv("cookie")`] = kv("cookie");
-// stores["kv(new KVNamespace())"] = kv(new KVNamespace());
-// stores[`kv(new Level("data"))`] = kv(new Level("data"));
-// if (process.env.REDIS) {
-//   stores["kv(redis)"] = kv(createClient().connect());
-// }
-// if (process.env.ETCD) {
-//   // Note: need to add to .env "ETCD=true" and run `npm run db` in the terminal
-//   stores["kv(new Etcd3())"] = kv(new Etcd3());
-// }
-// stores["kv(customSimple)"] = kv(customSimple);
-// stores["kv(customFull)"] = kv(customFull);
+stores[`kv("cookie")`] = kv("cookie");
+stores["kv(new KVNamespace())"] = kv(new KVNamespace());
+stores[`kv(new Level("data"))`] = kv(new Level("data"));
+if (process.env.REDIS) {
+  stores["kv(redis)"] = kv(createClient().connect());
+}
+if (process.env.ETCD) {
+  // Note: need to add to .env "ETCD=true" and run `npm run db` in the terminal
+  stores["kv(new Etcd3())"] = kv(new Etcd3());
+}
+stores["kv(customSimple)"] = kv(customSimple);
+stores["kv(customFull)"] = kv(customFull);
 
 const delay = (t) => new Promise((done) => setTimeout(done, t));
 
