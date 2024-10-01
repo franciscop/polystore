@@ -61,15 +61,10 @@ export default class Folder {
 
   async *iterate(prefix = "") {
     const fsp = await this.promise;
-    const all = await fsp.readdir(this.folder, { withFileTypes: true });
-    const files = all.filter((f) => !f.isDirectory());
-    const keys = files
-      .map((file) =>
-        (file.path.replace(/\/$/, "") + "/" + file.name)
-          .replace(this.folder, "")
-          .replace(".json", ""),
-      )
-      .filter((k) => k.startsWith(prefix));
+    const all = await fsp.readdir(this.folder);
+    const keys = all
+      .filter((f) => f.startsWith(prefix) && f.endsWith(".json"))
+      .map((name) => name.slice(0, -".json".length));
     for (const key of keys) {
       const data = await this.get(key);
       yield [key, data];
