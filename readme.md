@@ -928,8 +928,7 @@ const value = await store.get("a");
 // client.get("hello:world:a");
 
 // User calls this, then the client is called with that:
-for await (const entry of store.iterate()) {
-}
+for await (const [key, value] of store) {}
 // client.iterate("hello:world:");
 ```
 

@@ -48,7 +48,7 @@ export default class Folder {
   async set(key, value) {
     const fsp = await this.promise;
     const file = this.folder + key + ".json";
-    await fsp.writeFile(file, JSON.stringify(value), "utf8");
+    await fsp.writeFile(file, JSON.stringify(value, null, 2), "utf8");
     return file;
   }
 
