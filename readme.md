@@ -643,7 +643,7 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-> Note: an extension is needed, to desambiguate with "folder"
+> Note: an extension is needed, to disambiguate with "folder"
 
 You can also create multiple stores:
 
@@ -692,7 +692,7 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-> Note: the ending slash `/` is needed, to desambiguate with "file"
+> Note: the ending slash `/` is needed, to disambiguate with "file"
 
 You can also create multiple stores:
 
