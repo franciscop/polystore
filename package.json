@@ -14,11 +14,11 @@
     "src/"
   ],
   "scripts": {
-    "size": "echo $(gzip -c src/index.js | wc -c) bytes",
     "lint": "check-dts test/index.types.ts",
     "start": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --detectOpenHandles",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --ci --watchAll=false --detectOpenHandles",
-    "db": "etcd"
+    "db": "etcd",
+    "server": "bun ./src/server.js"
   },
   "keywords": [
     "kv",
@@ -29,10 +29,10 @@
     "value"
   ],
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
     "@deno/kv": "^0.8.1",
     "check-dts": "^0.8.0",
+    "cross-fetch": "^4.0.0",
     "dotenv": "^16.3.1",
     "edge-mock": "^0.0.15",
     "etcd3": "^1.1.2",

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "cross-fetch/polyfill";
 
 import { jest } from "@jest/globals";
 import { EdgeKVNamespace as KVNamespace } from "edge-mock";
@@ -16,6 +17,14 @@ stores["kv(new Map())"] = kv(new Map());
 stores["kv(localStorage)"] = kv(localStorage);
 stores["kv(sessionStorage)"] = kv(sessionStorage);
 stores["kv(localForage)"] = kv(localForage);
+const url = "http://localhost:3000/";
+if (
+  await fetch(url)
+    .then((res) => res.status === 200)
+    .catch(() => false)
+) {
+  stores[`kv(${url})`] = kv(url);
+}
 const path = `file://${process.cwd()}/data/kv.json`;
 stores[`kv(new URL("${path}"))`] = kv(new URL(path));
 const path2 = `file://${process.cwd()}/data/kv.json`;
@@ -436,7 +445,8 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
     if (
       name !== `kv("cookie")` &&
       name !== `kv(redis)` &&
-      name !== `kv(new Etcd3())`
+      name !== `kv(new Etcd3())` &&
+      !name.includes("http")
     ) {
       it("can use 0.1 expire", async () => {
         // 10ms

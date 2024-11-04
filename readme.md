@@ -35,6 +35,7 @@ Available clients for the KV store:
 - [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage.
 - [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
 - [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
+- [**Fetch API** `"https://..."`](#fetch-api) (fe+be): call an API to save/retrieve the data
 - [**File** `new URL('file:///...')`](#file) (be): store the data in a single JSON file in your FS
 - [**Folder** `new URL('file:///...')`](#folder) (be): store each key in a folder as json files
 - [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
@@ -628,6 +629,25 @@ You don't need to `await` for the connect or similar, this will process it prope
     <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
   </ul>
 </details>
+
+### Fetch API
+
+Calls an API to get/put the data:
+
+```js
+import kv from "polystore";
+
+const store = kv("https://kv.example.com/");
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+> Note: the API client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
+
+> Note: see the reference implementation in src/server.js
+
 
 ### File
 

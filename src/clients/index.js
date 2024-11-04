@@ -1,3 +1,4 @@
+import api from "./api.js";
 import cloudflare from "./cloudflare.js";
 import cookie from "./cookie.js";
 import etcd from "./etcd.js";
@@ -10,6 +11,7 @@ import redis from "./redis.js";
 import storage from "./storage.js";
 
 export default {
+  api,
   cloudflare,
   cookie,
   etcd,
