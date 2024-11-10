@@ -32,7 +32,7 @@ export default class Folder {
 
       // Make sure the folder already exists, so attempt to create it
       // It fails if it already exists, hence the catch case
-      await fsp.mkdir(this.folder, { recursive: true }).catch((err) => {});
+      await fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
       return fsp;
     })();
   }
