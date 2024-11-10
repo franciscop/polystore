@@ -29,7 +29,8 @@ export default class File {
       // We want to make sure the file already exists, so attempt to
       // create the folders and the file (but not OVERWRITE it, that's why the x flag)
       // It fails if it already exists, hence the catch case
-      await fsp.mkdir(path.dirname(this.file), { recursive: true });
+      const folder = path.dirname(this.file);
+      await fsp.mkdir(folder, { recursive: true }).catch(() => {});
       await fsp.writeFile(this.file, "{}", { flag: "wx" }).catch((err) => {
         if (err.code !== "EEXIST") throw err;
       });
