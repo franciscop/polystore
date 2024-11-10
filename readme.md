@@ -700,7 +700,7 @@ await fsp.writeFile(file, serialValue);
 
 ### Folder
 
-Treat a single folder in your filesystem as the source for the KV store, with each key being within a file:
+Treat a single folder in your filesystem as the store, where each key is a file:
 
 ```js
 import kv from "polystore";
@@ -708,6 +708,7 @@ import kv from "polystore";
 const store = kv(new URL("file:///Users/me/project/data/"));
 
 await store.set("key1", "Hello world", { expires: "1h" });
+// Writes "./data/key1.json"
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -717,11 +718,13 @@ console.log(await store.get("key1"));
 You can also create multiple stores:
 
 ```js
-// Paths need to be absolute, but you can use process.cwd() to make
-// it relative to the current process:
+// Paths need to be absolute, but you can use `process.cwd()` to make
+// it relative to the current process, or `import.meta.dirname`:
 const store1 = kv(new URL(`file://${process.cwd()}/cache/`));
 const store2 = kv(new URL(`file://${import.meta.dirname}/data/`));
 ```
+
+The folder is created if it doesn't exist. When a key is deleted, the corresponding file is also deleted. The data is serialized as JSON, with a meta wrapper to store the expiration date.
 
 <details>
   <summary>Why use polystore with a folder?</summary>
