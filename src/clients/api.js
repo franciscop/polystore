@@ -1,71 +1,39 @@
-// Use fetch()
+const enc = encodeURIComponent; // Optimization of size
+
+// Handle an API endpoint with fetch()
 export default class Api {
-  // Indicate that the file handler does NOT handle expirations
+  // Indicate that the file handler DOES handle expirations
   EXPIRES = true;
 
-  // Check whether the given store is a FILE-type
-  static test(client) {
-    return (
-      typeof client === "string" &&
-      (client.startsWith("https://") || client.startsWith("http://"))
-    );
-  }
+  static test = (client) =>
+    typeof client === "string" && /^https?:\/\//.test(client);
 
   constructor(client) {
-    client = client.replace(/\/$/, "") + "/";
-    this.client = async (path, opts = {}) => {
-      const query = Object.entries(opts.query || {})
-        .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-        .join("&");
-      let url = client + path.replace(/^\//, "") + "?" + query;
-      opts.headers = opts.headers || {};
-      opts.headers.accept = "application/json";
-      if (opts.body) opts.headers["content-type"] = "application/json";
-      const res = await fetch(url, opts);
-      if (!res.ok) return null;
-      if (!res.headers["content-type"] !== "application/json") {
-        console.warn("Not a JSON API");
-      }
-      return res.json();
+    client = client.replace(/\/$/, "");
+    this.client = async (path, method = "GET", body) => {
+      const url = `${client}/${path.replace(/^\//, "")}`;
+      const headers = { accept: "application/json" };
+      if (body) headers["content-type"] = "application/json";
+      const res = await fetch(url, { method, headers, body });
+      return res.ok ? res.json() : null;
     };
   }
 
-  async get(key) {
-    return await this.client(`/${key}`);
-  }
+  get = (key) => this.client(`/${enc(key)}`);
 
-  async set(key, value, { expires } = {}) {
-    return await this.client(`/${encodeURIComponent(key)}`, {
-      query: { expires },
-      method: "put",
-      body: JSON.stringify(value),
-    });
-  }
+  set = (key, value, { expires } = {}) =>
+    this.client(
+      `/${enc(key)}?expires=${enc(expires || "")}`,
+      "PUT",
+      JSON.stringify(value),
+    );
 
-  async del(key) {
-    return await this.client(`/${encodeURIComponent(key)}`, {
-      method: "delete",
-    });
-  }
+  del = (key) => this.client(`/${enc(key)}`, "DELETE");
 
-  // Since we have pagination, we don't want to get all of the
-  // keys at once if we can avoid it
   async *iterate(prefix = "") {
-    const data = await this.client("/", { query: { prefix } });
-    if (!data) return [];
-    for (let [key, value] of Object.entries(data)) {
+    const data = await this.client(`/?prefix=${enc(prefix)}`);
+    for (let [key, value] of Object.entries(data || {})) {
       yield [prefix + key, value];
     }
-  }
-
-  async keys(prefix = "") {
-    const data = await this.client(`/`, { query: { prefix } });
-    if (!data) return [];
-    return Object.keys(data).map((k) => prefix + k);
-  }
-
-  async clear(prefix = "") {
-    const list = await this.keys(prefix);
-    return Promise.all(list.map((k) => this.del(k)));
   }
 }
