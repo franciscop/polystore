@@ -1,5 +1,5 @@
 import clients from "./clients/index.js";
-import { createId, isClass, parse, unix } from "./utils.js";
+import { createId, parse, unix } from "./utils.js";
 
 class Store {
   PREFIX = "";
@@ -25,10 +25,15 @@ class Store {
       }
     }
 
-    // A raw one, we just receive the single instance to use directly
-    if (isClass(store)) {
+    // We get passed a class
+    if (
+      typeof store === "function" &&
+      /^class\s/.test(Function.prototype.toString.call(store))
+    ) {
       return new store();
     }
+
+    // A raw one, we just receive the single instance to use directly
     return store;
   }
 

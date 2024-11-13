@@ -41,13 +41,6 @@ export function createId() {
   return id;
 }
 
-export function isClass(func) {
-  return (
-    typeof func === "function" &&
-    /^class\s/.test(Function.prototype.toString.call(func))
-  );
-}
-
 export function unix(expires) {
   const now = new Date().getTime();
   return expires === null ? null : now + expires * 1000;
