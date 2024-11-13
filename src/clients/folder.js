@@ -1,67 +1,56 @@
-const noFileOk = (error) => {
-  if (error.code === "ENOENT") return null;
-  throw error;
-};
+const json = (data) => JSON.stringify(data, null, 2);
 
 // A client that uses a single file (JSON) as a store
 export default class Folder {
   // Check if this is the right class for the given client
   static test(client) {
-    if (
-      typeof client === "string" &&
-      client.startsWith("file:") &&
-      client.endsWith("/")
-    )
-      return true;
+    if (client instanceof URL) client = client.href;
     return (
-      client instanceof URL &&
-      client.protocol === "file:" &&
-      client.pathname.endsWith("/")
+      typeof client === "string" &&
+      client.startsWith("file://") &&
+      client.endsWith("/")
     );
   }
 
   constructor(folder) {
-    this.folder =
-      typeof folder === "string"
-        ? folder.slice("file://".length).replace(/\/$/, "") + "/"
-        : folder.pathname.replace(/\/$/, "") + "/";
+    if (folder instanceof URL) folder = folder.href;
+    folder = folder.replace(/^file:\/\//, "");
 
     // Run this once on launch; import the FS module and reset the file
-    this.promise = (async () => {
-      const fsp = await import("node:fs/promises");
-
+    const prom = import("node:fs/promises").then((fsp) => {
       // Make sure the folder already exists, so attempt to create it
       // It fails if it already exists, hence the catch case
-      await fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
-      return fsp;
-    })();
+      return fsp.mkdir(folder, { recursive: true }).then(
+        () => fsp,
+        () => {},
+      );
+    });
+
+    const getter = (_, name) => {
+      return async (key, ...props) => {
+        const file = folder + (key ? key + ".json" : "");
+        const method = (await prom)[name];
+        return method(file, ...props).catch((error) => {
+          if (error.code === "ENOENT") return null;
+          throw error;
+        });
+      };
+    };
+
+    this.fs = new Proxy({}, { get: getter });
   }
 
-  async get(key) {
-    const fsp = await this.promise;
-    const file = this.folder + key + ".json";
-    const text = await fsp.readFile(file, "utf8").catch(noFileOk);
-    if (!text) return null;
-    return JSON.parse(text);
-  }
+  get = async (key) => {
+    const text = await this.fs.readFile(key, "utf8");
+    return text ? JSON.parse(text) : null;
+  };
 
-  async set(key, value) {
-    const fsp = await this.promise;
-    const file = this.folder + key + ".json";
-    await fsp.writeFile(file, JSON.stringify(value, null, 2), "utf8");
-    return file;
-  }
+  set = (key, value) => this.fs.writeFile(key, json(value), "utf8");
 
-  async del(key) {
-    const file = this.folder + key + ".json";
-    const fsp = await this.promise;
-    await fsp.unlink(file).catch(noFileOk);
-    return file;
-  }
+  del = (key) => this.fs.unlink(key);
 
   async *iterate(prefix = "") {
-    const fsp = await this.promise;
-    const all = await fsp.readdir(this.folder);
+    const all = await this.fs.readdir();
     const keys = all
       .filter((f) => f.startsWith(prefix) && f.endsWith(".json"))
       .map((name) => name.slice(0, -".json".length));
@@ -70,14 +59,4 @@ export default class Folder {
       yield [key, data];
     }
   }
-
-  // async clear(prefix = "") {
-  //   const data = await this.#read();
-  //   for (let key in data) {
-  //     if (key.startsWith(prefix)) {
-  //       delete data[key];
-  //     }
-  //   }
-  //   await this.#write(data);
-  // }
 }
