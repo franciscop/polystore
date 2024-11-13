@@ -35,14 +35,6 @@ export default class Redis {
     }
   }
 
-  // Optimizing the retrieval of them all in bulk by loading the values
-  // in parallel
-  entries = async (prefix = "") => {
-    const keys = await this.keys(prefix);
-    const values = await Promise.all(keys.map((k) => this.get(k)));
-    return keys.map((k, i) => [k, values[i]]);
-  };
-
   // Optimizing the retrieval of them by not getting their values
   keys = async (prefix = "") => {
     const MATCH = prefix + "*";
@@ -51,6 +43,14 @@ export default class Redis {
       keys.push(key);
     }
     return keys;
+  };
+
+  // Optimizing the retrieval of them all in bulk by loading the values
+  // in parallel
+  entries = async (prefix = "") => {
+    const keys = await this.keys(prefix);
+    const values = await Promise.all(keys.map((k) => this.get(k)));
+    return keys.map((k, i) => [k, values[i]]);
   };
 
   clear = async (prefix = "") => {
