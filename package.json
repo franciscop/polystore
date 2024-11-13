@@ -8,6 +8,7 @@
   "funding": "https://www.paypal.me/franciscopresencia/19",
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
   "type": "module",
+  "sideEffects": false,
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "files": [
