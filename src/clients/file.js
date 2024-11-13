@@ -2,34 +2,25 @@
 export default class File {
   // Check if this is the right class for the given client
   static test(client) {
-    if (
-      typeof client === "string" &&
-      client.startsWith("file:") &&
-      client.includes(".")
-    )
-      return true;
+    if (client instanceof URL) client = client.href;
     return (
-      client instanceof URL &&
-      client.protocol === "file:" &&
-      client.pathname.includes(".")
+      typeof client === "string" &&
+      client.startsWith("file://") &&
+      client.includes(".")
     );
   }
 
   constructor(file) {
-    this.file =
-      typeof file === "string" ? file.slice("file://".length) : file.pathname;
+    if (file instanceof URL) file = file.href;
+    this.file = file.replace(/^file:\/\//, "");
 
     // Run this once on launch; import the FS module and reset the file
     this.promise = (async () => {
-      const [fsp, path] = await Promise.all([
-        import("node:fs/promises"),
-        import("node:path"),
-      ]);
-
       // We want to make sure the file already exists, so attempt to
       // create the folders and the file (but not OVERWRITE it, that's why the x flag)
       // It fails if it already exists, hence the catch case
-      const folder = path.dirname(this.file);
+      const fsp = await import("node:fs/promises");
+      const folder = this.file.split("/").slice(0, -1).join("/");
       await fsp.mkdir(folder, { recursive: true }).catch(() => {});
       await fsp.writeFile(this.file, "{}", { flag: "wx" }).catch((err) => {
         if (err.code !== "EEXIST") throw err;
@@ -39,24 +30,23 @@ export default class File {
   }
 
   // Internal
-  async #read() {
+  #read = async () => {
     const fsp = await this.promise;
-    const text = await fsp.readFile(this.file, "utf8");
-    if (!text) return {};
-    return JSON.parse(text);
-  }
+    const data = await fsp.readFile(this.file, "utf8");
+    return JSON.parse(data || "{}");
+  };
 
-  async #write(data) {
+  #write = async (data) => {
     const fsp = await this.promise;
-    await fsp.writeFile(this.file, JSON.stringify(data, null, 2));
-  }
+    fsp.writeFile(this.file, JSON.stringify(data, null, 2));
+  };
 
-  async get(key) {
+  get = async (key) => {
     const data = await this.#read();
     return data[key] ?? null;
-  }
+  };
 
-  async set(key, value) {
+  set = async (key, value) => {
     const data = await this.#read();
     if (value === null) {
       delete data[key];
@@ -65,7 +55,7 @@ export default class File {
     }
     await this.#write(data);
     return key;
-  }
+  };
 
   async *iterate(prefix = "") {
     const data = await this.#read();
@@ -75,10 +65,9 @@ export default class File {
     }
   }
 
-  async clear(prefix = "") {
-    if (!prefix) {
-      return this.#write({});
-    }
+  // Bulk updates are worth creating a custom method here
+  clear = async (prefix = "") => {
+    if (!prefix) return this.#write({});
 
     const data = await this.#read();
     for (let key in data) {
@@ -87,5 +76,5 @@ export default class File {
       }
     }
     await this.#write(data);
-  }
+  };
 }
