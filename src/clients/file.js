@@ -32,13 +32,13 @@ export default class File {
   // Internal
   #read = async () => {
     const fsp = await this.promise;
-    const data = await fsp.readFile(this.file, "utf8");
-    return JSON.parse(data || "{}");
+    const text = await fsp.readFile(this.file, "utf8");
+    return text ? JSON.parse(text) : {};
   };
 
   #write = async (data) => {
     const fsp = await this.promise;
-    fsp.writeFile(this.file, JSON.stringify(data, null, 2));
+    return fsp.writeFile(this.file, JSON.stringify(data, null, 2));
   };
 
   get = async (key) => {
