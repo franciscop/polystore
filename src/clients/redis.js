@@ -4,37 +4,25 @@ export default class Redis {
   EXPIRES = true;
 
   // Check if this is the right class for the given client
-  static test(client) {
-    return client && client.pSubscribe && client.sSubscribe;
-  }
+  static test = (client) => client && client.pSubscribe && client.sSubscribe;
 
   constructor(client) {
     this.client = client;
   }
 
-  async get(key) {
-    const value = await this.client.get(key);
-    if (!value) return null;
-    return JSON.parse(value);
-  }
+  get = async (key) => {
+    const text = await this.client.get(key);
+    return text ? JSON.parse(text) : null;
+  };
 
-  async set(key, value, { expires } = {}) {
+  set = async (key, value, { expires } = {}) => {
     const EX = expires ? Math.round(expires) : undefined;
     return this.client.set(key, JSON.stringify(value), { EX });
-  }
+  };
 
-  async del(key) {
-    return this.client.del(key);
-  }
+  del = (key) => this.client.del(key);
 
-  async has(key) {
-    return Boolean(await this.client.exists(key));
-  }
-
-  // Group methods
-  async keys(prefix = "") {
-    return this.client.keys(prefix + "*");
-  }
+  has = async (key) => Boolean(await this.client.exists(key));
 
   // Go through each of the [key, value] in the set
   async *iterate(prefix = "") {
@@ -49,30 +37,28 @@ export default class Redis {
 
   // Optimizing the retrieval of them all in bulk by loading the values
   // in parallel
-  async entries(prefix = "") {
+  entries = async (prefix = "") => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
-  }
+  };
 
   // Optimizing the retrieval of them by not getting their values
-  async keys(prefix = "") {
+  keys = async (prefix = "") => {
     const MATCH = prefix + "*";
     const keys = [];
     for await (const key of this.client.scanIterator({ MATCH })) {
       keys.push(key);
     }
     return keys;
-  }
+  };
 
-  async clear(prefix = "") {
+  clear = async (prefix = "") => {
     if (!prefix) return this.client.flushAll();
 
     const list = await this.keys(prefix);
     return Promise.all(list.map((k) => this.client.del(k)));
-  }
+  };
 
-  async close() {
-    return this.client.quit();
-  }
+  close = () => this.client.quit();
 }
