@@ -54,7 +54,6 @@ export default class File {
       data[key] = value;
     }
     await this.#write(data);
-    return key;
   };
 
   async *iterate(prefix = "") {
