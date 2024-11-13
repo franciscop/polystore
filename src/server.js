@@ -1,7 +1,6 @@
 // This is an example server implementation of the HTTP library!
 import http from "node:http";
 import kv from "./index.js";
-import { parse } from "./utils.js";
 
 // Modify this to use any sub-store as desired. It's nice
 // to use polystore itself for the polystore server library!'
