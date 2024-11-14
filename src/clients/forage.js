@@ -1,12 +1,10 @@
+import Client from "./Client";
+
 // Use localForage for managing the KV
-export default class Forage {
+export default class Forage extends Client {
   // Check if this is the right class for the given client
   static test = (client) =>
     client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
-
-  constructor(client) {
-    this.client = client;
-  }
 
   get = (key) => this.client.getItem(key);
   set = (key, value) => this.client.setItem(key, value);

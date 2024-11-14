@@ -1,11 +1,9 @@
+import Client from "./Client";
+
 // Use a Map() as an in-memory client
-export default class Memory {
+export default class Memory extends Client {
   // Check if this is the right class for the given client
   static test = (client) => client instanceof Map;
-
-  constructor(client) {
-    this.client = client;
-  }
 
   get = (key) => this.client.get(key) ?? null;
   set = (key, data) => this.client.set(key, data);

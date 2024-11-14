@@ -1,5 +1,7 @@
+import Client from "./Client";
+
 // A client that uses a single file (JSON) as a store
-export default class Cookie {
+export default class Cookie extends Client {
   // Indicate if this client handles expirations (true = it does)
   EXPIRES = true;
 
@@ -34,7 +36,7 @@ export default class Cookie {
       expireStr = `; expires=${time}`;
     }
 
-    const value = encodeURIComponent(JSON.stringify(data || ""));
+    const value = encodeURIComponent(this.encode(data || ""));
     document.cookie = encodeURIComponent(key) + "=" + value + expireStr;
   };
 

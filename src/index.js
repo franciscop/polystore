@@ -9,6 +9,7 @@ class Store {
       this.client = this.#find(client);
       this.#validate(this.client);
       this.promise = null;
+      await this.client.promise;
       return client;
     });
   }
@@ -47,7 +48,7 @@ class Store {
       for (let method of ["has", "keys", "values"]) {
         if (client[method]) {
           throw new Error(
-            `You can only define client.${method}() when the client manages the expiration; otherwise please do NOT define .${method}() and let us manage it`,
+            `You can only define client.${method}() when the client manages the expiration.`,
           );
         }
       }
@@ -91,8 +92,7 @@ class Store {
     }
 
     const key = createId();
-    await this.set(key, value, { expires });
-    return key; // The plain one without the prefix
+    return this.set(key, value, { expires });
   }
 
   async set(key, value, options = {}) {
@@ -102,8 +102,7 @@ class Store {
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
-      await this.del(id);
-      return key;
+      return this.del(id);
     }
 
     // The client manages the expiration, so let it manage it
@@ -143,8 +142,7 @@ class Store {
       return this.client.has(id);
     }
 
-    const value = await this.get(key);
-    return value !== null;
+    return (await this.get(key)) !== null;
   }
 
   async del(key) {
@@ -262,7 +260,7 @@ class Store {
 
   prefix(prefix = "") {
     const store = new Store(
-      Promise.resolve(this.promise).then((client) => client || this.client),
+      Promise.resolve(this.promise).then(() => this.client),
     );
     store.PREFIX = this.PREFIX + prefix;
     return store;
