@@ -4,12 +4,10 @@ export default class Cookie {
   EXPIRES = true;
 
   // Check if this is the right class for the given client
-  static test(client) {
-    return client === "cookie" || client === "cookies";
-  }
+  static test = (client) => client === "cookie" || client === "cookies";
 
   // Group methods
-  #read() {
+  #read = () => {
     const all = {};
     for (let entry of document.cookie.split(";")) {
       try {
@@ -22,14 +20,12 @@ export default class Cookie {
       }
     }
     return all;
-  }
+  };
 
   // For cookies, an empty value is the same as null, even `""`
-  get(key) {
-    return this.#read()[key] || null;
-  }
+  get = (key) => this.#read()[key] || null;
 
-  set(key, data = null, { expires } = {}) {
+  set = (key, data = null, { expires } = {}) => {
     // Setting it to null deletes it
     let expireStr = "";
     // NOTE: 0 is already considered here!
@@ -40,11 +36,9 @@ export default class Cookie {
 
     const value = encodeURIComponent(JSON.stringify(data || ""));
     document.cookie = encodeURIComponent(key) + "=" + value + expireStr;
-  }
+  };
 
-  del(key) {
-    this.set(key, "", { expires: -100 });
-  }
+  del = (key) => this.set(key, "", { expires: -100 });
 
   async *iterate(prefix = "") {
     for (let [key, value] of Object.entries(this.#read())) {

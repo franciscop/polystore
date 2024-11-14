@@ -1,25 +1,15 @@
 // Use a redis client to back up the store
 export default class Etcd {
   // Check if this is the right class for the given client
-  static test(client) {
-    return client?.constructor?.name === "Etcd3";
-  }
+  static test = (client) => client?.constructor?.name === "Etcd3";
 
   constructor(client) {
     this.client = client;
   }
 
-  async get(key) {
-    return this.client.get(key).json();
-  }
-
-  async set(key, value) {
-    return this.client.put(key).value(JSON.stringify(value));
-  }
-
-  async del(key) {
-    return this.client.delete().key(key).exec();
-  }
+  get = (key) => this.client.get(key).json();
+  set = (key, value) => this.client.put(key).value(JSON.stringify(value));
+  del = (key) => this.client.delete().key(key).exec();
 
   async *iterate(prefix = "") {
     const keys = await this.client.getAll().prefix(prefix).keys();
@@ -28,18 +18,14 @@ export default class Etcd {
     }
   }
 
-  async keys(prefix = "") {
-    return this.client.getAll().prefix(prefix).keys();
-  }
-
-  async entries(prefix = "") {
+  keys = (prefix = "") => this.client.getAll().prefix(prefix).keys();
+  entries = async (prefix = "") => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
-  }
-
-  async clear(prefix = "") {
+  };
+  clear = async (prefix = "") => {
     if (!prefix) return this.client.delete().all();
     return this.client.delete().prefix(prefix);
-  }
+  };
 }

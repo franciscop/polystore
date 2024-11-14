@@ -1,14 +1,14 @@
 // A client that uses a single file (JSON) as a store
 export default class File {
   // Check if this is the right class for the given client
-  static test(client) {
+  static test = (client) => {
     if (client instanceof URL) client = client.href;
     return (
       typeof client === "string" &&
       client.startsWith("file://") &&
       client.includes(".")
     );
-  }
+  };
 
   constructor(file) {
     if (file instanceof URL) file = file.href;
@@ -65,9 +65,8 @@ export default class File {
   }
 
   // Bulk updates are worth creating a custom method here
+  clearAll = () => this.#write({});
   clear = async (prefix = "") => {
-    if (!prefix) return this.#write({});
-
     const data = await this.#read();
     for (let key in data) {
       if (key.startsWith(prefix)) {

@@ -53,12 +53,6 @@ export default class Redis {
     return keys.map((k, i) => [k, values[i]]);
   };
 
-  clear = async (prefix = "") => {
-    if (!prefix) return this.client.flushAll();
-
-    const list = await this.keys(prefix);
-    return Promise.all(list.map((k) => this.client.del(k)));
-  };
-
+  clearAll = () => this.client.flushAll();
   close = () => this.client.quit();
 }

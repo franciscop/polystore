@@ -3,14 +3,14 @@ const json = (data) => JSON.stringify(data, null, 2);
 // A client that uses a single file (JSON) as a store
 export default class Folder {
   // Check if this is the right class for the given client
-  static test(client) {
+  static test = (client) => {
     if (client instanceof URL) client = client.href;
     return (
       typeof client === "string" &&
       client.startsWith("file://") &&
       client.endsWith("/")
     );
-  }
+  };
 
   constructor(folder) {
     if (folder instanceof URL) folder = folder.href;
@@ -44,9 +44,7 @@ export default class Folder {
     const text = await this.fs.readFile(key, "utf8");
     return text ? JSON.parse(text) : null;
   };
-
   set = (key, value) => this.fs.writeFile(key, json(value), "utf8");
-
   del = (key) => this.fs.unlink(key);
 
   async *iterate(prefix = "") {

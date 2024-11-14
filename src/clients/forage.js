@@ -1,25 +1,16 @@
 // Use localForage for managing the KV
 export default class Forage {
   // Check if this is the right class for the given client
-  static test(client) {
-    return client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
-  }
+  static test = (client) =>
+    client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
 
   constructor(client) {
     this.client = client;
   }
 
-  async get(key) {
-    return this.client.getItem(key);
-  }
-
-  async set(key, value) {
-    return this.client.setItem(key, value);
-  }
-
-  async del(key) {
-    return this.client.removeItem(key);
-  }
+  get = (key) => this.client.getItem(key);
+  set = (key, value) => this.client.setItem(key, value);
+  del = (key) => this.client.removeItem(key);
 
   async *iterate(prefix = "") {
     const keys = await this.client.keys();
@@ -29,19 +20,12 @@ export default class Forage {
     }
   }
 
-  async entries(prefix = "") {
+  entries = async (prefix = "") => {
     const all = await this.client.keys();
     const keys = all.filter((k) => k.startsWith(prefix));
     const values = await Promise.all(keys.map((key) => this.get(key)));
     return keys.map((key, i) => [key, values[i]]);
-  }
+  };
 
-  async clear(prefix = "") {
-    // Delete the whole dataset
-    if (!prefix) return this.client.clear();
-
-    // Delete them in a map
-    const list = await this.entries(prefix);
-    return Promise.all(list.map((e) => this.set(e[0], null)));
-  }
+  clearAll = () => this.client.clear();
 }
