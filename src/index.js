@@ -247,6 +247,10 @@ class Store {
   async clear() {
     await this.promise;
 
+    if (!this.PREFIX && this.client.clearAll) {
+      return this.client.clearAll();
+    }
+
     if (this.client.clear) {
       return this.client.clear(this.PREFIX);
     }

@@ -20,14 +20,12 @@ export default class Api {
   }
 
   get = (key) => this.client(`/${enc(key)}`);
-
   set = (key, value, { expires } = {}) =>
     this.client(
       `/${enc(key)}?expires=${enc(expires || "")}`,
       "PUT",
       JSON.stringify(value),
     );
-
   del = (key) => this.client(`/${enc(key)}`, "DELETE");
 
   async *iterate(prefix = "") {

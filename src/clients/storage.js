@@ -11,18 +11,12 @@ export default class WebStorage {
   }
 
   // Item methods
-  get(key) {
-    const data = this.client[key];
-    return data ? JSON.parse(data) : null;
-  }
-
-  set(key, data) {
-    return this.client.setItem(key, JSON.stringify(data));
-  }
-
-  del(key) {
-    return this.client.removeItem(key);
-  }
+  get = (key) => {
+    const text = this.client[key];
+    return text ? JSON.parse(text) : null;
+  };
+  set = (key, data) => this.client.setItem(key, JSON.stringify(data));
+  del = (key) => this.client.removeItem(key);
 
   *iterate(prefix = "") {
     for (const key of Object.keys(this.client)) {
@@ -33,13 +27,5 @@ export default class WebStorage {
     }
   }
 
-  clear(prefix = "") {
-    // Delete the whole store
-    if (!prefix) return this.client.clear();
-
-    // Delete them in a map
-    return Object.keys(this.client)
-      .filter((k) => k.startsWith(prefix))
-      .map((k) => this.del(k));
-  }
+  clearAll = () => this.client.clear();
 }

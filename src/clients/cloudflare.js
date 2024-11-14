@@ -4,34 +4,28 @@ export default class Cloudflare {
   EXPIRES = true;
 
   // Check whether the given store is a FILE-type
-  static test(client) {
-    return (
-      client?.constructor?.name === "KvNamespace" ||
-      client?.constructor?.name === "EdgeKVNamespace"
-    );
-  }
+  static test = (client) =>
+    client?.constructor?.name === "KvNamespace" ||
+    client?.constructor?.name === "EdgeKVNamespace";
 
   constructor(client) {
     this.client = client;
   }
 
-  async get(key) {
-    const data = await this.client.get(key);
-    if (!data) return null;
-    return JSON.parse(data);
-  }
+  get = async (key) => {
+    const text = await this.client.get(key);
+    return text ? JSON.parse(text) : null;
+  };
 
-  async set(key, value, { expires } = {}) {
+  set = (key, value, { expires } = {}) => {
     const expirationTtl = expires ? Math.round(expires) : undefined;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }
     return this.client.put(key, JSON.stringify(value), { expirationTtl });
-  }
+  };
 
-  async del(key) {
-    return this.client.delete(key);
-  }
+  del = (key) => this.client.delete(key);
 
   // Since we have pagination, we don't want to get all of the
   // keys at once if we can avoid it
@@ -50,7 +44,7 @@ export default class Cloudflare {
     } while (cursor);
   }
 
-  async keys(prefix = "") {
+  keys = async (prefix = "") => {
     const keys = [];
     let cursor;
     do {
@@ -59,16 +53,11 @@ export default class Cloudflare {
       cursor = raw.list_complete ? null : raw.cursor;
     } while (cursor);
     return keys;
-  }
+  };
 
-  async entries(prefix = "") {
+  entries = async (prefix = "") => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
-  }
-
-  async clear(prefix = "") {
-    const list = await this.keys(prefix);
-    return Promise.all(list.map((k) => this.del(k)));
-  }
+  };
 }
