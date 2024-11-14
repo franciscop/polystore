@@ -1,3 +1,5 @@
+import Client from "./Client";
+
 const valueEncoding = "json";
 const notFound = (error) => {
   if (error?.code === "LEVEL_NOT_FOUND") return null;
@@ -5,13 +7,9 @@ const notFound = (error) => {
 };
 
 // Level KV DB - https://github.com/Level/level
-export default class Level {
+export default class Level extends Client {
   // Check if this is the right class for the given client
   static test = (client) => client?.constructor?.name === "ClassicLevel";
-
-  constructor(client) {
-    this.client = client;
-  }
 
   get = (key) => this.client.get(key, { valueEncoding }).catch(notFound);
   set = (key, value) => this.client.put(key, value, { valueEncoding });

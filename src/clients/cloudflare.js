@@ -1,5 +1,7 @@
+import Client from "./Client";
+
 // Use Cloudflare's KV store
-export default class Cloudflare {
+export default class Cloudflare extends Client {
   // Indicate that the file handler does NOT handle expirations
   EXPIRES = true;
 
@@ -8,21 +10,13 @@ export default class Cloudflare {
     client?.constructor?.name === "KvNamespace" ||
     client?.constructor?.name === "EdgeKVNamespace";
 
-  constructor(client) {
-    this.client = client;
-  }
-
-  get = async (key) => {
-    const text = await this.client.get(key);
-    return text ? JSON.parse(text) : null;
-  };
-
+  get = async (key) => this.decode(await this.client.get(key));
   set = (key, value, { expires } = {}) => {
     const expirationTtl = expires ? Math.round(expires) : undefined;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }
-    return this.client.put(key, JSON.stringify(value), { expirationTtl });
+    return this.client.put(key, this.encode(value), { expirationTtl });
   };
 
   del = (key) => this.client.delete(key);

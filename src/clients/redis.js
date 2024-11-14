@@ -1,25 +1,18 @@
+import Client from "./Client";
+
 // Use a redis client to back up the store
-export default class Redis {
+export default class Redis extends Client {
   // Indicate if this client handles expirations (true = it does)
   EXPIRES = true;
 
   // Check if this is the right class for the given client
   static test = (client) => client && client.pSubscribe && client.sSubscribe;
 
-  constructor(client) {
-    this.client = client;
-  }
-
-  get = async (key) => {
-    const text = await this.client.get(key);
-    return text ? JSON.parse(text) : null;
-  };
-
+  get = async (key) => this.decode(await this.client.get(key));
   set = async (key, value, { expires } = {}) => {
     const EX = expires ? Math.round(expires) : undefined;
-    return this.client.set(key, JSON.stringify(value), { EX });
+    return this.client.set(key, this.encode(value), { EX });
   };
-
   del = (key) => this.client.del(key);
 
   has = async (key) => Boolean(await this.client.exists(key));

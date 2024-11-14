@@ -85,7 +85,7 @@ describe("potato", () => {
       ).get("any"),
     ).rejects.toThrow({
       message:
-        "You can only define client.has() when the client manages the expiration; otherwise please do NOT define .has() and let us manage it",
+        "You can only define client.has() when the client manages the expiration.",
     });
   });
 
@@ -98,7 +98,7 @@ describe("potato", () => {
       ).get("any"),
     ).rejects.toThrow({
       message:
-        "You can only define client.keys() when the client manages the expiration; otherwise please do NOT define .keys() and let us manage it",
+        "You can only define client.keys() when the client manages the expiration.",
     });
   });
 
@@ -111,7 +111,7 @@ describe("potato", () => {
       ).get("any"),
     ).rejects.toThrow({
       message:
-        "You can only define client.values() when the client manages the expiration; otherwise please do NOT define .values() and let us manage it",
+        "You can only define client.values() when the client manages the expiration.",
     });
   });
 });

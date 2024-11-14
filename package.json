@@ -15,6 +15,7 @@
     "src/"
   ],
   "scripts": {
+    "analyze": "esbuild ./ --bundle --packages=external --format=esm --minify --outfile=index.min.js && gzip-size index.min.js && rm index.min.js",
     "lint": "check-dts test/index.types.ts",
     "start": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --detectOpenHandles",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --ci --watchAll=false --detectOpenHandles",

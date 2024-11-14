@@ -1,14 +1,12 @@
+import Client from "./Client";
+
 // Use a redis client to back up the store
-export default class Etcd {
+export default class Etcd extends Client {
   // Check if this is the right class for the given client
   static test = (client) => client?.constructor?.name === "Etcd3";
 
-  constructor(client) {
-    this.client = client;
-  }
-
   get = (key) => this.client.get(key).json();
-  set = (key, value) => this.client.put(key).value(JSON.stringify(value));
+  set = (key, value) => this.client.put(key).value(this.encode(value));
   del = (key) => this.client.delete().key(key).exec();
 
   async *iterate(prefix = "") {

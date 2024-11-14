@@ -1,5 +1,7 @@
+import Client from "./Client";
+
 // A client that uses a single file (JSON) as a store
-export default class File {
+export default class File extends Client {
   // Check if this is the right class for the given client
   static test = (client) => {
     if (client instanceof URL) client = client.href;
@@ -10,35 +12,25 @@ export default class File {
     );
   };
 
-  constructor(file) {
-    if (file instanceof URL) file = file.href;
-    this.file = file.replace(/^file:\/\//, "");
-
-    // Run this once on launch; import the FS module and reset the file
-    this.promise = (async () => {
-      // We want to make sure the file already exists, so attempt to
-      // create the folders and the file (but not OVERWRITE it, that's why the x flag)
-      // It fails if it already exists, hence the catch case
-      const fsp = await import("node:fs/promises");
-      const folder = this.file.split("/").slice(0, -1).join("/");
-      await fsp.mkdir(folder, { recursive: true }).catch(() => {});
-      await fsp.writeFile(this.file, "{}", { flag: "wx" }).catch((err) => {
-        if (err.code !== "EEXIST") throw err;
-      });
-      return fsp;
-    })();
-  }
+  // We want to make sure the file already exists, so attempt to
+  // create the folders and the file (but not OVERWRITE it, that's why the x flag)
+  // It fails if it already exists, hence the catch case
+  #promise = (async () => {
+    this.fsp = await import("node:fs/promises");
+    this.file = (this.client?.href || this.client).replace(/^file:\/\//, "");
+    const folder = this.file.split("/").slice(0, -1).join("/");
+    await this.fsp.mkdir(folder, { recursive: true }).catch(() => {});
+    await this.fsp.writeFile(this.file, "{}", { flag: "wx" }).catch(() => {});
+  })();
 
   // Internal
   #read = async () => {
-    const fsp = await this.promise;
-    const text = await fsp.readFile(this.file, "utf8");
+    const text = await this.fsp.readFile(this.file, "utf8");
     return text ? JSON.parse(text) : {};
   };
 
   #write = async (data) => {
-    const fsp = await this.promise;
-    return fsp.writeFile(this.file, JSON.stringify(data, null, 2));
+    return this.fsp.writeFile(this.file, this.encode(data));
   };
 
   get = async (key) => {
