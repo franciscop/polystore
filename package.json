@@ -1,6 +1,6 @@
 {
   "name": "polystore",
-  "version": "0.15.8",
+  "version": "0.15.9",
   "description": "A small compatibility layer for many popular KV stores like localStorage, Redis, FileSystem, etc.",
   "homepage": "https://polystore.dev/",
   "repository": "https://github.com/franciscop/polystore.git",
