@@ -30,9 +30,8 @@ export default class Cloudflare extends Client {
       const keys = raw.keys.map((k) => k.name);
       for (let key of keys) {
         const value = await this.get(key);
-        // By the time this specific value is read, it could be gone!
-        if (!value) continue;
-        yield [key, value];
+        // By the time this value is read it could be gone!
+        if (value) yield [key, value];
       }
       cursor = raw.list_complete ? null : raw.cursor;
     } while (cursor);
