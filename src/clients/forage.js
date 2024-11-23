@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Client from "./Client.js";
 
 // Use localForage for managing the KV
 export default class Forage extends Client {

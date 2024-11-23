@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Client from "./Client.js";
 
 // Use a redis client to back up the store
 export default class Etcd extends Client {

@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Client from "./Client.js";
 
 // Use Cloudflare's KV store
 export default class Cloudflare extends Client {
