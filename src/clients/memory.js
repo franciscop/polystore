@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Client from "./Client.js";
 
 // Use a Map() as an in-memory client
 export default class Memory extends Client {

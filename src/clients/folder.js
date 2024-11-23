@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Client from "./Client.js";
 
 const noFileOk = (error) => {
   if (error.code === "ENOENT") return null;

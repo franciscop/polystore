@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Client from "./Client.js";
 
 // Handle an API endpoint with fetch()
 export default class Api extends Client {
