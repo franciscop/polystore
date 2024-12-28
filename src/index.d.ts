@@ -193,4 +193,17 @@ export interface Store {
   };
 }
 
-export default function (store?: any): Store;
+/**
+ * Create a Store instance with the given client:
+ *
+ * ```js
+ * import kv from "polystore";
+ * const store1 = kv(new Map());
+ * const store2 = kv(localStorage);
+ * const store3 = kv(redisClient);
+ * const store4 = kv(yourOwnStore);
+ * ```
+ *
+ * **[→ Full kv() Docs](https://polystore.dev/documentation)**
+ */
+export default function (client?: any): Store;
