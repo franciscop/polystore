@@ -36,8 +36,8 @@ Available clients for the KV store:
 - [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
 - [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
 - [**Fetch API** `"https://..."`](#fetch-api) (fe+be): call an API to save/retrieve the data
-- [**File** `new URL('file:///...')`](#file) (be): store the data in a single JSON file in your FS
-- [**Folder** `new URL('file:///...')`](#folder) (be): store each key in a folder as json files
+- [**File** `"file:///[...].json"`](#file) (be): store the data in a single JSON file in your FS
+- [**Folder** `"file:///[...]/"`](#folder) (be): store each key in a folder as json files
 - [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
@@ -646,7 +646,7 @@ console.log(await store.get("key1"));
 
 > Note: the API client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
-> Note: see the reference implementation in src/server.js
+> Note: see the [reference implementation in src/server.js](https://github.com/franciscop/polystore/blob/master/src/server.js)
 
 
 ### File

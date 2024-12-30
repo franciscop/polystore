@@ -2,6 +2,10 @@
 import http from "node:http";
 import kv from "./index.js";
 
+// Add/remove the key whether you want the API to be behind a key
+const key = null;
+// const key = 'MY-SECRET-KEY';
+
 // Modify this to use any sub-store as desired. It's nice
 // to use polystore itself for the polystore server library!'
 const store = kv(new Map());
@@ -51,6 +55,9 @@ async function fetch({ method, url, body }) {
 
 // http or express server-like handler:
 async function server(req, res) {
+  // Secure it behind a key (optional)
+  if (key && req.headers.get("x-api-key") !== key) return res.send(401);
+
   const url = new URL(req.url, "http://localhost:3000/").href;
   const reply = await fetch({ ...req, url });
   res.writeHead(reply.status, null, reply.headers || {});
