@@ -13,7 +13,11 @@ export default class Api extends Client {
     const headers = { accept: "application/json" };
     if (body) headers["content-type"] = "application/json";
     const res = await fetch(url, { method, headers, body });
-    return res.ok ? res.json() : null;
+    if (!res.ok) return null;
+    if (res.headers.get("content-type")?.includes("application/json")) {
+      return res.json();
+    }
+    return res.text();
   };
 
   get = (key) => this.#api(key);
