@@ -435,8 +435,8 @@ const store = kv(new Map());
 const session = kv(new Map());
 
 // Two file-stores
-const users = kv(new URL(`file://${import.meta.dirname}/users.json`));
-const books = kv(new URL(`file://${import.meta.dirname}/books.json`));
+const users = kv(`file://${import.meta.dirname}/users.json`);
+const books = kv(`file://${import.meta.dirname}/books.json`);
 ```
 
 The main reason this is not stable is because [_some_ store engines don't allow for atomic deletion of keys given a prefix](https://stackoverflow.com/q/4006324/938236). While we do still clear them internally in those cases, that is a non-atomic operation and it could have some trouble if some other thread is reading/writing the data _at the same time_.
@@ -651,27 +651,34 @@ console.log(await store.get("key1"));
 
 ### File
 
-Treat a JSON file in your filesystem as the source for the KV store:
+Treat a JSON file in your filesystem as the source for the KV store. Pass it an absolute `file://` url or a `new URL('file://...')` instance:
 
 ```js
 import kv from "polystore";
 
-const store = kv(new URL("file:///Users/me/project/cache.json"));
+// Path is "/Users/me/project/cache.json"
+const store = kv("file:///Users/me/project/cache.json");
 
 await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-> Note: an extension is needed, to disambiguate with "folder"
+> Note: an extension is needed, to disambiguate with ["folder"](#folder)
 
 You can also create multiple stores:
 
 ```js
 // Paths need to be absolute, but you can use process.cwd() to make
 // it relative to the current process:
+const store1 = kv(`file://${process.cwd()}/cache.json`);
+const store2 = kv(`file://${import.meta.dirname}/data.json`);
+```
+
+You can also pass a `URL` instance:
+
+```js
 const store1 = kv(new URL(`file://${process.cwd()}/cache.json`));
-const store2 = kv(new URL(`file://${import.meta.dirname}/data.json`));
 ```
 
 <details>
@@ -705,7 +712,7 @@ Treat a single folder in your filesystem as the store, where each key is a file:
 ```js
 import kv from "polystore";
 
-const store = kv(new URL("file:///Users/me/project/data/"));
+const store = kv("file:///Users/me/project/data/");
 
 await store.set("key1", "Hello world", { expires: "1h" });
 // Writes "./data/key1.json"
@@ -713,18 +720,25 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-> Note: the ending slash `/` is needed, to disambiguate with "file"
+> Note: the ending slash `/` is needed, to disambiguate with ["file"](#file)
 
 You can also create multiple stores:
 
 ```js
 // Paths need to be absolute, but you can use `process.cwd()` to make
 // it relative to the current process, or `import.meta.dirname`:
-const store1 = kv(new URL(`file://${process.cwd()}/cache/`));
-const store2 = kv(new URL(`file://${import.meta.dirname}/data/`));
+const store1 = kv(`file://${process.cwd()}/cache/`);
+const store2 = kv(`file://${import.meta.dirname}/data/`);
 ```
 
 The folder is created if it doesn't exist. When a key is deleted, the corresponding file is also deleted. The data is serialized as JSON, with a meta wrapper to store the expiration date.
+
+
+You can also pass a `URL` instance:
+
+```js
+const store1 = kv(new URL(`file://${process.cwd()}/cache/`));
+```
 
 <details>
   <summary>Why use polystore with a folder?</summary>
@@ -767,6 +781,8 @@ export default {
 };
 ```
 
+It expects that you pass the namespace from Cloudflare straight as a `kv()` argument. This is unfortunately not available outside of the `fetch()` method.
+
 <details>
   <summary>Why use polystore with Cloudflare's KV?</summary>
   <p>These benefits are for wrapping Cloudflare's KV with polystore:</p>
@@ -804,6 +820,8 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
+You will need to set the `valueEncoding` to `"json"` for the store to work as expected.
+
 <details>
   <summary>Why use polystore with Level?</summary>
   <p>These benefits are for wrapping Level with polystore:</p>
@@ -834,6 +852,8 @@ await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
 // "Hello world"
 ```
+
+You'll need to be running the etcd store for this to work as expected.
 
 <details>
   <summary>Why use polystore with Etcd?</summary>
@@ -938,7 +958,7 @@ class MyClient {
 
 Note that this is NOT the public API, it's the internal **client** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. for the client, the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's public API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
 
-**Expires**: if you set the `EXPIRES = true`, then you are indicating that the client WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the time when it will expire.
+**Expires**: if you set the `EXPIRES = true`, then you are indicating that the client WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the **seconds** for the key/value to will expire.
 
 **Prefix**: we manage the `prefix` as an invisible layer on top, you only need to be aware of it in the `.add()` method, as well as in the group methods:
 
@@ -966,7 +986,7 @@ client.keys = (prefix) => {
 
 While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
 
-**Example: Plain Object client**
+### Example: Plain Object client
 
 This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own clients:
 
@@ -996,7 +1016,7 @@ class MyClient {
 
 We don't set `EXPIRES` to true since plain objects do NOT support expiration natively. So by not adding the `EXPIRES` property, it's the same as setting it to `false`, and polystore will manage all the expirations as a layer on top of the data. We could be more explicit and set it to `EXPIRES = false`, but it's not needed in this case.
 
-**Example: custom ID generation**
+### Example: custom ID generation
 
 You might want to provide your custom key generation algorithm, which I'm going to call `customId()` for example purposes. The only place where `polystore` generates IDs is in `add`, so you can provide your client with a custom generator:
 
@@ -1028,3 +1048,100 @@ const id = await store.add({ hello: "world" });
 const id2 = await store.prefix("hello:").add({ hello: "world" });
 // this is `hello:{your own custom id}`
 ```
+
+### Example: serializing the data
+
+If you need to serialize the data before storing it, you can do it within your custom client. Here's an example of how you can handle data serialization when setting values:
+
+```js
+class MyClient {
+  get(key) {
+    const data = dataSource[key];
+    return data ? JSON.parse(data) : null;
+  }
+
+  set(key, value) {
+    dataSource[key] = JSON.stringify(value);
+  }
+
+  *iterate(prefix) {
+    for (const [key, value] of Object.entries(dataSource)) {
+      if (key.startsWith(prefix) && value) {
+        yield [key, JSON.parse(value)];
+      }
+    }
+  }
+}
+```
+
+### Example: Cloudflare API calls
+
+In this example on one of my projects, I needed to use Cloudflare's REST API since I didn't have access to any KV store I was happy with on Netlify's Edge Functions. So I created it like this:
+
+> Warning: this code snippet is an experimental example and hasn't gone through rigurous testing as the rest of the library, so please treat with caution.
+
+```js
+const {
+  CLOUDFLARE_ACCOUNT,
+  CLOUDFLARE_NAMESPACE,
+  CLOUDFLARE_EMAIL,
+  CLOUDFLARE_API_KEY,
+} = process.env;
+
+const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT}/storage/kv/namespaces/${CLOUDFLARE_NAMESPACE}`;
+const headers = {
+  "X-Auth-Email": CLOUDFLARE_EMAIL,
+  "X-Auth-Key": CLOUDFLARE_API_KEY,
+};
+
+class CloudflareCustom {
+  EXPIRES = true;
+
+  async get(key) {
+    const res = await fetch(`${baseUrl}/values/${key}`, { headers });
+    if (res.status === 404) return null; // It does not exist
+    const data = await (res.headers.get("content-type").includes("json")
+      ? res.json()
+      : res.text());
+    if (!data) return null;
+    return JSON.parse(data);
+  }
+
+  async set(key, body, { expires }) {
+    const expiration = expires ? `expiration_ttl=${expires}&` : "";
+    await fetch(`${baseUrl}/values/${key}?${expiration}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(body),
+    });
+    return key;
+  }
+
+  async keys(prefix) {
+    const res = await fetch(`${baseUrl}/keys`, { headers });
+    const data = await res.json();
+    return data.result
+      .map((it) => it.name)
+      .filter((key) => key.startsWith(prefix));
+  }
+
+  async *iterate(prefix) {
+    const keys = await this.keys(prefix);
+
+    // A list of promises. Requests them all in parallel, but will start
+    // yielding them as soon as they are available (in order)
+    const pairs = keys.map(async (key) => [key, await this.get(key)]);
+    for (let prom of pairs) {
+      const pair = await prom;
+      // Some values could have been nullified from reading of the keys to
+      // reading of the value
+      if (!pair[1]) continue;
+      yield await pair;
+    }
+  }
+}
+
+const store = kv(CloudflareCustom);
+````
+
+It's lacking few things, so make sure to adapt to your needs, but it worked for my very simple cache needs.

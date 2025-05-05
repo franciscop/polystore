@@ -11,6 +11,7 @@ import { createClient } from "redis";
 import kv from "../src/index.js";
 import customFull from "./customFull.js";
 import customSimple from "./customSimple.js";
+import customCloudflare from "./customCloudflare.js";
 
 const stores = {};
 stores["kv(new Map())"] = kv(new Map());
@@ -45,6 +46,16 @@ if (process.env.ETCD) {
 }
 stores["kv(customSimple)"] = kv(customSimple);
 stores["kv(customFull)"] = kv(customFull);
+stores["kv(customCloudflare)"] = kv(customCloudflare);
+
+const doNotSupportMs = [
+  `kv("cookie")`,
+  `kv(redis)`,
+  `kv(new Etcd3())`,
+  `kv(customCloudflare)`,
+];
+
+const longerThan60s = [`kv(customCloudflare)`];
 
 const delay = (t) => new Promise((done) => setTimeout(done, t));
 
@@ -119,12 +130,12 @@ describe("potato", () => {
 describe.each(Object.entries(stores))("%s", (name, store) => {
   beforeEach(async () => {
     await store.clear();
-  });
+  }, 10000);
 
   afterAll(async () => {
     await store.clear();
     await store.close();
-  });
+  }, 10000);
 
   it("can perform a CRUD", async () => {
     expect(await store.get("a")).toBe(null);
@@ -401,6 +412,9 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
     // The mock implementation does NOT support expiration 😪
     if (name === "kv(new KVNamespace())") return;
 
+    // Some stores expect 60s+ expiration times, too long to test 😪
+    if (longerThan60s.includes(name)) return;
+
     afterEach(() => {
       jest.restoreAllMocks();
     });
@@ -442,12 +456,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
       expect(await store.get("a")).toBe("b");
     });
 
-    if (
-      name !== `kv("cookie")` &&
-      name !== `kv(redis)` &&
-      name !== `kv(new Etcd3())` &&
-      !name.includes("http")
-    ) {
+    if (!doNotSupportMs.includes(name) && !name.includes("http")) {
       it("can use 0.1 expire", async () => {
         // 10ms
         await store.set("a", "b", { expires: 0.1 });
