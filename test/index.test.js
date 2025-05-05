@@ -46,7 +46,7 @@ if (process.env.ETCD) {
 }
 stores["kv(customSimple)"] = kv(customSimple);
 stores["kv(customFull)"] = kv(customFull);
-stores["kv(customCloudflare)"] = kv(customCloudflare);
+// stores["kv(customCloudflare)"] = kv(customCloudflare);
 
 const doNotSupportMs = [
   `kv("cookie")`,

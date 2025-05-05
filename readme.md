@@ -74,7 +74,7 @@ import { createClient } from "redis";
 const REDIS = process.env.REDIS_URL;
 
 // Wrap the redis creation with Polystore (kv())
-const store = kv(createClient(REDIS).connect());
+const store = kv(createClient({ url: REDIS }).connect());
 ```
 
 Now your store is ready to use! Add, set, get, del different keys. [See full API](#api).
