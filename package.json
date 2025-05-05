@@ -55,6 +55,10 @@
       "Github": "https://github.com/franciscop/polystore"
     }
   },
+  "overrides-comment": "https://github.com/inikulin/parse5/issues/1481",
+  "overrides": {
+    "parse5": "<7.3.0"
+  },
   "jest": {
     "testTimeout": 15000,
     "testEnvironment": "jsdom",

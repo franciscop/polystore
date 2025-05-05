@@ -11,7 +11,7 @@ import { createClient } from "redis";
 import kv from "../src/index.js";
 import customFull from "./customFull.js";
 import customSimple from "./customSimple.js";
-import customCloudflare from "./customCloudflare.js";
+// import customCloudflare from "./customCloudflare.js";
 
 const stores = {};
 stores["kv(new Map())"] = kv(new Map());
