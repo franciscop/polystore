@@ -7,6 +7,8 @@ import folder from "./folder.js";
 import forage from "./forage.js";
 import level from "./level.js";
 import memory from "./memory.js";
+import postgres from "./postgres.js";
+import prisma from "./prisma.js";
 import redis from "./redis.js";
 import storage from "./storage.js";
 
@@ -20,6 +22,8 @@ export default {
   forage,
   level,
   memory,
+  postgres,
+  prisma,
   redis,
   storage,
 };

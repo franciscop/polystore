@@ -6,11 +6,12 @@ export default class Cookie extends Client {
   EXPIRES = true;
 
   // Check if this is the right class for the given client
-  static test = (client) => client === "cookie" || client === "cookies";
+  static test = (client: any): boolean =>
+    client === "cookie" || client === "cookies";
 
   // Group methods
-  #read = () => {
-    const all = {};
+  #read = (): Record<string, any> => {
+    const all: Record<string, any> = {};
     for (let entry of document.cookie.split(";")) {
       try {
         const [rawKey, rawValue] = entry.split("=");
@@ -25,13 +26,17 @@ export default class Cookie extends Client {
   };
 
   // For cookies, an empty value is the same as null, even `""`
-  get = (key) => this.#read()[key] || null;
+  get = (key: string): any => this.#read()[key] || null;
 
-  set = (key, data = null, { expires } = {}) => {
+  set = (
+    key: string,
+    data: any = null,
+    { expires }: { expires?: number | null } = {},
+  ): void => {
     // Setting it to null deletes it
     let expireStr = "";
     // NOTE: 0 is already considered here!
-    if (expires !== null) {
+    if (typeof expires === "number") {
       const time = new Date(Date.now() + expires * 1000).toUTCString();
       expireStr = `; expires=${time}`;
     }
@@ -40,9 +45,9 @@ export default class Cookie extends Client {
     document.cookie = encodeURIComponent(key) + "=" + value + expireStr;
   };
 
-  del = (key) => this.set(key, "", { expires: -100 });
+  del = (key: string): void => this.set(key, "", { expires: -100 });
 
-  async *iterate(prefix = "") {
+  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
     for (let [key, value] of Object.entries(this.#read())) {
       if (!key.startsWith(prefix)) continue;
       yield [key, value];

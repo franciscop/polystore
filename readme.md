@@ -42,6 +42,8 @@ Available clients for the KV store:
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
+- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library
+- [**Prisma** `prisma.store`](#prisma) (be): use Prisma ORM as a key-value store
 - [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 3 methods!
 
 I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser) and tiny (~3KB). For example, let's say you create an API library, then you can accept the stores from your client:
@@ -859,6 +861,97 @@ You'll need to be running the etcd store for this to work as expected.
   <summary>Why use polystore with Etcd?</summary>
   <p>These benefits are for wrapping Etcd with polystore:</p>
   <ul>
+    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expiration-explained">Expiration explained</a>.</li>
+    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
+  </ul>
+</details>
+
+### Postgres
+
+Use PostgreSQL with the `pg` library as a key-value store:
+
+```js
+import kv from "polystore";
+import { Client } from "pg";
+
+const client = new Client({ connectionString: process.env.DATABASE_URL });
+await client.connect();
+
+const store = kv(client);
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+You can also use `pg.Pool` instead of `pg.Client` for connection pooling.
+
+Your database needs a table with three columns: `id` (text), `value` (text), and `expiresAt` (timestamp, nullable):
+
+```sql
+CREATE TABLE kv (
+  id TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  "expiresAt" TIMESTAMP
+);
+```
+
+The default table name is `kv`, but you can use different tables via `.prefix()`:
+
+```js
+const sessions = store.prefix("session:"); // Uses 'session' table
+const cache = store.prefix("cache:");      // Uses 'cache' table
+
+await sessions.set("user123", { name: "Alice" });
+```
+
+This maps prefixes to table names for better performance on group operations.
+
+<details>
+  <summary>Why use polystore with Postgres?</summary>
+  <p>These benefits are for wrapping Postgres with polystore:</p>
+  <ul>
+    <li><strong>Unified API</strong>: use the same API across all your storage backends.</li>
+    <li><strong>Database-backed persistence</strong>: leverage your existing database for key-value storage.</li>
+    <li><strong>Table-based substores</strong>: <code>.prefix()</code> maps to different tables for optimal query performance.</li>
+    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expiration-explained">Expiration explained</a>.</li>
+  </ul>
+</details>
+
+### Prisma
+
+Use Prisma as a key-value store by passing a table model directly:
+
+```js
+import kv from "polystore";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+const store = kv(prisma.session);
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+Your Prisma schema needs a model with three columns: `id` (String), `value` (String/Text), and `expiresAt` (DateTime, nullable):
+
+```prisma
+model session {
+  id        String    @id
+  value     String    @db.Text
+  expiresAt DateTime?
+}
+```
+
+All three columns are required. The `expiresAt` column should be nullable (`DateTime?`) to support records without expiration.
+
+<details>
+  <summary>Why use polystore with Prisma?</summary>
+  <p>These benefits are for wrapping Prisma with polystore:</p>
+  <ul>
+    <li><strong>Unified API</strong>: use the same API across all your storage backends.</li>
+    <li><strong>Database-backed persistence</strong>: leverage your existing database for key-value storage.</li>
     <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expiration-explained">Expiration explained</a>.</li>
     <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
   </ul>

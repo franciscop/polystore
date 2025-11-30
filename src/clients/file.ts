@@ -1,9 +1,13 @@
+import type { promises as FsPromises } from "node:fs";
 import Client from "./Client.js";
 
 // A client that uses a single file (JSON) as a store
 export default class File extends Client {
+  fsp!: typeof FsPromises;
+  file!: string;
+
   // Check if this is the right class for the given client
-  static test = (client) => {
+  static test = (client: any): boolean => {
     if (client instanceof URL) client = client.href;
     return (
       typeof client === "string" &&
@@ -15,8 +19,8 @@ export default class File extends Client {
   // We want to make sure the file already exists, so attempt to
   // create the folders and the file (but not OVERWRITE it, that's why the x flag)
   // It fails if it already exists, hence the catch case
-  #promise = (async () => {
-    this.fsp = await import("node:fs/promises");
+  promise = (async () => {
+    this.fsp = (await import("node:fs/promises")) as unknown as typeof FsPromises;
     this.file = (this.client?.href || this.client).replace(/^file:\/\//, "");
     const folder = this.file.split("/").slice(0, -1).join("/");
     await this.fsp.mkdir(folder, { recursive: true }).catch(() => {});
@@ -24,21 +28,21 @@ export default class File extends Client {
   })();
 
   // Internal
-  #read = async () => {
+  #read = async (): Promise<Record<string, any>> => {
     const text = await this.fsp.readFile(this.file, "utf8");
     return text ? JSON.parse(text) : {};
   };
 
-  #write = async (data) => {
+  #write = async (data: Record<string, any>): Promise<void> => {
     return this.fsp.writeFile(this.file, this.encode(data));
   };
 
-  get = async (key) => {
+  get = async (key: string): Promise<any> => {
     const data = await this.#read();
     return data[key] ?? null;
   };
 
-  set = async (key, value) => {
+  set = async (key: string, value: any): Promise<void> => {
     const data = await this.#read();
     if (value === null) {
       delete data[key];
@@ -48,17 +52,17 @@ export default class File extends Client {
     await this.#write(data);
   };
 
-  async *iterate(prefix = "") {
+  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
     const data = await this.#read();
     const entries = Object.entries(data).filter((p) => p[0].startsWith(prefix));
     for (const entry of entries) {
-      yield entry;
+      yield entry as [string, any];
     }
   }
 
   // Bulk updates are worth creating a custom method here
-  clearAll = () => this.#write({});
-  clear = async (prefix = "") => {
+  clearAll = (): Promise<void> => this.#write({});
+  clear = async (prefix = ""): Promise<void> => {
     const data = await this.#read();
     for (let key in data) {
       if (key.startsWith(prefix)) {

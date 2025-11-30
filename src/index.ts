@@ -1,10 +1,39 @@
 import clients from "./clients/index.js";
 import { createId, parse, unix } from "./utils.js";
 
+type Options = { expires?: number | string | null; expire?: number | string | null };
+type Value = any;
+
+interface ClientInterface {
+  EXPIRES?: boolean;
+  promise?: Promise<any>;
+  test?: (client: any) => boolean;
+  get(key: string): Promise<Value | null> | Value | null;
+  set(key: string, value: Value, options?: Options): Promise<any> | any;
+  iterate(prefix: string): AsyncGenerator<[string, Value], void, unknown> | Generator<[string, Value], void, unknown>;
+  add?(prefix: string, value: Value, options?: Options): Promise<string>;
+  has?(key: string): Promise<boolean> | boolean;
+  del?(key: string): Promise<any> | any;
+  keys?(prefix: string): Promise<string[]> | string[];
+  values?(prefix: string): Promise<Value[]> | Value[];
+  entries?(prefix: string): Promise<[string, Value][]> | [string, Value][];
+  all?(prefix: string): Promise<Record<string, Value>> | Record<string, Value>;
+  clear?(prefix: string): Promise<any> | any;
+  clearAll?(): Promise<any> | any;
+  close?(): Promise<any> | any;
+}
+
+interface StoreData {
+  value: Value;
+  expires: number | null;
+}
+
 class Store {
   PREFIX = "";
+  promise: Promise<any> | null;
+  client!: ClientInterface;
 
-  constructor(clientPromise) {
+  constructor(clientPromise: any) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = this.#find(client);
       this.#validate(this.client);
@@ -14,7 +43,7 @@ class Store {
     });
   }
 
-  #find(store) {
+  #find(store: any): ClientInterface {
     // Already a fully compliant KV store
     if (store instanceof Store) return store.client;
 
@@ -38,7 +67,7 @@ class Store {
     return store;
   }
 
-  #validate(client) {
+  #validate(client: ClientInterface): void {
     if (!client) throw new Error("No client received");
     if (!client.set || !client.get || !client.iterate) {
       throw new Error("Client should have .get(), .set() and .iterate()");
@@ -46,7 +75,7 @@ class Store {
 
     if (!client.EXPIRES) {
       for (let method of ["has", "keys", "values"]) {
-        if (client[method]) {
+        if ((client as any)[method]) {
           throw new Error(
             `You can only define client.${method}() when the client manages the expiration.`,
           );
@@ -56,7 +85,7 @@ class Store {
   }
 
   // Check if the given data is fresh or not; if
-  #isFresh(data, key) {
+  #isFresh(data: any, key?: string): data is StoreData {
     // Should never happen, but COULD happen; schedule it for
     // removal and mark it as stale
     if (!data || !data.value || typeof data !== "object") {
@@ -75,9 +104,9 @@ class Store {
     return false;
   }
 
-  async add(value, options = {}) {
+  async add(value: Value, options: Options = {}): Promise<string> {
     await this.promise;
-    let expires = parse(options.expire ?? options.expires);
+    let expires: number | null = parse(options.expire ?? options.expires);
 
     // Use the underlying one from the client if found
     if (this.client.add) {
@@ -95,10 +124,10 @@ class Store {
     return this.set(key, value, { expires });
   }
 
-  async set(key, value, options = {}) {
+  async set(key: string, value: Value, options: Options = {}): Promise<string> {
     await this.promise;
     const id = this.PREFIX + key;
-    let expires = parse(options.expire ?? options.expires);
+    let expires: number | null = parse(options.expire ?? options.expires);
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
@@ -117,7 +146,7 @@ class Store {
     return key;
   }
 
-  async get(key) {
+  async get(key: string): Promise<Value | null> {
     await this.promise;
     const id = this.PREFIX + key;
 
@@ -134,7 +163,7 @@ class Store {
     return data.value;
   }
 
-  async has(key) {
+  async has(key: string): Promise<boolean> {
     await this.promise;
     const id = this.PREFIX + key;
 
@@ -145,7 +174,7 @@ class Store {
     return (await this.get(key)) !== null;
   }
 
-  async del(key) {
+  async del(key: string): Promise<string> {
     await this.promise;
     const id = this.PREFIX + key;
 
@@ -158,7 +187,7 @@ class Store {
     return key;
   }
 
-  async *[Symbol.asyncIterator]() {
+  async *[Symbol.asyncIterator](): AsyncGenerator<[string, Value], void, unknown> {
     await this.promise;
 
     for await (const [name, data] of this.client.iterate(this.PREFIX)) {
@@ -171,16 +200,16 @@ class Store {
     }
   }
 
-  async entries() {
+  async entries(): Promise<[string, Value][]> {
     await this.promise;
 
     // Cut the key to size
-    const trim = (key) => key.slice(this.PREFIX.length);
+    const trim = (key: string): string => key.slice(this.PREFIX.length);
 
-    let list = [];
+    let list: [string, Value][] = [];
     if (this.client.entries) {
       const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(([key, value]) => [trim(key), value]);
+      list = entries.map(([key, value]) => [trim(key), value] as [string, Value]);
     } else {
       for await (const [key, value] of this.client.iterate(this.PREFIX)) {
         list.push([trim(key), value]);
@@ -194,10 +223,10 @@ class Store {
     // We need to do manual expiration checking
     return list
       .filter(([key, data]) => this.#isFresh(data, key))
-      .map(([key, data]) => [key, data.value]);
+      .map(([key, data]) => [key, (data as StoreData).value] as [string, Value]);
   }
 
-  async keys() {
+  async keys(): Promise<string[]> {
     await this.promise;
 
     if (this.client.keys) {
@@ -210,28 +239,28 @@ class Store {
     return entries.map((e) => e[0]);
   }
 
-  async values() {
+  async values(): Promise<Value[]> {
     await this.promise;
 
     if (this.client.values) {
-      const list = this.client.values(this.PREFIX);
+      const list = await this.client.values(this.PREFIX);
       if (this.client.EXPIRES) return list;
       return list
         .filter((data) => this.#isFresh(data))
-        .map((data) => data.value);
+        .map((data) => (data as StoreData).value);
     }
 
     const entries = await this.entries();
     return entries.map((e) => e[1]);
   }
 
-  async all() {
+  async all(): Promise<Record<string, Value>> {
     await this.promise;
 
     if (this.client.all) {
       const obj = await this.client.all(this.PREFIX);
       if (!this.PREFIX) return obj;
-      const all = {};
+      const all: Record<string, Value> = {};
       for (let key in obj) {
         all[key.slice(this.PREFIX.length)] = obj[key];
       }
@@ -242,7 +271,7 @@ class Store {
     return Object.fromEntries(entries);
   }
 
-  async clear() {
+  async clear(): Promise<void> {
     await this.promise;
 
     if (!this.PREFIX && this.client.clearAll) {
@@ -258,7 +287,7 @@ class Store {
     await Promise.all(keys.map((key) => this.del(key)));
   }
 
-  prefix(prefix = "") {
+  prefix(prefix = ""): Store {
     const store = new Store(
       Promise.resolve(this.promise).then(() => this.client),
     );
@@ -266,7 +295,7 @@ class Store {
     return store;
   }
 
-  async close() {
+  async close(): Promise<void> {
     await this.promise;
 
     if (this.client.close) {
@@ -275,4 +304,4 @@ class Store {
   }
 }
 
-export default (client) => new Store(client);
+export default (client?: any): Store => new Store(client);

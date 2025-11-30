@@ -6,19 +6,19 @@ export default class Redis extends Client {
   EXPIRES = true;
 
   // Check if this is the right class for the given client
-  static test = (client) => client && client.pSubscribe && client.sSubscribe;
+  static test = (client: any): boolean => client && client.pSubscribe && client.sSubscribe;
 
-  get = async (key) => this.decode(await this.client.get(key));
-  set = async (key, value, { expires } = {}) => {
+  get = async (key: string): Promise<any> => this.decode(await this.client.get(key));
+  set = async (key: string, value: any, { expires }: { expires?: number | null } = {}): Promise<any> => {
     const EX = expires ? Math.round(expires) : undefined;
     return this.client.set(key, this.encode(value), { EX });
   };
-  del = (key) => this.client.del(key);
+  del = (key: string): Promise<number> => this.client.del(key);
 
-  has = async (key) => Boolean(await this.client.exists(key));
+  has = async (key: string): Promise<boolean> => Boolean(await this.client.exists(key));
 
   // Go through each of the [key, value] in the set
-  async *iterate(prefix = "") {
+  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
     const MATCH = prefix + "*";
     for await (const key of this.client.scanIterator({ MATCH })) {
       const value = await this.get(key);
@@ -29,9 +29,9 @@ export default class Redis extends Client {
   }
 
   // Optimizing the retrieval of them by not getting their values
-  keys = async (prefix = "") => {
+  keys = async (prefix = ""): Promise<string[]> => {
     const MATCH = prefix + "*";
-    const keys = [];
+    const keys: string[] = [];
     for await (const key of this.client.scanIterator({ MATCH })) {
       keys.push(key);
     }
@@ -40,12 +40,12 @@ export default class Redis extends Client {
 
   // Optimizing the retrieval of them all in bulk by loading the values
   // in parallel
-  entries = async (prefix = "") => {
+  entries = async (prefix = ""): Promise<[string, any][]> => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
   };
 
-  clearAll = () => this.client.flushAll();
-  close = () => this.client.quit();
+  clearAll = (): Promise<string> => this.client.flushAll();
+  close = (): Promise<string> => this.client.quit();
 }
