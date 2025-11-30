@@ -1,9 +1,10 @@
 // This is an example server implementation of the HTTP library!
+import type { IncomingMessage, ServerResponse } from "node:http";
 import http from "node:http";
 import kv from "./index.js";
 
 // Add/remove the key whether you want the API to be behind a key
-const key = null;
+const key: string | null = null;
 // const key = 'MY-SECRET-KEY';
 
 // Modify this to use any sub-store as desired. It's nice
@@ -11,20 +12,26 @@ const key = null;
 const store = kv(new Map());
 
 // Some reply helpers
-const notFound = () => new Response(null, { status: 404 });
-const sendJson = (data, status = 200) => {
+const notFound = (): Response => new Response(null, { status: 404 });
+const sendJson = (data: any, status = 200): Response => {
   const body = JSON.stringify(data);
   const headers = { "content-type": "application/json" };
   return new Response(body, { status, headers });
 };
 
-async function fetch({ method, url, body }) {
+interface FetchRequest {
+  method: string;
+  url: string;
+  body?: ReadableStream | null;
+}
+
+async function fetch({ method, url, body }: FetchRequest): Promise<Response> {
   method = method.toLowerCase();
-  url = new URL(url);
-  let [, id] = url.pathname.split("/");
+  const urlObj = new URL(url);
+  let [, id] = urlObj.pathname.split("/");
   id = decodeURIComponent(id);
-  const expires = Number(url.searchParams.get("expires")) || null;
-  const prefix = url.searchParams.get("prefix") || null;
+  const expires = Number(urlObj.searchParams.get("expires")) || null;
+  const prefix = urlObj.searchParams.get("prefix") || null;
 
   let local = store;
   if (prefix) local = store.prefix(prefix);
@@ -54,26 +61,36 @@ async function fetch({ method, url, body }) {
 }
 
 // http or express server-like handler:
-async function server(req, res) {
+async function server(req: IncomingMessage, res: ServerResponse): Promise<void> {
   // Secure it behind a key (optional)
-  if (key && req.headers.get("x-api-key") !== key) return res.send(401);
+  if (key && (req as any).headers.get("x-api-key") !== key) {
+    res.writeHead(401);
+    res.end();
+    return;
+  }
 
-  const url = new URL(req.url, "http://localhost:3000/").href;
-  const reply = await fetch({ ...req, url });
-  res.writeHead(reply.status, null, reply.headers || {});
-  if (reply.body) res.write(reply.body);
+  const url = new URL(req.url || "/", "http://localhost:3000/").href;
+  const reply = await fetch({ method: req.method || "GET", url });
+  res.writeHead(reply.status, reply.headers as any || {});
+  if (reply.body) {
+    const reader = reply.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+  }
   res.end();
 }
 
-function start(port = 3000) {
+function start(port = 3000): Promise<() => void> {
   return new Promise((resolve, reject) => {
-    const server = http.createServer(server);
-    server.on("clientError", (error, socket) => {
+    const httpServer = http.createServer(server);
+    httpServer.on("clientError", (error, socket) => {
       reject(error);
       socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
     });
-    server.listen(port, resolve);
-    return () => server.close();
+    httpServer.listen(port, () => resolve(() => httpServer.close()));
   });
 }
 

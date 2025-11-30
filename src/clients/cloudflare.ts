@@ -6,12 +6,12 @@ export default class Cloudflare extends Client {
   EXPIRES = true;
 
   // Check whether the given store is a FILE-type
-  static test = (client) =>
+  static test = (client: any): boolean =>
     client?.constructor?.name === "KvNamespace" ||
     client?.constructor?.name === "EdgeKVNamespace";
 
-  get = async (key) => this.decode(await this.client.get(key));
-  set = (key, value, { expires } = {}) => {
+  get = async (key: string): Promise<any> => this.decode(await this.client.get(key));
+  set = (key: string, value: any, { expires }: { expires?: number | null } = {}): Promise<void> => {
     const expirationTtl = expires ? Math.round(expires) : undefined;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
@@ -19,36 +19,36 @@ export default class Cloudflare extends Client {
     return this.client.put(key, this.encode(value), { expirationTtl });
   };
 
-  del = (key) => this.client.delete(key);
+  del = (key: string): Promise<void> => this.client.delete(key);
 
   // Since we have pagination, we don't want to get all of the
   // keys at once if we can avoid it
-  async *iterate(prefix = "") {
-    let cursor;
+  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
+    let cursor: string | undefined;
     do {
       const raw = await this.client.list({ prefix, cursor });
-      const keys = raw.keys.map((k) => k.name);
+      const keys = raw.keys.map((k: any) => k.name);
       for (let key of keys) {
         const value = await this.get(key);
         // By the time this value is read it could be gone!
         if (value) yield [key, value];
       }
-      cursor = raw.list_complete ? null : raw.cursor;
+      cursor = raw.list_complete ? undefined : raw.cursor;
     } while (cursor);
   }
 
-  keys = async (prefix = "") => {
-    const keys = [];
-    let cursor;
+  keys = async (prefix = ""): Promise<string[]> => {
+    const keys: string[] = [];
+    let cursor: string | undefined;
     do {
       const raw = await this.client.list({ prefix, cursor });
-      keys.push(...raw.keys.map((k) => k.name));
-      cursor = raw.list_complete ? null : raw.cursor;
+      keys.push(...raw.keys.map((k: any) => k.name));
+      cursor = raw.list_complete ? undefined : raw.cursor;
     } while (cursor);
     return keys;
   };
 
-  entries = async (prefix = "") => {
+  entries = async (prefix = ""): Promise<[string, any][]> => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);

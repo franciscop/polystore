@@ -1,5 +1,5 @@
-import "dotenv/config";
 import "cross-fetch/polyfill";
+import "dotenv/config";
 
 import { jest } from "@jest/globals";
 import { EdgeKVNamespace as KVNamespace } from "edge-mock";
@@ -13,7 +13,9 @@ import customFull from "./customFull.js";
 import customSimple from "./customSimple.js";
 // import customCloudflare from "./customCloudflare.js";
 
-const stores = {};
+type Store = ReturnType<typeof kv>;
+
+const stores: Record<string, Store> = {};
 stores["kv(new Map())"] = kv(new Map());
 stores["kv(localStorage)"] = kv(localStorage);
 stores["kv(sessionStorage)"] = kv(sessionStorage);
@@ -57,17 +59,17 @@ const doNotSupportMs = [
 
 const longerThan60s = [`kv(customCloudflare)`];
 
-const delay = (t) => new Promise((done) => setTimeout(done, t));
+const delay = (t: number): Promise<void> => new Promise((done) => setTimeout(done, t));
 
 class Base {
-  get() {}
-  set() {}
-  *iterate() {}
+  get(): void {}
+  set(): void {}
+  *iterate(): Generator<void, void, unknown> {}
 }
 
 global.console = {
   ...console,
-  warn: jest.fn(),
+  warn: jest.fn() as any,
 };
 
 describe("potato", () => {
@@ -91,7 +93,7 @@ describe("potato", () => {
     await expect(() =>
       kv(
         class extends Base {
-          has() {}
+          has(): void {}
         },
       ).get("any"),
     ).rejects.toThrow({
@@ -104,7 +106,7 @@ describe("potato", () => {
     await expect(() =>
       kv(
         class extends Base {
-          keys() {}
+          keys(): void {}
         },
       ).get("any"),
     ).rejects.toThrow({
@@ -117,7 +119,7 @@ describe("potato", () => {
     await expect(() =>
       kv(
         class extends Base {
-          values() {}
+          values(): void {}
         },
       ).get("any"),
     ).rejects.toThrow({
@@ -381,7 +383,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
       await store.set("a", "b");
       await store.set("c", "d");
 
-      const entries = [];
+      const entries: [string, any][] = [];
       for await (const entry of store) {
         entries.push(entry);
       }
@@ -397,7 +399,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
       await store.set("a:c", "d");
       await store.set("b:c", "d");
 
-      const entries = [];
+      const entries: [string, any][] = [];
       for await (const entry of store.prefix("a:")) {
         entries.push(entry);
       }
@@ -429,14 +431,14 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
     });
 
     it("expires = potato means undefined = forever", async () => {
-      await store.set("a", "b", { expires: "potato" });
+      await store.set("a", "b", { expires: "potato" as any });
       expect(await store.get("a")).toBe("b");
       await delay(100);
       expect(await store.get("a")).toBe("b");
     });
 
     it("expires = 5potato means undefined = forever", async () => {
-      await store.set("a", "b", { expires: "5potato" });
+      await store.set("a", "b", { expires: "5potato" as any });
       expect(await store.get("a")).toBe("b");
       await delay(100);
       expect(await store.get("a")).toBe("b");
@@ -529,7 +531,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
         await delay(100);
         expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
         expect(await store.values()).toEqual([]);
-        if (!store.client.EXPIRES && store.client.values) {
+        if (!(store as any).client.EXPIRES && (store as any).client.values) {
           expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪😪
         } else {
           expect(spy).toHaveBeenCalled();
@@ -560,7 +562,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
   });
 
   describe(".prefix()", () => {
-    let session;
+    let session: Store;
     beforeAll(() => {
       session = store.prefix("session:");
     });
@@ -614,7 +616,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
   });
 
   describe(".prefix().prefix()", () => {
-    let auth;
+    let auth: Store;
     beforeAll(() => {
       auth = store.prefix("session:").prefix("auth:");
     });
