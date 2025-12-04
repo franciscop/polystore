@@ -5,6 +5,7 @@ import Client from "./Client.js";
 export default class File extends Client {
   fsp!: typeof FsPromises;
   file!: string;
+  #lock: Promise<void> = Promise.resolve();
 
   // Check if this is the right class for the given client
   static test = (client: any): boolean => {
@@ -20,17 +21,39 @@ export default class File extends Client {
   // create the folders and the file (but not OVERWRITE it, that's why the x flag)
   // It fails if it already exists, hence the catch case
   promise = (async () => {
-    this.fsp = (await import("node:fs/promises")) as unknown as typeof FsPromises;
+    this.fsp = (await import(
+      "node:fs/promises"
+    )) as unknown as typeof FsPromises;
     this.file = (this.client?.href || this.client).replace(/^file:\/\//, "");
     const folder = this.file.split("/").slice(0, -1).join("/");
     await this.fsp.mkdir(folder, { recursive: true }).catch(() => {});
     await this.fsp.writeFile(this.file, "{}", { flag: "wx" }).catch(() => {});
   })();
 
-  // Internal
+  // Internal - acquire lock before operations
+  #withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const previousLock = this.#lock;
+    let releaseLock: () => void;
+    this.#lock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    try {
+      await previousLock;
+      return await fn();
+    } finally {
+      releaseLock!();
+    }
+  };
+
   #read = async (): Promise<Record<string, any>> => {
-    const text = await this.fsp.readFile(this.file, "utf8");
-    return text ? JSON.parse(text) : {};
+    try {
+      const text = await this.fsp.readFile(this.file, "utf8");
+      return text ? JSON.parse(text) : {};
+    } catch (error: any) {
+      if (error.code === "ENOENT") return {};
+      throw error;
+    }
   };
 
   #write = async (data: Record<string, any>): Promise<void> => {
@@ -38,18 +61,22 @@ export default class File extends Client {
   };
 
   get = async (key: string): Promise<any> => {
-    const data = await this.#read();
-    return data[key] ?? null;
+    return this.#withLock(async () => {
+      const data = await this.#read();
+      return data[key] ?? null;
+    });
   };
 
   set = async (key: string, value: any): Promise<void> => {
-    const data = await this.#read();
-    if (value === null) {
-      delete data[key];
-    } else {
-      data[key] = value;
-    }
-    await this.#write(data);
+    return this.#withLock(async () => {
+      const data = await this.#read();
+      if (value === null) {
+        delete data[key];
+      } else {
+        data[key] = value;
+      }
+      await this.#write(data);
+    });
   };
 
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
@@ -61,14 +88,16 @@ export default class File extends Client {
   }
 
   // Bulk updates are worth creating a custom method here
-  clearAll = (): Promise<void> => this.#write({});
+  clearAll = (): Promise<void> => this.#withLock(() => this.#write({}));
   clear = async (prefix = ""): Promise<void> => {
-    const data = await this.#read();
-    for (let key in data) {
-      if (key.startsWith(prefix)) {
-        delete data[key];
+    return this.#withLock(async () => {
+      const data = await this.#read();
+      for (let key in data) {
+        if (key.startsWith(prefix)) {
+          delete data[key];
+        }
       }
-    }
-    await this.#write(data);
+      await this.#write(data);
+    });
   };
 }

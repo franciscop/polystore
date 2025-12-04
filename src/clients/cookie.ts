@@ -1,3 +1,4 @@
+import type { Options, Serializable } from "../types.js";
 import Client from "./Client.js";
 
 // A client that uses a single file (JSON) as a store
@@ -6,12 +7,11 @@ export default class Cookie extends Client {
   EXPIRES = true;
 
   // Check if this is the right class for the given client
-  static test = (client: any): boolean =>
-    client === "cookie" || client === "cookies";
+  static test = (client: any) => client === "cookie" || client === "cookies";
 
   // Group methods
-  #read = (): Record<string, any> => {
-    const all: Record<string, any> = {};
+  #read = (): Record<string, Serializable> => {
+    const all: Record<string, Serializable> = {};
     for (let entry of document.cookie.split(";")) {
       try {
         const [rawKey, rawValue] = entry.split("=");
@@ -19,35 +19,29 @@ export default class Cookie extends Client {
         const value = JSON.parse(decodeURIComponent(rawValue.trim()));
         all[key] = value;
       } catch (error) {
-        // no-op (some 3rd party can set cookies independently)
+        // no-op; 3rd party can be set cookies independently and shouldn't throw
       }
     }
     return all;
   };
 
   // For cookies, an empty value is the same as null, even `""`
-  get = (key: string): any => this.#read()[key] || null;
+  get = (key: string): Serializable => this.#read()[key] || null;
 
-  set = (
-    key: string,
-    data: any = null,
-    { expires }: { expires?: number | null } = {},
-  ): void => {
-    // Setting it to null deletes it
-    let expireStr = "";
-    // NOTE: 0 is already considered here!
-    if (typeof expires === "number") {
-      const time = new Date(Date.now() + expires * 1000).toUTCString();
-      expireStr = `; expires=${time}`;
-    }
-
+  set = (key: string, data: Serializable, opts: Options): void => {
+    const k = encodeURIComponent(key);
     const value = encodeURIComponent(this.encode(data || ""));
-    document.cookie = encodeURIComponent(key) + "=" + value + expireStr;
+    let expires = "";
+    if (typeof opts.expires === "number") {
+      const time = new Date(Date.now() + opts.expires * 1000);
+      expires = `; expires=${time.toUTCString()}`;
+    }
+    document.cookie = `${k}=${value}${expires}`;
   };
 
   del = (key: string): void => this.set(key, "", { expires: -100 });
 
-  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
+  async *iterate(prefix = ""): AsyncGenerator<[string, Serializable]> {
     for (let [key, value] of Object.entries(this.#read())) {
       if (!key.startsWith(prefix)) continue;
       yield [key, value];
