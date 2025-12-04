@@ -1,17 +1,25 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "bun:test";
 import "cross-fetch/polyfill";
 import "dotenv/config";
-
-import { jest } from "@jest/globals";
 import { EdgeKVNamespace as KVNamespace } from "edge-mock";
 import { Etcd3 } from "etcd3";
 import { Level } from "level";
 import localForage from "localforage";
 import { createClient } from "redis";
 
-import kv from "../src/index.js";
-import customFull from "./customFull.js";
-import customSimple from "./customSimple.js";
+import kv from "../src/index";
 // import customCloudflare from "./customCloudflare.js";
+import customFull from "./customFull";
+import customSimple from "./customSimple";
 
 type Store = ReturnType<typeof kv>;
 
@@ -59,7 +67,8 @@ const doNotSupportMs = [
 
 const longerThan60s = [`kv(customCloudflare)`];
 
-const delay = (t: number): Promise<void> => new Promise((done) => setTimeout(done, t));
+const delay = (t: number): Promise<void> =>
+  new Promise((done) => setTimeout(done, t));
 
 class Base {
   get(): void {}
@@ -74,70 +83,65 @@ global.console = {
 
 describe("potato", () => {
   it("a potato is not a valid store", async () => {
-    await expect(() => kv("potato").get("any")).rejects.toThrow();
+    await expect(kv("potato").get("any")).rejects.toThrow();
   });
 
   it("no client is not a valid store", async () => {
-    await expect(() => kv().get("any")).rejects.toThrow({
-      message: "No client received",
-    });
+    await expect(kv().get("any")).rejects.toThrow("No client received");
   });
 
   it("an empty object is not a valid store", async () => {
-    await expect(() => kv({}).get("any")).rejects.toThrow({
-      message: "Client should have .get(), .set() and .iterate()",
-    });
+    await expect(kv({}).get("any")).rejects.toThrow(
+      "Client should have .get(), .set() and .iterate()",
+    );
   });
 
   it("cannot handle no EXPIRES + has", async () => {
-    await expect(() =>
+    await expect(
       kv(
         class extends Base {
           has(): void {}
         },
       ).get("any"),
-    ).rejects.toThrow({
-      message:
-        "You can only define client.has() when the client manages the expiration.",
-    });
+    ).rejects.toThrow(
+      "You can only define client.has() when the client manages the expiration.",
+    );
   });
 
   it("cannot handle no EXPIRES + keys", async () => {
-    await expect(() =>
+    await expect(
       kv(
         class extends Base {
           keys(): void {}
         },
       ).get("any"),
-    ).rejects.toThrow({
-      message:
-        "You can only define client.keys() when the client manages the expiration.",
-    });
+    ).rejects.toThrow(
+      "You can only define client.keys() when the client manages the expiration.",
+    );
   });
 
   it("cannot handle no EXPIRES + values", async () => {
-    await expect(() =>
+    await expect(
       kv(
         class extends Base {
           values(): void {}
         },
       ).get("any"),
-    ).rejects.toThrow({
-      message:
-        "You can only define client.values() when the client manages the expiration.",
-    });
+    ).rejects.toThrow(
+      "You can only define client.values() when the client manages the expiration.",
+    );
   });
 });
 
 describe.each(Object.entries(stores))("%s", (name, store) => {
   beforeEach(async () => {
     await store.clear();
-  }, 10000);
+  });
 
   afterAll(async () => {
     await store.clear();
     await store.close();
-  }, 10000);
+  });
 
   it("can perform a CRUD", async () => {
     expect(await store.get("a")).toBe(null);

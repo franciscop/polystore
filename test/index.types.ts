@@ -1,5 +1,5 @@
-import type { Store } from "../";
-import kv from "..";
+import type { Store } from "../src/";
+import kv from "../src/";
 
 type Obj = { [key: string]: any };
 type Counter = { count: number };

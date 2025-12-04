@@ -1,23 +1,30 @@
-import * as util from "util";
-
-// ref: https://jestjs.io/docs/manual-mocks#mocking-methods-which-are-not-implemented-in-jsdom
-// ref: https://github.com/jsdom/jsdom/issues/2524
-if (typeof TextEncoder === "undefined") {
-  Object.defineProperty(window, "TextEncoder", {
-    writable: true,
-    value: util.TextEncoder,
-  });
-}
-if (typeof TextDecoder === "undefined") {
-  Object.defineProperty(window, "TextDecoder", {
-    writable: true,
-    value: util.TextDecoder,
-  });
-}
-
-if (typeof setImmediate === "undefined") {
-  Object.defineProperty(window, "setImmediate", {
-    writable: true,
-    value: (cb) => setTimeout(cb, 0),
-  });
-}
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest, } from "bun:test";
+import { JSDOM } from "jsdom";
+const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+    url: "http://localhost",
+    pretendToBeVisual: true,
+});
+const window = dom.window;
+// Set up global browser environment
+globalThis.window = window;
+globalThis.document = window.document;
+globalThis.localStorage = window.localStorage;
+globalThis.sessionStorage = window.sessionStorage;
+globalThis.navigator = window.navigator;
+globalThis.location = window.location;
+globalThis.history = window.history;
+globalThis.HTMLElement = window.HTMLElement;
+globalThis.Element = window.Element;
+globalThis.Node = window.Node;
+globalThis.Document = window.Document;
+globalThis.Storage = window.Storage;
+// Expose Bun test globals
+globalThis.describe = describe;
+globalThis.it = it;
+globalThis.expect = expect;
+globalThis.beforeEach = beforeEach;
+globalThis.afterAll = afterAll;
+globalThis.beforeAll = beforeAll;
+globalThis.afterEach = afterEach;
+globalThis.jest = jest;
+//# sourceMappingURL=setup.js.map
