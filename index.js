@@ -324,13 +324,17 @@ var Level = class extends Client {
   entries = async (prefix = "") => {
     const keys = await this.client.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
-    return Promise.all(list.map(async (k) => [k, await this.get(k)]));
+    return Promise.all(
+      list.map(async (k) => [k, await this.get(k)])
+    );
   };
   clearAll = () => this.client.clear();
   clear = async (prefix = "") => {
     const keys = await this.client.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
-    return this.client.batch(list.map((key) => ({ type: "del", key })));
+    return this.client.batch(
+      list.map((key) => ({ type: "del", key }))
+    );
   };
   close = () => this.client.close();
 };
@@ -348,105 +352,6 @@ var Memory = class extends Client {
     }
   }
   clearAll = () => this.client.clear();
-};
-
-// src/clients/postgres.ts
-var Postgres = class _Postgres extends Client {
-  // Indicate that this client handles expirations
-  EXPIRES = true;
-  // The table name to use
-  table = "kv";
-  // Check if this is the right class for the given client (pg Pool or Client)
-  static test = (client) => client && client.query;
-  // Override prefix to use different tables instead of string prefixes
-  prefix(prefix) {
-    if (!prefix) return this;
-    const table = prefix.endsWith(":") ? prefix.slice(0, -1) : prefix;
-    if (typeof prefix !== "string" || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(prefix)) {
-      throw new Error("Invalid table name");
-    }
-    const instance = new _Postgres(this.client);
-    instance.table = table;
-    return instance;
-  }
-  get = async (id) => {
-    const result = await this.client.query(
-      `SELECT value, "expiresAt" FROM ${this.table} WHERE id = $1`,
-      [id]
-    );
-    if (result.rows.length === 0) return null;
-    const record = result.rows[0];
-    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
-      await this.del(id);
-      return null;
-    }
-    return this.decode(record.value);
-  };
-  set = async (id, data, { expires } = {}) => {
-    const value = this.encode(data);
-    const expiresAt = expires ? new Date(Date.now() + expires * 1e3) : null;
-    await this.client.query(
-      `INSERT INTO ${this.table} (id, value, "expiresAt")
-       VALUES ($1, $2, $3)
-       ON CONFLICT (id) DO UPDATE SET value = $2, "expiresAt" = $3`,
-      [id, value, expiresAt]
-    );
-  };
-  del = async (id) => {
-    await this.client.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
-  };
-  has = async (id) => {
-    const result = await this.client.query(
-      `SELECT "expiresAt" FROM ${this.table} WHERE id = $1`,
-      [id]
-    );
-    if (result.rows.length === 0) return false;
-    const record = result.rows[0];
-    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
-      await this.del(id);
-      return false;
-    }
-    return true;
-  };
-  async *iterate() {
-    const result = await this.client.query(
-      `SELECT id, value FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
-    );
-    this.#clearExpired();
-    for (const record of result.rows) {
-      yield [record.id, this.decode(record.value)];
-    }
-  }
-  keys = async () => {
-    const result = await this.client.query(
-      `SELECT id FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
-    );
-    this.#clearExpired();
-    return result.rows.map((r) => r.id);
-  };
-  entries = async () => {
-    const result = await this.client.query(
-      `SELECT id, value FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
-    );
-    this.#clearExpired();
-    return result.rows.map((r) => [r.id, this.decode(r.value)]);
-  };
-  #clearExpired = async () => {
-    await this.client.query(
-      `DELETE FROM ${this.table} WHERE "expiresAt" < NOW()`
-    );
-  };
-  clearAll = async () => {
-    await this.client.query(`DELETE FROM ${this.table}`);
-  };
-  close = async () => {
-    if (this.client.end) {
-      await this.client.end();
-    }
-  };
 };
 
 // src/clients/prisma.ts
@@ -603,10 +508,11 @@ var clients_default = {
   forage: Forage,
   level: Level,
   memory: Memory,
-  postgres: Postgres,
+  // postgres,
   prisma: Prisma,
   redis: Redis,
   storage: WebStorage
+  // sqlite,
 };
 
 // src/utils.ts
@@ -770,14 +676,18 @@ var Store = class _Store {
     let list = [];
     if (this.client.entries) {
       const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(([key, value]) => [trim(key), value]);
+      list = entries.map(
+        ([key, value]) => [trim(key), value]
+      );
     } else {
       for await (const [key, value] of this.client.iterate(this.PREFIX)) {
         list.push([trim(key), value]);
       }
     }
     if (this.client.EXPIRES) return list;
-    return list.filter(([key, data]) => this.#isFresh(data, key)).map(([key, data]) => [key, data.value]);
+    return list.filter(([key, data]) => this.#isFresh(data, key)).map(
+      ([key, data]) => [key, data.value]
+    );
   }
   async keys() {
     await this.promise;
