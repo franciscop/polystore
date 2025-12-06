@@ -1,4 +1,5 @@
 import clients from "./clients/index";
+import { Serializable } from "./types";
 import { createId, parse, unix } from "./utils";
 
 type Options = {
@@ -111,7 +112,10 @@ class Store {
     return false;
   }
 
-  async add(value: Value, options: Options = {}): Promise<string> {
+  async add<T = Serializable>(
+    value: T,
+    options: Options = {},
+  ): Promise<string> {
     await this.promise;
     let expires: number | null = parse(options.expire ?? options.expires);
 
@@ -131,7 +135,11 @@ class Store {
     return this.set(key, value, { expires });
   }
 
-  async set(key: string, value: Value, options: Options = {}): Promise<string> {
+  async set<T = Serializable>(
+    key: string,
+    value: T,
+    options: Options = {},
+  ): Promise<string> {
     await this.promise;
     const id = this.PREFIX + key;
     let expires: number | null = parse(options.expire ?? options.expires);
@@ -153,7 +161,7 @@ class Store {
     return key;
   }
 
-  async get(key: string): Promise<Value | null> {
+  async get<T = Serializable>(key: string): Promise<T | null> {
     await this.promise;
     const id = this.PREFIX + key;
 
@@ -194,8 +202,8 @@ class Store {
     return key;
   }
 
-  async *[Symbol.asyncIterator](): AsyncGenerator<
-    [string, Value],
+  async *[Symbol.asyncIterator]<T = Serializable>(): AsyncGenerator<
+    [string, T],
     void,
     unknown
   > {
@@ -211,18 +219,16 @@ class Store {
     }
   }
 
-  async entries(): Promise<[string, Value][]> {
+  async entries<T = Serializable>(): Promise<[string, T][]> {
     await this.promise;
 
     // Cut the key to size
     const trim = (key: string): string => key.slice(this.PREFIX.length);
 
-    let list: [string, Value][] = [];
+    let list: [string, T][] = [];
     if (this.client.entries) {
       const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(
-        ([key, value]) => [trim(key), value] as [string, Value],
-      );
+      list = entries.map(([key, value]) => [trim(key), value] as [string, T]);
     } else {
       for await (const [key, value] of this.client.iterate(this.PREFIX)) {
         list.push([trim(key), value]);
@@ -236,9 +242,7 @@ class Store {
     // We need to do manual expiration checking
     return list
       .filter(([key, data]) => this.#isFresh(data, key))
-      .map(
-        ([key, data]) => [key, (data as StoreData).value] as [string, Value],
-      );
+      .map(([key, data]) => [key, (data as StoreData).value] as [string, T]);
   }
 
   async keys(): Promise<string[]> {
@@ -254,7 +258,7 @@ class Store {
     return entries.map((e) => e[0]);
   }
 
-  async values(): Promise<Value[]> {
+  async values<T = Serializable>(): Promise<T[]> {
     await this.promise;
 
     if (this.client.values) {
@@ -265,24 +269,24 @@ class Store {
         .map((data) => (data as StoreData).value);
     }
 
-    const entries = await this.entries();
+    const entries = await this.entries<T>();
     return entries.map((e) => e[1]);
   }
 
-  async all(): Promise<Record<string, Value>> {
+  async all<T = Serializable>(): Promise<Record<string, T>> {
     await this.promise;
 
     if (this.client.all) {
       const obj = await this.client.all(this.PREFIX);
       if (!this.PREFIX) return obj;
-      const all: Record<string, Value> = {};
+      const all: Record<string, T> = {};
       for (let key in obj) {
         all[key.slice(this.PREFIX.length)] = obj[key];
       }
       return all;
     }
 
-    const entries = await this.entries();
+    const entries = await this.entries<T>();
     return Object.fromEntries(entries);
   }
 
@@ -320,3 +324,4 @@ class Store {
 }
 
 export default (client?: any): Store => new Store(client);
+export type { Store };

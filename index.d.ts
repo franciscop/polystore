@@ -46,4 +46,4 @@ declare class Store {
 }
 declare const _default: (client?: any) => Store;
 
-export { _default as default };
+export { Store, _default as default };
