@@ -1,4 +1,4 @@
-import type { Options, Serializable } from "../types";
+import type { ClientOptions, Serializable } from "../types";
 import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
@@ -28,7 +28,7 @@ export default class Cookie extends Client {
   // For cookies, an empty value is the same as null, even `""`
   get = (key: string): Serializable => this.#read()[key] || null;
 
-  set = (key: string, data: Serializable, opts: Options): void => {
+  set = (key: string, data: Serializable, opts: ClientOptions): void => {
     const k = encodeURIComponent(key);
     const value = encodeURIComponent(this.encode(data || ""));
     let expires = "";

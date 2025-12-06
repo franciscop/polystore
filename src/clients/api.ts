@@ -1,4 +1,4 @@
-import type { Options, Serializable } from "../types";
+import type { ClientOptions, Serializable } from "../types";
 import Client from "./Client";
 
 // Handle an API endpoint with fetch()
@@ -27,7 +27,11 @@ export default class Api extends Client {
   };
 
   get = (key: string): Promise<Serializable> => this.#api(key);
-  set = async (key: string, value: Serializable, { expires }: Options = {}) => {
+  set = async (
+    key: string,
+    value: Serializable,
+    { expires }: ClientOptions = {},
+  ) => {
     const expiresStr = `?expires=${expires || ""}`;
     await this.#api(key, expiresStr, "PUT", this.encode(value));
   };

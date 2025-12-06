@@ -1,5 +1,9 @@
 export type Options = {
-  expires?: number;
+  expires?: number | null | string;
+};
+
+export type ClientOptions = {
+  expires?: number | null;
 };
 
 export type Serializable =

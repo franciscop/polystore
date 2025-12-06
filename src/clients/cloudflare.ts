@@ -1,4 +1,4 @@
-import { Options, Serializable } from "../types";
+import { ClientOptions, Serializable } from "../types";
 import Client from "./Client";
 
 type CFReply = {
@@ -19,7 +19,11 @@ export default class Cloudflare extends Client {
 
   get = async (key: string): Promise<Serializable> =>
     this.decode(await this.client.get(key));
-  set = (key: string, data: Serializable, opts: Options): Promise<void> => {
+  set = (
+    key: string,
+    data: Serializable,
+    opts: ClientOptions,
+  ): Promise<void> => {
     const expirationTtl = opts.expires ? Math.round(opts.expires) : undefined;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
