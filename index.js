@@ -676,9 +676,7 @@ var Store = class _Store {
     let list = [];
     if (this.client.entries) {
       const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(
-        ([key, value]) => [trim(key), value]
-      );
+      list = entries.map(([key, value]) => [trim(key), value]);
     } else {
       for await (const [key, value] of this.client.iterate(this.PREFIX)) {
         list.push([trim(key), value]);
