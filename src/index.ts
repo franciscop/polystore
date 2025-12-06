@@ -112,7 +112,7 @@ class Store {
     return false;
   }
 
-  async add<T = Serializable>(
+  async add<T extends Serializable>(
     value: T,
     options: Options = {},
   ): Promise<string> {
@@ -135,7 +135,7 @@ class Store {
     return this.set(key, value, { expires });
   }
 
-  async set<T = Serializable>(
+  async set<T extends Serializable>(
     key: string,
     value: T,
     options: Options = {},
@@ -161,7 +161,7 @@ class Store {
     return key;
   }
 
-  async get<T = Serializable>(key: string): Promise<T | null> {
+  async get<T extends Serializable>(key: string): Promise<T | null> {
     await this.promise;
     const id = this.PREFIX + key;
 
@@ -202,7 +202,7 @@ class Store {
     return key;
   }
 
-  async *[Symbol.asyncIterator]<T = Serializable>(): AsyncGenerator<
+  async *[Symbol.asyncIterator]<T extends Serializable>(): AsyncGenerator<
     [string, T],
     void,
     unknown
@@ -242,7 +242,9 @@ class Store {
     // We need to do manual expiration checking
     return list
       .filter(([key, data]) => this.#isFresh(data, key))
-      .map(([key, data]) => [key, (data as StoreData).value] as [string, T]);
+      .map(
+        ([key, data]) => [key, (data as StoreData).value as T] as [string, T],
+      );
   }
 
   async keys(): Promise<string[]> {
@@ -258,7 +260,7 @@ class Store {
     return entries.map((e) => e[0]);
   }
 
-  async values<T = Serializable>(): Promise<T[]> {
+  async values<T extends Serializable>(): Promise<T[]> {
     await this.promise;
 
     if (this.client.values) {
@@ -273,7 +275,7 @@ class Store {
     return entries.map((e) => e[1]);
   }
 
-  async all<T = Serializable>(): Promise<Record<string, T>> {
+  async all<T extends Serializable>(): Promise<Record<string, T>> {
     await this.promise;
 
     if (this.client.all) {
