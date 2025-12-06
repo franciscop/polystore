@@ -1,3 +1,7 @@
+type Serializable = string | number | boolean | null | Serializable[] | {
+    [key: string]: Serializable;
+};
+
 type Options = {
     expires?: number | string | null;
     expire?: number | string | null;
@@ -27,19 +31,19 @@ declare class Store {
     promise: Promise<any> | null;
     client: ClientInterface;
     constructor(clientPromise: any);
-    add(value: Value, options?: Options): Promise<string>;
-    set(key: string, value: Value, options?: Options): Promise<string>;
-    get(key: string): Promise<Value | null>;
+    add<T extends Serializable>(value: T, options?: Options): Promise<string>;
+    set<T extends Serializable>(key: string, value: T, options?: Options): Promise<string>;
+    get<T extends Serializable>(key: string): Promise<T | null>;
     has(key: string): Promise<boolean>;
     del(key: string): Promise<string>;
-    [Symbol.asyncIterator](): AsyncGenerator<[
+    [Symbol.asyncIterator]<T extends Serializable>(): AsyncGenerator<[
         string,
-        Value
+        T
     ], void, unknown>;
-    entries(): Promise<[string, Value][]>;
+    entries<T = Serializable>(): Promise<[string, T][]>;
     keys(): Promise<string[]>;
-    values(): Promise<Value[]>;
-    all(): Promise<Record<string, Value>>;
+    values<T extends Serializable>(): Promise<T[]>;
+    all<T extends Serializable>(): Promise<Record<string, T>>;
     clear(): Promise<void>;
     prefix(prefix?: string): Store;
     close(): Promise<void>;
