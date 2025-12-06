@@ -1,4 +1,4 @@
-import type { Options, Serializable } from "../types.js";
+import type { Options, Serializable } from "../types";
 import Client from "./Client.js";
 
 // Handle an API endpoint with fetch()

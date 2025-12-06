@@ -1,0 +1,6 @@
+[test]
+preload = ["./test/setup.ts"]
+
+# Ignore cloudflare tests (requires cloudflare runtime)
+[[test.ignore]]
+pattern = "test/cloudflare/test/*.spec.ts"
