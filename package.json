@@ -16,12 +16,13 @@
     "index.d.ts"
   ],
   "scripts": {
-    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24",
     "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && gzip-size index.min.js && rm index.min.js",
+    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24",
+    "lint": "npx tsc --noEmit",
     "start": "bun test --watch",
     "test": "bun test",
-    "db": "etcd",
-    "server": "bun ./src/server.ts"
+    "run:db": "etcd",
+    "run:server": "bun ./src/server.ts"
   },
   "keywords": [
     "kv",

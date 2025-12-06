@@ -1,45 +1,91 @@
 import clients from "./clients/index";
-import { Serializable } from "./types";
+import { Options, Serializable } from "./types";
 import { createId, parse, unix } from "./utils";
 
-type Options = {
-  expires?: number | string | null;
-  expire?: number | string | null;
-};
-type Value = any;
-
-interface ClientInterface {
-  EXPIRES?: boolean;
+interface ExpiresInterface {
+  EXPIRES: true;
   promise?: Promise<any>;
   test?: (client: any) => boolean;
-  get(key: string): Promise<Value | null> | Value | null;
-  set(key: string, value: Value, options?: Options): Promise<any> | any;
-  iterate(
+  get<T extends Serializable>(key: string): Promise<T | null> | T | null;
+  set<T extends Serializable>(
+    key: string,
+    value: T,
+    options?: Options,
+  ): Promise<any> | any;
+  iterate<T extends Serializable>(
     prefix: string,
   ):
-    | AsyncGenerator<[string, Value], void, unknown>
-    | Generator<[string, Value], void, unknown>;
-  add?(prefix: string, value: Value, options?: Options): Promise<string>;
+    | AsyncGenerator<[string, T], void, unknown>
+    | Generator<[string, T], void, unknown>;
+  add?<T extends Serializable>(
+    prefix: string,
+    value: T,
+    options?: Options,
+  ): Promise<string>;
   has?(key: string): Promise<boolean> | boolean;
   del?(key: string): Promise<any> | any;
   keys?(prefix: string): Promise<string[]> | string[];
-  values?(prefix: string): Promise<Value[]> | Value[];
-  entries?(prefix: string): Promise<[string, Value][]> | [string, Value][];
-  all?(prefix: string): Promise<Record<string, Value>> | Record<string, Value>;
+  values?<T extends Serializable>(prefix: string): Promise<T[]> | T[];
+  entries?<T extends Serializable>(
+    prefix: string,
+  ): Promise<[string, T][]> | [string, T][];
+  all?<T extends Serializable>(
+    prefix: string,
+  ): Promise<Record<string, T>> | Record<string, T>;
   clear?(prefix: string): Promise<any> | any;
   clearAll?(): Promise<any> | any;
   close?(): Promise<any> | any;
 }
 
-interface StoreData {
-  value: Value;
+type StoreData<T extends Serializable = Serializable> = {
+  value: T;
   expires: number | null;
+};
+interface NonExpiresInterface {
+  EXPIRES?: false;
+  promise?: Promise<any>;
+  test?: (client: any) => boolean;
+  get<T extends Serializable>(
+    key: string,
+  ): Promise<StoreData<T> | null> | StoreData<T> | null;
+  set<T extends Serializable>(
+    key: string,
+    value: StoreData<T> | null,
+    options?: Options,
+  ): Promise<any> | any;
+  iterate<T extends Serializable>(
+    prefix: string,
+  ):
+    | AsyncGenerator<[string, StoreData<T>], void, unknown>
+    | Generator<[string, StoreData<T>], void, unknown>;
+  add?<T extends Serializable>(
+    prefix: string,
+    value: StoreData<T>,
+    options?: Options,
+  ): Promise<string>;
+  has?(key: string): Promise<boolean> | boolean;
+  del?(key: string): Promise<any> | any;
+  keys?(prefix: string): Promise<string[]> | string[];
+  values?<T extends Serializable>(
+    prefix: string,
+  ): Promise<StoreData<T>[]> | StoreData<T>[];
+  entries?<T extends Serializable>(
+    prefix: string,
+  ): Promise<[string, StoreData<T>][]> | [string, StoreData<T>][];
+  all?<T extends Serializable>(
+    prefix: string,
+  ): Promise<Record<string, StoreData<T>>> | Record<string, StoreData<T>>;
+  clear?(prefix: string): Promise<any> | any;
+  clearAll?(): Promise<any> | any;
+  close?(): Promise<any> | any;
 }
+
+type Client = ExpiresInterface | NonExpiresInterface;
 
 class Store {
   PREFIX = "";
   promise: Promise<any> | null;
-  client!: ClientInterface;
+  client!: Client;
 
   constructor(clientPromise: any) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
@@ -51,7 +97,7 @@ class Store {
     });
   }
 
-  #find(store: any): ClientInterface {
+  #find(store: any): Client {
     // Already a fully compliant KV store
     if (store instanceof Store) return store.client;
 
@@ -59,7 +105,10 @@ class Store {
     // wrap it with the client wrapper
     for (let client of Object.values(clients)) {
       if (client.test && client.test(store)) {
-        return new client(store);
+        // Some TS BS
+        const c = new client(store);
+        if (c.EXPIRES) return c as ExpiresInterface;
+        return c as NonExpiresInterface;
       }
     }
 
@@ -75,7 +124,7 @@ class Store {
     return store;
   }
 
-  #validate(client: ClientInterface): void {
+  #validate(client: Client): void {
     if (!client) throw new Error("No client received");
     if (!client.set || !client.get || !client.iterate) {
       throw new Error("Client should have .get(), .set() and .iterate()");
@@ -117,7 +166,7 @@ class Store {
     options: Options = {},
   ): Promise<string> {
     await this.promise;
-    let expires: number | null = parse(options.expire ?? options.expires);
+    let expires: number | null = parse(options.expires);
 
     // Use the underlying one from the client if found
     if (this.client.add) {
@@ -142,7 +191,7 @@ class Store {
   ): Promise<string> {
     await this.promise;
     const id = this.PREFIX + key;
-    let expires: number | null = parse(options.expire ?? options.expires);
+    let expires: number | null = parse(options.expires);
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
@@ -151,7 +200,7 @@ class Store {
 
     // The client manages the expiration, so let it manage it
     if (this.client.EXPIRES) {
-      await this.client.set(id, value, { expires });
+      await this.client.set<T>(id, value, { expires });
       return key;
     }
 
@@ -161,21 +210,23 @@ class Store {
     return key;
   }
 
-  async get<T extends Serializable>(key: string): Promise<T | null> {
+  async get<T extends Serializable = Serializable>(
+    key: string,
+  ): Promise<T | null> {
     await this.promise;
     const id = this.PREFIX + key;
 
-    const data = (await this.client.get(id)) ?? null;
+    const data = (await this.client.get<T>(id)) ?? null;
 
     // No value; nothing to do/check
     if (data === null) return null;
 
     // The client already managed expiration and there's STILL some data,
     // so we can assume it's the raw user data
-    if (this.client.EXPIRES) return data;
+    if (this.client.EXPIRES) return data as T;
 
     if (!this.#isFresh(data, key)) return null;
-    return data.value;
+    return data.value as T;
   }
 
   async has(key: string): Promise<boolean> {
@@ -198,53 +249,74 @@ class Store {
       return key;
     }
 
-    await this.client.set(id, null, { expires: 0 });
+    if (this.client.EXPIRES) {
+      await this.client.set(id, null, { expires: 0 });
+    } else {
+      await this.client.set(id, null);
+    }
+
     return key;
   }
 
-  async *[Symbol.asyncIterator]<T extends Serializable>(): AsyncGenerator<
-    [string, T],
-    void,
-    unknown
-  > {
+  async *[Symbol.asyncIterator]<
+    T extends Serializable = Serializable,
+  >(): AsyncGenerator<[string, T], void, unknown> {
     await this.promise;
 
-    for await (const [name, data] of this.client.iterate(this.PREFIX)) {
-      const key = name.slice(this.PREFIX.length);
-      if (this.client.EXPIRES) {
+    if (this.client.EXPIRES) {
+      for await (const [name, data] of this.client.iterate<T>(this.PREFIX)) {
+        const key = name.slice(this.PREFIX.length);
         yield [key, data];
-      } else if (this.#isFresh(data, key)) {
+      }
+      return;
+    }
+
+    for await (const [name, data] of this.client.iterate<T>(this.PREFIX)) {
+      const key = name.slice(this.PREFIX.length);
+      if (this.#isFresh(data, key)) {
         yield [key, data.value];
       }
     }
   }
 
-  async entries<T = Serializable>(): Promise<[string, T][]> {
+  async entries<T extends Serializable = Serializable>(): Promise<
+    [string, T][]
+  > {
     await this.promise;
-
-    // Cut the key to size
     const trim = (key: string): string => key.slice(this.PREFIX.length);
 
-    let list: [string, T][] = [];
+    let list: Array<[string, T] | [string, StoreData<T>]> = [];
+
     if (this.client.entries) {
       const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(([key, value]) => [trim(key), value] as [string, T]);
+      if (this.client.EXPIRES) {
+        list = (entries as [string, T][]).map(([k, v]) => [trim(k), v]);
+      } else {
+        list = (entries as [string, StoreData<T>][]).map(([k, v]) => [
+          trim(k),
+          v,
+        ]);
+      }
     } else {
-      for await (const [key, value] of this.client.iterate(this.PREFIX)) {
-        list.push([trim(key), value]);
+      for await (const pair of this.client.iterate(this.PREFIX)) {
+        if (this.client.EXPIRES) {
+          const [k, v] = pair as [string, T];
+          list.push([trim(k), v]);
+        } else {
+          const [k, v] = pair as [string, StoreData<T>];
+          list.push([trim(k), v]);
+        }
       }
     }
 
-    // The client already manages the expiration, so we can assume
-    // that at this point, all entries are not-expired
-    if (this.client.EXPIRES) return list;
+    if (this.client.EXPIRES) return list as [string, T][];
 
-    // We need to do manual expiration checking
-    return list
-      .filter(([key, data]) => this.#isFresh(data, key))
-      .map(
-        ([key, data]) => [key, (data as StoreData).value as T] as [string, T],
-      );
+    const out: [string, T][] = [];
+    for (const [key, data] of list) {
+      if (this.#isFresh(data, key))
+        out.push([key, (data as StoreData<T>).value]);
+    }
+    return out;
   }
 
   async keys(): Promise<string[]> {
@@ -264,11 +336,11 @@ class Store {
     await this.promise;
 
     if (this.client.values) {
-      const list = await this.client.values(this.PREFIX);
-      if (this.client.EXPIRES) return list;
+      if (this.client.EXPIRES) return this.client.values<T>(this.PREFIX);
+      const list = await this.client.values<T>(this.PREFIX);
       return list
         .filter((data) => this.#isFresh(data))
-        .map((data) => (data as StoreData).value);
+        .map((data) => data.value);
     }
 
     const entries = await this.entries<T>();
@@ -276,18 +348,6 @@ class Store {
   }
 
   async all<T extends Serializable>(): Promise<Record<string, T>> {
-    await this.promise;
-
-    if (this.client.all) {
-      const obj = await this.client.all(this.PREFIX);
-      if (!this.PREFIX) return obj;
-      const all: Record<string, T> = {};
-      for (let key in obj) {
-        all[key.slice(this.PREFIX.length)] = obj[key];
-      }
-      return all;
-    }
-
     const entries = await this.entries<T>();
     return Object.fromEntries(entries);
   }

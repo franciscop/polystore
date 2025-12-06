@@ -11,53 +11,10 @@ import {
 
 import "cross-fetch/polyfill";
 import "dotenv/config";
-import { EdgeKVNamespace as KVNamespace } from "edge-mock";
-import { Etcd3 } from "etcd3";
-import { Level } from "level";
-import localForage from "localforage";
-import { createClient } from "redis";
 
+import type { Store } from "../src/index";
 import kv from "../src/index";
-// import customCloudflare from "./customCloudflare.js";
-import customFull from "./customFull";
-import customSimple from "./customSimple";
-
-type Store = ReturnType<typeof kv>;
-
-const stores: Record<string, Store> = {};
-stores["kv(new Map())"] = kv(new Map());
-stores["kv(localStorage)"] = kv(localStorage);
-stores["kv(sessionStorage)"] = kv(sessionStorage);
-stores["kv(localForage)"] = kv(localForage);
-const url = "http://localhost:3000/";
-if (
-  await fetch(url)
-    .then((res) => res.status === 200)
-    .catch(() => false)
-) {
-  stores[`kv(${url})`] = kv(url);
-}
-const path = `file://${process.cwd()}/data/kv.json`;
-stores[`kv(new URL("${path}"))`] = kv(new URL(path));
-const path2 = `file://${process.cwd()}/data/kv.json`;
-stores[`kv("${path2}")`] = kv(path2);
-const path3 = `file://${process.cwd()}/data/folder/`;
-stores[`kv(new URL("${path3}"))`] = kv(new URL(path3));
-const path4 = `file://${process.cwd()}/data/folder/`;
-stores[`kv("${path4}")`] = kv(path4);
-stores[`kv("cookie")`] = kv("cookie");
-stores["kv(new KVNamespace())"] = kv(new KVNamespace());
-stores[`kv(new Level("data"))`] = kv(new Level("data"));
-if (process.env.REDIS) {
-  stores["kv(redis)"] = kv(createClient().connect());
-}
-if (process.env.ETCD) {
-  // Note: need to add to .env "ETCD=true" and run `npm run db` in the terminal
-  stores["kv(new Etcd3())"] = kv(new Etcd3());
-}
-stores["kv(customSimple)"] = kv(customSimple);
-stores["kv(customFull)"] = kv(customFull);
-// stores["kv(customCloudflare)"] = kv(customCloudflare);
+import stores from "./stores";
 
 const doNotSupportMs = [
   `kv("cookie")`,
@@ -84,21 +41,21 @@ global.console = {
 
 describe("potato", () => {
   it("a potato is not a valid store", async () => {
-    await expect(kv("potato").get("any")).rejects.toThrow();
+    expect(kv("potato").get("any")).rejects.toThrow();
   });
 
   it("no client is not a valid store", async () => {
-    await expect(kv().get("any")).rejects.toThrow("No client received");
+    expect(kv().get("any")).rejects.toThrow("No client received");
   });
 
   it("an empty object is not a valid store", async () => {
-    await expect(kv({}).get("any")).rejects.toThrow(
+    expect(kv({}).get("any")).rejects.toThrow(
       "Client should have .get(), .set() and .iterate()",
     );
   });
 
   it("cannot handle no EXPIRES + has", async () => {
-    await expect(
+    expect(
       kv(
         class extends Base {
           has(): void {}
@@ -110,7 +67,7 @@ describe("potato", () => {
   });
 
   it("cannot handle no EXPIRES + keys", async () => {
-    await expect(
+    expect(
       kv(
         class extends Base {
           keys(): void {}
@@ -122,7 +79,7 @@ describe("potato", () => {
   });
 
   it("cannot handle no EXPIRES + values", async () => {
-    await expect(
+    expect(
       kv(
         class extends Base {
           values(): void {}
@@ -241,7 +198,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
   it("can get the entries", async () => {
     await store.set("a", "b");
     await store.set("c", "d");
-    const entries = await store.entries();
+    const entries = await store.entries<string>();
     expect(entries.sort((a, b) => a[0].localeCompare(b[0]))).toEqual([
       ["a", "b"],
       ["c", "d"],
