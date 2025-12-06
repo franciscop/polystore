@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import Client from "./Client";
 
 // Use a redis client to back up the store
 export default class Redis extends Client {
@@ -6,16 +6,23 @@ export default class Redis extends Client {
   EXPIRES = true;
 
   // Check if this is the right class for the given client
-  static test = (client: any): boolean => client && client.pSubscribe && client.sSubscribe;
+  static test = (client: any): boolean =>
+    client && client.pSubscribe && client.sSubscribe;
 
-  get = async (key: string): Promise<any> => this.decode(await this.client.get(key));
-  set = async (key: string, value: any, { expires }: { expires?: number | null } = {}): Promise<any> => {
+  get = async (key: string): Promise<any> =>
+    this.decode(await this.client.get(key));
+  set = async (
+    key: string,
+    value: any,
+    { expires }: { expires?: number | null } = {},
+  ): Promise<any> => {
     const EX = expires ? Math.round(expires) : undefined;
     return this.client.set(key, this.encode(value), { EX });
   };
   del = (key: string): Promise<number> => this.client.del(key);
 
-  has = async (key: string): Promise<boolean> => Boolean(await this.client.exists(key));
+  has = async (key: string): Promise<boolean> =>
+    Boolean(await this.client.exists(key));
 
   // Go through each of the [key, value] in the set
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {

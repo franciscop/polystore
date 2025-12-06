@@ -1,16 +1,17 @@
-import api from "./api.js";
-import cloudflare from "./cloudflare.js";
-import cookie from "./cookie.js";
-import etcd from "./etcd.js";
-import file from "./file.js";
-import folder from "./folder.js";
-import forage from "./forage.js";
-import level from "./level.js";
-import memory from "./memory.js";
-import postgres from "./postgres.js";
-import prisma from "./prisma.js";
-import redis from "./redis.js";
-import storage from "./storage.js";
+import api from "./api";
+import cloudflare from "./cloudflare";
+import cookie from "./cookie";
+import etcd from "./etcd";
+import file from "./file";
+import folder from "./folder";
+import forage from "./forage";
+import level from "./level";
+import memory from "./memory";
+// import postgres from "./postgres";
+import prisma from "./prisma";
+import redis from "./redis";
+// import sqlite from "./sqlite";
+import storage from "./storage";
 
 export default {
   api,
@@ -22,8 +23,9 @@ export default {
   forage,
   level,
   memory,
-  postgres,
+  // postgres,
   prisma,
   redis,
   storage,
+  // sqlite,
 };

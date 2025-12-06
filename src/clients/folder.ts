@@ -1,5 +1,5 @@
 import type { promises as FsPromises } from "node:fs";
-import Client from "./Client.js";
+import Client from "./Client";
 
 const noFileOk = (error: any): null => {
   if (error.code === "ENOENT") return null;
@@ -24,7 +24,9 @@ export default class Folder extends Client {
   // Make sure the folder already exists, so attempt to create it
   // It fails if it already exists, hence the catch case
   promise = (async () => {
-    this.fsp = (await import("node:fs/promises")) as unknown as typeof FsPromises;
+    this.fsp = (await import(
+      "node:fs/promises"
+    )) as unknown as typeof FsPromises;
     this.folder = (this.client?.href || this.client).replace(/^file:\/\//, "");
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
   })();
@@ -39,7 +41,8 @@ export default class Folder extends Client {
   set = (key: string, value: any): Promise<void> => {
     return this.fsp.writeFile(this.file(key), this.encode(value), "utf8");
   };
-  del = (key: string): Promise<void | null> => this.fsp.unlink(this.file(key)).catch(noFileOk);
+  del = (key: string): Promise<void | null> =>
+    this.fsp.unlink(this.file(key)).catch(noFileOk);
 
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
     const all = await this.fsp.readdir(this.folder);

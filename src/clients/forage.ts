@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import Client from "./Client";
 
 // Use localForage for managing the KV
 export default class Forage extends Client {
@@ -7,7 +7,8 @@ export default class Forage extends Client {
     client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
 
   get = (key: string): Promise<any> => this.client.getItem(key);
-  set = (key: string, value: any): Promise<any> => this.client.setItem(key, value);
+  set = (key: string, value: any): Promise<any> =>
+    this.client.setItem(key, value);
   del = (key: string): Promise<void> => this.client.removeItem(key);
 
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {

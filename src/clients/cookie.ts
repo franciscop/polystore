@@ -1,5 +1,5 @@
-import type { Options, Serializable } from "../types.js";
-import Client from "./Client.js";
+import type { Options, Serializable } from "../types";
+import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class Cookie extends Client {

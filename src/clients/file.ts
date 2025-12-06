@@ -1,5 +1,5 @@
 import type { promises as FsPromises } from "node:fs";
-import Client from "./Client.js";
+import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class File extends Client {

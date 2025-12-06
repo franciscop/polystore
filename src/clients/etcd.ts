@@ -1,5 +1,5 @@
-import { Serializable } from "../types.js";
-import Client from "./Client.js";
+import { Serializable } from "../types";
+import Client from "./Client";
 
 // Use a redis client to back up the store
 export default class Etcd extends Client {

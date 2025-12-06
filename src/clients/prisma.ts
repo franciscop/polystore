@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import Client from "./Client";
 
 // Use a Prisma table model with 'id', 'value', and optionally 'expiresAt' columns
 // Pass the table directly: kv(prisma.store)
@@ -21,7 +21,11 @@ export default class Prisma extends Client {
     return this.decode(record.value);
   };
 
-  set = async (id: string, data: any, { expires }: { expires?: number | null } = {}): Promise<void> => {
+  set = async (
+    id: string,
+    data: any,
+    { expires }: { expires?: number | null } = {},
+  ): Promise<void> => {
     const value = this.encode(data);
     const expiresAt = expires ? new Date(Date.now() + expires * 1000) : null;
     await this.client.upsert({

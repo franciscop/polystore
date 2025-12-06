@@ -1,7 +1,7 @@
 // This is an example server implementation of the HTTP library!
 import type { IncomingMessage, ServerResponse } from "node:http";
 import http from "node:http";
-import kv from "./index.js";
+import kv from "./index";
 
 // Add/remove the key whether you want the API to be behind a key
 const key: string | null = null;
@@ -61,7 +61,10 @@ async function fetch({ method, url, body }: FetchRequest): Promise<Response> {
 }
 
 // http or express server-like handler:
-async function server(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function server(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   // Secure it behind a key (optional)
   if (key && (req as any).headers.get("x-api-key") !== key) {
     res.writeHead(401);
@@ -71,7 +74,7 @@ async function server(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
   const url = new URL(req.url || "/", "http://localhost:3000/").href;
   const reply = await fetch({ method: req.method || "GET", url });
-  res.writeHead(reply.status, reply.headers as any || {});
+  res.writeHead(reply.status, (reply.headers as any) || {});
   if (reply.body) {
     const reader = reply.body.getReader();
     while (true) {

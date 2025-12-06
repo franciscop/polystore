@@ -16,7 +16,7 @@
     "index.d.ts"
   ],
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --packages=external --format=esm --outfile=index.js",
+    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24",
     "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && gzip-size index.min.js && rm index.min.js",
     "start": "bun test --watch",
     "test": "bun test",
@@ -36,6 +36,7 @@
     "@deno/kv": "^0.8.1",
     "@types/bun": "^1.3.3",
     "@types/jsdom": "^27.0.0",
+    "better-sqlite3": "^12.5.0",
     "check-dts": "^0.8.0",
     "cross-fetch": "^4.0.0",
     "dotenv": "^16.3.1",
@@ -47,7 +48,7 @@
     "level": "^8.0.1",
     "localforage": "^1.10.0",
     "redis": "^4.6.10",
-    "typescript": "^5.9.3"
+    "tsup": "^8.5.1"
   },
   "documentation": {
     "title": "🏬 Polystore - A universal library for standardizing any KV-store",
@@ -59,9 +60,5 @@
       "Get help": "https://superpeer.com/francisco/-/javascript-and-react-help",
       "Github": "https://github.com/franciscop/polystore"
     }
-  },
-  "overrides-comment": "https://github.com/inikulin/parse5/issues/1481",
-  "overrides": {
-    "parse5": "<7.3.0"
   }
 }
