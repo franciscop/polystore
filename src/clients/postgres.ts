@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import Client from "./Client";
 
 // Use a pg Pool or Client with a table containing 'id', 'value', and 'expiresAt' columns
 // Pass the pool directly: kv(pool)
@@ -10,7 +10,10 @@ export default class Postgres extends Client {
   table = "kv";
 
   // Check if this is the right class for the given client (pg Pool or Client)
-  static test = (client: any): boolean => client && client.query;
+  static test = (client: any): boolean => {
+    // .filename is for sqlite
+    return client && client.query && !client.filename;
+  };
 
   // Override prefix to use different tables instead of string prefixes
   prefix(prefix: string): Postgres {
@@ -46,7 +49,11 @@ export default class Postgres extends Client {
     return this.decode(record.value);
   };
 
-  set = async (id: string, data: any, { expires }: { expires?: number | null } = {}): Promise<void> => {
+  set = async (
+    id: string,
+    data: any,
+    { expires }: { expires?: number | null } = {},
+  ): Promise<void> => {
     const value = this.encode(data);
     const expiresAt = expires ? new Date(Date.now() + expires * 1000) : null;
     await this.client.query(

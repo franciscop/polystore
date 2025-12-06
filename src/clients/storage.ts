@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class WebStorage extends Client {

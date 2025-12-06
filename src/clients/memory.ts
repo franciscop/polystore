@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import Client from "./Client";
 
 // Use a Map() as an in-memory client
 export default class Memory extends Client {
@@ -6,7 +6,8 @@ export default class Memory extends Client {
   static test = (client: any): boolean => client instanceof Map;
 
   get = (key: string): any => this.client.get(key) ?? null;
-  set = (key: string, data: any): Map<string, any> => this.client.set(key, data);
+  set = (key: string, data: any): Map<string, any> =>
+    this.client.set(key, data);
   del = (key: string): boolean => this.client.delete(key);
 
   *iterate(prefix = ""): Generator<[string, any], void, unknown> {

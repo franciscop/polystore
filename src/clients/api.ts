@@ -1,5 +1,5 @@
 import type { Options, Serializable } from "../types";
-import Client from "./Client.js";
+import Client from "./Client";
 
 // Handle an API endpoint with fetch()
 export default class Api extends Client {
@@ -27,9 +27,13 @@ export default class Api extends Client {
   };
 
   get = (key: string): Promise<Serializable> => this.#api(key);
-  set = (key: string, value: Serializable, opts: Options = {}): Promise<void> =>
-    this.#api(key, `?expires=${opts.expires || ""}`, "PUT", this.encode(value));
-  del = (key: string): Promise<void> => this.#api(key, "", "DELETE");
+  set = async (key: string, value: Serializable, { expires }: Options = {}) => {
+    const expiresStr = `?expires=${expires || ""}`;
+    await this.#api(key, expiresStr, "PUT", this.encode(value));
+  };
+  del = async (key: string) => {
+    await this.#api(key, "", "DELETE");
+  };
 
   async *iterate(prefix = ""): AsyncGenerator<[string, Serializable]> {
     const data = await this.#api("", `?prefix=${encodeURIComponent(prefix)}`);

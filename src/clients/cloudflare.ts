@@ -1,5 +1,5 @@
-import { Options, Serializable } from "../types.js";
-import Client from "./Client.js";
+import { Options, Serializable } from "../types";
+import Client from "./Client";
 
 type CFReply = {
   keys: { name: string }[];

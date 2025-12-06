@@ -1,7 +1,10 @@
-import clients from "./clients/index.js";
-import { createId, parse, unix } from "./utils.js";
+import clients from "./clients/index";
+import { createId, parse, unix } from "./utils";
 
-type Options = { expires?: number | string | null; expire?: number | string | null };
+type Options = {
+  expires?: number | string | null;
+  expire?: number | string | null;
+};
 type Value = any;
 
 interface ClientInterface {
@@ -10,7 +13,11 @@ interface ClientInterface {
   test?: (client: any) => boolean;
   get(key: string): Promise<Value | null> | Value | null;
   set(key: string, value: Value, options?: Options): Promise<any> | any;
-  iterate(prefix: string): AsyncGenerator<[string, Value], void, unknown> | Generator<[string, Value], void, unknown>;
+  iterate(
+    prefix: string,
+  ):
+    | AsyncGenerator<[string, Value], void, unknown>
+    | Generator<[string, Value], void, unknown>;
   add?(prefix: string, value: Value, options?: Options): Promise<string>;
   has?(key: string): Promise<boolean> | boolean;
   del?(key: string): Promise<any> | any;
@@ -187,7 +194,11 @@ class Store {
     return key;
   }
 
-  async *[Symbol.asyncIterator](): AsyncGenerator<[string, Value], void, unknown> {
+  async *[Symbol.asyncIterator](): AsyncGenerator<
+    [string, Value],
+    void,
+    unknown
+  > {
     await this.promise;
 
     for await (const [name, data] of this.client.iterate(this.PREFIX)) {
@@ -209,7 +220,9 @@ class Store {
     let list: [string, Value][] = [];
     if (this.client.entries) {
       const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(([key, value]) => [trim(key), value] as [string, Value]);
+      list = entries.map(
+        ([key, value]) => [trim(key), value] as [string, Value],
+      );
     } else {
       for await (const [key, value] of this.client.iterate(this.PREFIX)) {
         list.push([trim(key), value]);
@@ -223,7 +236,9 @@ class Store {
     // We need to do manual expiration checking
     return list
       .filter(([key, data]) => this.#isFresh(data, key))
-      .map(([key, data]) => [key, (data as StoreData).value] as [string, Value]);
+      .map(
+        ([key, data]) => [key, (data as StoreData).value] as [string, Value],
+      );
   }
 
   async keys(): Promise<string[]> {
