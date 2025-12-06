@@ -32,7 +32,10 @@ declare class Store {
     get(key: string): Promise<Value | null>;
     has(key: string): Promise<boolean>;
     del(key: string): Promise<string>;
-    [Symbol.asyncIterator](): AsyncGenerator<[string, Value], void, unknown>;
+    [Symbol.asyncIterator](): AsyncGenerator<[
+        string,
+        Value
+    ], void, unknown>;
     entries(): Promise<[string, Value][]>;
     keys(): Promise<string[]>;
     values(): Promise<Value[]>;
