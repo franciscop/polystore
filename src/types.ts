@@ -1,5 +1,5 @@
 export type Options = {
-  expires?: number | string;
+  expires?: number;
 };
 
 export type Serializable =
