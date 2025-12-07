@@ -1,5 +1,6 @@
 // src/clients/Client.ts
 var Client = class {
+  EXPIRES;
   client;
   encode = (val) => JSON.stringify(val, null, 2);
   decode = (val) => val ? JSON.parse(val) : null;
@@ -582,13 +583,11 @@ var Store = class _Store {
     if (!client.set || !client.get || !client.iterate) {
       throw new Error("Client should have .get(), .set() and .iterate()");
     }
-    if (!client.EXPIRES) {
-      for (let method of ["has", "keys", "values"]) {
-        if (client[method]) {
-          throw new Error(
-            `You can only define client.${method}() when the client manages the expiration.`
-          );
-        }
+    if (client.EXPIRES) return;
+    for (let method of ["has", "keys", "values"]) {
+      if (client[method]) {
+        const msg = `You can only define client.${method}() when the client manages the expiration.`;
+        throw new Error(msg);
       }
     }
   }
@@ -605,7 +604,7 @@ var Store = class _Store {
   }
   async add(value, options = {}) {
     await this.promise;
-    let expires = parse(options.expire ?? options.expires);
+    let expires = parse(options.expires);
     if (this.client.add) {
       if (this.client.EXPIRES) {
         return await this.client.add(this.PREFIX, value, { expires });
@@ -620,7 +619,7 @@ var Store = class _Store {
   async set(key, value, options = {}) {
     await this.promise;
     const id = this.PREFIX + key;
-    let expires = parse(options.expire ?? options.expires);
+    let expires = parse(options.expires);
     if (value === null || typeof expires === "number" && expires <= 0) {
       return this.del(id);
     }
@@ -656,16 +655,25 @@ var Store = class _Store {
       await this.client.del(id);
       return key;
     }
-    await this.client.set(id, null, { expires: 0 });
+    if (this.client.EXPIRES) {
+      await this.client.set(id, null, { expires: 0 });
+    } else {
+      await this.client.set(id, null);
+    }
     return key;
   }
   async *[Symbol.asyncIterator]() {
     await this.promise;
+    if (this.client.EXPIRES) {
+      for await (const [name, data] of this.client.iterate(this.PREFIX)) {
+        const key = name.slice(this.PREFIX.length);
+        yield [key, data];
+      }
+      return;
+    }
     for await (const [name, data] of this.client.iterate(this.PREFIX)) {
       const key = name.slice(this.PREFIX.length);
-      if (this.client.EXPIRES) {
-        yield [key, data];
-      } else if (this.#isFresh(data, key)) {
+      if (this.#isFresh(data, key)) {
         yield [key, data.value];
       }
     }
@@ -673,19 +681,30 @@ var Store = class _Store {
   async entries() {
     await this.promise;
     const trim = (key) => key.slice(this.PREFIX.length);
-    let list = [];
     if (this.client.entries) {
-      const entries = await this.client.entries(this.PREFIX);
-      list = entries.map(([key, value]) => [trim(key), value]);
-    } else {
-      for await (const [key, value] of this.client.iterate(this.PREFIX)) {
-        list.push([trim(key), value]);
+      if (this.client.EXPIRES) {
+        const entries = await this.client.entries(this.PREFIX);
+        return entries.map(([k, v]) => [trim(k), v]);
+      } else {
+        const entries = await this.client.entries(this.PREFIX);
+        return entries.map(([k, v]) => [trim(k), v]).filter(([key, data]) => this.#isFresh(data, key)).map(([key, data]) => [key, data.value]);
       }
     }
-    if (this.client.EXPIRES) return list;
-    return list.filter(([key, data]) => this.#isFresh(data, key)).map(
-      ([key, data]) => [key, data.value]
-    );
+    if (this.client.EXPIRES) {
+      const list = [];
+      for await (const [k, v] of this.client.iterate(this.PREFIX)) {
+        list.push([trim(k), v]);
+      }
+      return list;
+    } else {
+      const list = [];
+      for await (const [k, data] of this.client.iterate(this.PREFIX)) {
+        if (this.#isFresh(data, trim(k))) {
+          list.push([trim(k), data.value]);
+        }
+      }
+      return list;
+    }
   }
   async keys() {
     await this.promise;
@@ -700,24 +719,14 @@ var Store = class _Store {
   async values() {
     await this.promise;
     if (this.client.values) {
+      if (this.client.EXPIRES) return this.client.values(this.PREFIX);
       const list = await this.client.values(this.PREFIX);
-      if (this.client.EXPIRES) return list;
       return list.filter((data) => this.#isFresh(data)).map((data) => data.value);
     }
     const entries = await this.entries();
     return entries.map((e) => e[1]);
   }
   async all() {
-    await this.promise;
-    if (this.client.all) {
-      const obj = await this.client.all(this.PREFIX);
-      if (!this.PREFIX) return obj;
-      const all = {};
-      for (let key in obj) {
-        all[key.slice(this.PREFIX.length)] = obj[key];
-      }
-      return all;
-    }
     const entries = await this.entries();
     return Object.fromEntries(entries);
   }
