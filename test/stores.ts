@@ -4,7 +4,7 @@ import { Level } from "level";
 import localForage from "localforage";
 import { createClient } from "redis";
 
-import kv from "../src/index";
+import kv, { Store } from "../src/index";
 // import customCloudflare from "./customCloudflare.js";
 import customFull from "./customFull";
 import customSimple from "./customSimple";
