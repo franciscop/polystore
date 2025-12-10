@@ -30,8 +30,9 @@ export default class Redis extends Client {
     for await (const key of this.client.scanIterator({ MATCH })) {
       const value = await this.get(key);
       // By the time this specific value is read, it could be gone!
-      if (!value) continue;
-      yield [key, value];
+      if (value !== null && value !== undefined) {
+        yield [key, value];
+      }
     }
   }
 

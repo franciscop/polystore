@@ -49,8 +49,12 @@ export default class Folder extends Client {
     const keys = all.filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
     for (const name of keys) {
       const key = name.slice(0, -".json".length);
-      const data = await this.get(key);
-      yield [key, data];
+      try {
+        const data = await this.get(key);
+        yield [key, data];
+      } catch {
+        continue; // skip unreadable files
+      }
     }
   }
 }

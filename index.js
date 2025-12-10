@@ -16,19 +16,18 @@ var Api = class extends Client {
   static test = (client) => typeof client === "string" && /^https?:\/\//.test(client);
   #api = async (key, opts = "", method = "GET", body) => {
     const url = `${this.client.replace(/\/$/, "")}/${encodeURIComponent(key)}${opts}`;
-    const headers = { accept: "application/json" };
-    if (body) headers["content-type"] = "application/json";
+    const headers = {
+      accept: "application/json",
+      "content-type": "application/json"
+    };
     const res = await fetch(url, { method, headers, body });
     if (!res.ok) return null;
-    if (res.headers.get("content-type")?.includes("application/json")) {
-      return res.json();
-    }
-    return res.text();
+    return this.decode(await res.text());
   };
   get = (key) => this.#api(key);
   set = async (key, value, { expires } = {}) => {
-    const expiresStr = `?expires=${expires || ""}`;
-    await this.#api(key, expiresStr, "PUT", this.encode(value));
+    const exp = typeof expires === "number" ? `?expires=${expires}` : "";
+    await this.#api(key, exp, "PUT", this.encode(value));
   };
   del = async (key) => {
     await this.#api(key, "", "DELETE");
@@ -36,14 +35,16 @@ var Api = class extends Client {
   async *iterate(prefix = "") {
     const data = await this.#api("", `?prefix=${encodeURIComponent(prefix)}`);
     for (let [key, value] of Object.entries(data || {})) {
-      yield [prefix + key, value];
+      if (value !== null && value !== void 0) {
+        yield [prefix + key, value];
+      }
     }
   }
 };
 
 // src/clients/cloudflare.ts
 var Cloudflare = class extends Client {
-  // Indicate that the file handler does NOT handle expirations
+  // It handles expirations natively
   EXPIRES = true;
   // Check whether the given store is a FILE-type
   static test = (client) => client?.constructor?.name === "KvNamespace" || client?.constructor?.name === "EdgeKVNamespace";
@@ -65,7 +66,7 @@ var Cloudflare = class extends Client {
       const keys = raw.keys.map((k) => k.name);
       for (let key of keys) {
         const value = await this.get(key);
-        if (value) yield [key, value];
+        if (value !== null && value !== void 0) yield [key, value];
       }
       cursor = raw.list_complete ? void 0 : raw.cursor;
     } while (cursor);
@@ -89,10 +90,12 @@ var Cloudflare = class extends Client {
 
 // src/clients/cookie.ts
 var Cookie = class extends Client {
-  // Indicate if this client handles expirations (true = it does)
+  // It handles expirations natively
   EXPIRES = true;
   // Check if this is the right class for the given client
-  static test = (client) => client === "cookie" || client === "cookies";
+  static test = (client) => {
+    return client === "cookie" || client === "cookies";
+  };
   // Group methods
   #read = () => {
     const all = {};
@@ -100,7 +103,7 @@ var Cookie = class extends Client {
       try {
         const [rawKey, rawValue] = entry.split("=");
         const key = decodeURIComponent(rawKey.trim());
-        const value = JSON.parse(decodeURIComponent(rawValue.trim()));
+        const value = this.decode(decodeURIComponent(rawValue.trim()));
         all[key] = value;
       } catch (error) {
       }
@@ -108,16 +111,19 @@ var Cookie = class extends Client {
     return all;
   };
   // For cookies, an empty value is the same as null, even `""`
-  get = (key) => this.#read()[key] || null;
-  set = (key, data, opts) => {
+  get = (key) => {
+    const all = this.#read();
+    return key in all ? all[key] : null;
+  };
+  set = (key, data, { expires }) => {
     const k = encodeURIComponent(key);
-    const value = encodeURIComponent(this.encode(data || ""));
-    let expires = "";
-    if (typeof opts.expires === "number") {
-      const time = new Date(Date.now() + opts.expires * 1e3);
-      expires = `; expires=${time.toUTCString()}`;
+    const value = encodeURIComponent(this.encode(data ?? ""));
+    let exp = "";
+    if (typeof expires === "number") {
+      const when = expires <= 0 ? 0 : Date.now() + expires * 1e3;
+      exp = `; expires=${new Date(when).toUTCString()}`;
     }
-    document.cookie = `${k}=${value}${expires}`;
+    document.cookie = `${k}=${value}${exp}`;
   };
   del = (key) => this.set(key, "", { expires: -100 });
   async *iterate(prefix = "") {
@@ -156,7 +162,7 @@ var Etcd = class extends Client {
 // src/clients/file.ts
 var File = class extends Client {
   fsp;
-  file;
+  file = "";
   #lock = Promise.resolve();
   // Check if this is the right class for the given client
   static test = (client) => {
@@ -274,8 +280,12 @@ var Folder = class extends Client {
     const keys = all.filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
     for (const name of keys) {
       const key = name.slice(0, -".json".length);
-      const data = await this.get(key);
-      yield [key, data];
+      try {
+        const data = await this.get(key);
+        yield [key, data];
+      } catch {
+        continue;
+      }
     }
   }
 };
@@ -291,7 +301,10 @@ var Forage = class extends Client {
     const keys = await this.client.keys();
     const list = keys.filter((k) => k.startsWith(prefix));
     for (const key of list) {
-      yield [key, await this.get(key)];
+      const value = await this.get(key);
+      if (value !== null && value !== void 0) {
+        yield [key, value];
+      }
     }
   }
   entries = async (prefix = "") => {
@@ -452,8 +465,9 @@ var Redis = class extends Client {
     const MATCH = prefix + "*";
     for await (const key of this.client.scanIterator({ MATCH })) {
       const value = await this.get(key);
-      if (!value) continue;
-      yield [key, value];
+      if (value !== null && value !== void 0) {
+        yield [key, value];
+      }
     }
   }
   // Optimizing the retrieval of them by not getting their values
@@ -492,7 +506,9 @@ var WebStorage = class extends Client {
       const key = this.client.key(i);
       if (!key || !key.startsWith(prefix)) continue;
       const value = this.get(key);
-      if (value) yield [key, value];
+      if (value !== null && value !== void 0) {
+        yield [key, value];
+      }
     }
   }
   clearAll = () => this.client.clear();
@@ -593,7 +609,7 @@ var Store = class _Store {
   }
   // Check if the given data is fresh or not; if
   #isFresh(data, key) {
-    if (!data || !data.value || typeof data !== "object") {
+    if (!data || typeof data !== "object" || !("value" in data)) {
       if (key) this.del(key);
       return false;
     }
@@ -621,7 +637,7 @@ var Store = class _Store {
     const id = this.PREFIX + key;
     let expires = parse(options.expires);
     if (value === null || typeof expires === "number" && expires <= 0) {
-      return this.del(id);
+      return this.del(key);
     }
     if (this.client.EXPIRES) {
       await this.client.set(id, value, { expires });

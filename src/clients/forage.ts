@@ -15,7 +15,10 @@ export default class Forage extends Client {
     const keys: string[] = await this.client.keys();
     const list = keys.filter((k) => k.startsWith(prefix));
     for (const key of list) {
-      yield [key, await this.get(key)];
+      const value = await this.get(key);
+      if (value !== null && value !== undefined) {
+        yield [key, value];
+      }
     }
   }
 
