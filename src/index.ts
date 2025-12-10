@@ -63,7 +63,7 @@ class Store {
   #isFresh(data: any, key?: string): data is StoreData {
     // Should never happen, but COULD happen; schedule it for
     // removal and mark it as stale
-    if (!data || !data.value || typeof data !== "object") {
+    if (!data || typeof data !== "object" || !("value" in data)) {
       if (key) this.del(key);
       return false;
     }
@@ -113,7 +113,7 @@ class Store {
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
-      return this.del(id);
+      return this.del(key);
     }
 
     // The client manages the expiration, so let it manage it

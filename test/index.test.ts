@@ -370,6 +370,46 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
         ["c", "d"],
       ]);
     });
+
+    it("BUG — set(key, null) calls del() with a double-prefixed key", async () => {
+      const pref = store.prefix("x:"); // introduce a prefix
+
+      await pref.set("foo", "bar"); // creates key "x:foo"
+      await pref.set("foo", null);
+      const v = await pref.get("foo");
+
+      const items = [];
+      for await (const [k, val] of pref) items.push([k, val]);
+
+      expect(v).toBe(null);
+      expect(items).toEqual([]);
+    });
+
+    it("preserves falsy values (0, false, '')", async () => {
+      await store.set("n", 0);
+      await store.set("b", false);
+      await store.set("e", "");
+      expect(await store.get("n")).toBe(0);
+      expect(await store.get("b")).toBe(false);
+      expect(await store.get("e")).toBe("");
+    });
+
+    it("BUG — iterate() must include falsy values", async () => {
+      await store.set("a", 0);
+      await store.set("b", false);
+      await store.set("c", "");
+
+      const items = [];
+      for await (const entry of store) items.push(entry);
+
+      // They MUST appear exactly as stored
+      // @ts-expect-error
+      expect(items.sort((a, b) => a[0].localeCompare(b[0]))).toEqual([
+        ["a", 0],
+        ["b", false],
+        ["c", ""],
+      ]);
+    });
   });
 
   describe("expires", () => {
@@ -381,6 +421,19 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
 
     afterEach(() => {
       jest.restoreAllMocks();
+    });
+
+    it("BUG — del() fails to delete an expired entry", async () => {
+      await store.set("foo", "bar", { expires: -1 });
+      const before = await store.get("foo");
+      await store.del("foo");
+      const after = await store.get("foo");
+      const items = [];
+      for await (const [k, v] of store) items.push([k, v]);
+
+      expect(before).toBe(null);
+      expect(after).toBe(null);
+      expect(items).toEqual([]);
     });
 
     it("expires = 0 means immediately", async () => {

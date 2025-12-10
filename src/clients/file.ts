@@ -1,14 +1,15 @@
 import type { promises as FsPromises } from "node:fs";
+import { StoreData } from "../types";
 import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class File extends Client {
   fsp!: typeof FsPromises;
-  file!: string;
+  file: string = "";
   #lock: Promise<void> = Promise.resolve();
 
   // Check if this is the right class for the given client
-  static test = (client: any): boolean => {
+  static test = (client: string | unknown): boolean => {
     if (client instanceof URL) client = client.href;
     return (
       typeof client === "string" &&
@@ -46,7 +47,7 @@ export default class File extends Client {
     }
   };
 
-  #read = async (): Promise<Record<string, any>> => {
+  #read = async (): Promise<Record<string, StoreData>> => {
     try {
       const text = await this.fsp.readFile(this.file, "utf8");
       return text ? JSON.parse(text) : {};
@@ -56,18 +57,18 @@ export default class File extends Client {
     }
   };
 
-  #write = async (data: Record<string, any>): Promise<void> => {
+  #write = async (data: Record<string, StoreData>): Promise<void> => {
     return this.fsp.writeFile(this.file, this.encode(data));
   };
 
-  get = async (key: string): Promise<any> => {
+  get = async (key: string): Promise<StoreData> => {
     return this.#withLock(async () => {
       const data = await this.#read();
       return data[key] ?? null;
     });
   };
 
-  set = async (key: string, value: any): Promise<void> => {
+  set = async (key: string, value: StoreData): Promise<void> => {
     return this.#withLock(async () => {
       const data = await this.#read();
       if (value === null) {
@@ -79,11 +80,13 @@ export default class File extends Client {
     });
   };
 
-  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
+  async *iterate(
+    prefix = "",
+  ): AsyncGenerator<[string, StoreData], void, unknown> {
     const data = await this.#read();
     const entries = Object.entries(data).filter((p) => p[0].startsWith(prefix));
     for (const entry of entries) {
-      yield entry as [string, any];
+      yield entry as [string, StoreData];
     }
   }
 

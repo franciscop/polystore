@@ -9,7 +9,7 @@ type CFReply = {
 
 // Use Cloudflare's KV store
 export default class Cloudflare extends Client {
-  // Indicate that the file handler does NOT handle expirations
+  // It handles expirations natively
   EXPIRES = true;
 
   // Check whether the given store is a FILE-type
@@ -43,7 +43,7 @@ export default class Cloudflare extends Client {
       for (let key of keys) {
         const value = await this.get(key);
         // By the time this value is read it could be gone!
-        if (value) yield [key, value];
+        if (value !== null && value !== undefined) yield [key, value];
       }
       cursor = raw.list_complete ? undefined : raw.cursor;
     } while (cursor);

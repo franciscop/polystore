@@ -19,7 +19,9 @@ export default class WebStorage extends Client {
       const key = this.client.key(i);
       if (!key || !key.startsWith(prefix)) continue;
       const value = this.get(key);
-      if (value) yield [key, value];
+      if (value !== null && value !== undefined) {
+        yield [key, value];
+      }
     }
   }
 
