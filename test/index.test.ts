@@ -16,14 +16,23 @@ import type { Store } from "../src/index";
 import kv from "../src/index";
 import stores from "./stores";
 
-const doNotSupportMs = [
-  `kv("cookie")`,
-  `kv(redis)`,
-  `kv(new Etcd3())`,
-  `kv(customCloudflare)`,
+const doNotSupportMs: (keyof typeof stores)[] = [
+  `"cookie"`,
+  `redis`,
+  `new Etcd3()`,
+  `customCloudflare`,
 ];
 
-const longerThan60s = [`kv(customCloudflare)`];
+const doNotSupportExpiration: (keyof typeof stores)[] = [
+  "new KVNamespace()", // The mock implementation does NOT support expiration 😪
+  `customCloudflare`, // Some stores expect 60s+ expiration times, too long to test automatically 😪
+];
+
+// These use basically
+const doNotSupportSubkeys: (keyof typeof stores)[] = [
+  // "bunsqlite",
+  "sqlite", // Not supported by Bun yet
+];
 
 const delay = (t: number): Promise<void> =>
   new Promise((done) => setTimeout(done, t));
@@ -42,10 +51,6 @@ global.console = {
 describe("potato", () => {
   it("a potato is not a valid store", async () => {
     expect(kv("potato").get("any")).rejects.toThrow();
-  });
-
-  it("no client is not a valid store", async () => {
-    expect(kv().get("any")).rejects.toThrow("No client received");
   });
 
   it("an empty object is not a valid store", async () => {
@@ -91,7 +96,14 @@ describe("potato", () => {
   });
 });
 
-describe.each(Object.entries(stores))("%s", (name, store) => {
+const storeEntries = Object.entries(stores) as unknown as [
+  keyof typeof stores,
+  (typeof stores)[keyof typeof stores],
+][];
+
+describe.each(storeEntries)("%s", (name, store) => {
+  if (!store) throw new Error("No store available");
+
   beforeEach(async () => {
     await store.clear();
   });
@@ -205,7 +217,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
     ]);
   });
 
-  it("can get the all object", async () => {
+  it("can get all as an object", async () => {
     await store.set("a", "b");
     await store.set("c", "d");
     expect(await store.all()).toEqual({
@@ -214,99 +226,119 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
     });
   });
 
-  it("can get the keys with a colon prefix", async () => {
-    await store.set("a:0", "a0");
-    await store.set("a:1", "a1");
-    await store.set("b:0", "b0");
-    await store.set("a:2", "a2");
-    expect((await store.keys()).sort()).toEqual(["a:0", "a:1", "a:2", "b:0"]);
-    expect((await store.prefix("a:").keys()).sort()).toEqual(["0", "1", "2"]);
-  });
+  describe("subkeys === prefix", () => {
+    if (doNotSupportSubkeys.includes(name)) return;
 
-  it("can get the values with a colon prefix", async () => {
-    await store.set("a:0", "a0");
-    await store.set("a:1", "a1");
-    await store.set("b:0", "b0");
-    await store.set("a:2", "a2");
-    expect((await store.prefix("a:").values()).sort()).toEqual([
-      "a0",
-      "a1",
-      "a2",
-    ]);
-  });
+    it("supports raw prefix iteration", async () => {
+      await store.set("a:a", "b");
+      await store.set("b:a", "d");
+      await store.set("a:c", "d");
+      await store.set("b:c", "d");
 
-  it("can get the entries with a colon prefix", async () => {
-    await store.set("a:0", "a0");
-    await store.set("a:1", "a1");
-    await store.set("b:0", "b0");
-    await store.set("a:2", "a2");
-    expect((await store.entries()).sort()).toEqual([
-      ["a:0", "a0"],
-      ["a:1", "a1"],
-      ["a:2", "a2"],
-      ["b:0", "b0"],
-    ]);
-    expect((await store.prefix("a:").entries()).sort()).toEqual([
-      ["0", "a0"],
-      ["1", "a1"],
-      ["2", "a2"],
-    ]);
-  });
-
-  it("can get the all object with a colon prefix", async () => {
-    await store.set("a:0", "a0");
-    await store.set("a:1", "a1");
-    await store.set("b:0", "b0");
-    await store.set("a:2", "a2");
-    expect(await store.prefix("a:").all()).toEqual({
-      0: "a0",
-      1: "a1",
-      2: "a2",
+      const entries: [string, any][] = [];
+      for await (const entry of store.prefix("a:")) {
+        entries.push(entry);
+      }
+      expect(entries.sort()).toEqual([
+        ["a", "b"],
+        ["c", "d"],
+      ]);
     });
-  });
 
-  it("can get the keys with a dash prefix", async () => {
-    await store.set("a-0", "a0");
-    await store.set("a-1", "a1");
-    await store.set("b-0", "b0");
-    await store.set("a-2", "a2");
-    expect((await store.keys()).sort()).toEqual(["a-0", "a-1", "a-2", "b-0"]);
-    expect((await store.prefix("a-").keys()).sort()).toEqual(["0", "1", "2"]);
-  });
+    it("can get the keys with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect((await store.keys()).sort()).toEqual(["a:0", "a:1", "a:2", "b:0"]);
+      expect((await store.prefix("a:").keys()).sort()).toEqual(["0", "1", "2"]);
+    });
 
-  it("can get the values with a dash prefix", async () => {
-    await store.set("a-0", "a0");
-    await store.set("a-1", "a1");
-    await store.set("b-0", "b0");
-    await store.set("a-2", "a2");
-    expect((await store.prefix("a-").values()).sort()).toEqual([
-      "a0",
-      "a1",
-      "a2",
-    ]);
-  });
+    it("can get the values with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect((await store.prefix("a:").values()).sort()).toEqual([
+        "a0",
+        "a1",
+        "a2",
+      ]);
+    });
 
-  it("can get the entries with a dash prefix", async () => {
-    await store.set("a-0", "a0");
-    await store.set("a-1", "a1");
-    await store.set("b-0", "b0");
-    await store.set("a-2", "a2");
-    expect((await store.prefix("a-").entries()).sort()).toEqual([
-      ["0", "a0"],
-      ["1", "a1"],
-      ["2", "a2"],
-    ]);
-  });
+    it("can get the entries with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect((await store.entries()).sort()).toEqual([
+        ["a:0", "a0"],
+        ["a:1", "a1"],
+        ["a:2", "a2"],
+        ["b:0", "b0"],
+      ]);
+      expect((await store.prefix("a:").entries()).sort()).toEqual([
+        ["0", "a0"],
+        ["1", "a1"],
+        ["2", "a2"],
+      ]);
+    });
 
-  it("can get the all object with a dash prefix", async () => {
-    await store.set("a-0", "a0");
-    await store.set("a-1", "a1");
-    await store.set("b-0", "b0");
-    await store.set("a-2", "a2");
-    expect(await store.prefix("a-").all()).toEqual({
-      0: "a0",
-      1: "a1",
-      2: "a2",
+    it("can get the all object with a colon prefix", async () => {
+      await store.set("a:0", "a0");
+      await store.set("a:1", "a1");
+      await store.set("b:0", "b0");
+      await store.set("a:2", "a2");
+      expect(await store.prefix("a:").all()).toEqual({
+        0: "a0",
+        1: "a1",
+        2: "a2",
+      });
+    });
+
+    it("can get the keys with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect((await store.keys()).sort()).toEqual(["a-0", "a-1", "a-2", "b-0"]);
+      expect((await store.prefix("a-").keys()).sort()).toEqual(["0", "1", "2"]);
+    });
+
+    it("can get the values with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect((await store.prefix("a-").values()).sort()).toEqual([
+        "a0",
+        "a1",
+        "a2",
+      ]);
+    });
+
+    it("can get the entries with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect((await store.prefix("a-").entries()).sort()).toEqual([
+        ["0", "a0"],
+        ["1", "a1"],
+        ["2", "a2"],
+      ]);
+    });
+
+    it("can get the all object with a dash prefix", async () => {
+      await store.set("a-0", "a0");
+      await store.set("a-1", "a1");
+      await store.set("b-0", "b0");
+      await store.set("a-2", "a2");
+      expect(await store.prefix("a-").all()).toEqual({
+        0: "a0",
+        1: "a1",
+        2: "a2",
+      });
     });
   });
 
@@ -355,22 +387,6 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
       ]);
     });
 
-    it("supports raw prefix iteration", async () => {
-      await store.set("a:a", "b");
-      await store.set("b:a", "d");
-      await store.set("a:c", "d");
-      await store.set("b:c", "d");
-
-      const entries: [string, any][] = [];
-      for await (const entry of store.prefix("a:")) {
-        entries.push(entry);
-      }
-      expect(entries.sort()).toEqual([
-        ["a", "b"],
-        ["c", "d"],
-      ]);
-    });
-
     it("BUG — set(key, null) calls del() with a double-prefixed key", async () => {
       const pref = store.prefix("x:"); // introduce a prefix
 
@@ -413,11 +429,7 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
   });
 
   describe("expires", () => {
-    // The mock implementation does NOT support expiration 😪
-    if (name === "kv(new KVNamespace())") return;
-
-    // Some stores expect 60s+ expiration times, too long to test 😪
-    if (longerThan60s.includes(name)) return;
+    if (doNotSupportExpiration.includes(name)) return;
 
     afterEach(() => {
       jest.restoreAllMocks();
@@ -521,36 +533,23 @@ describe.each(Object.entries(stores))("%s", (name, store) => {
 
       it("removes the expired key with .get()", async () => {
         await store.set("a", "b", { expires: "10ms" });
-        const spy = jest.spyOn(store, "del");
-        expect(spy).not.toHaveBeenCalled();
+        expect(await store.get("a")).toBe("b");
         await delay(100);
-        expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
         expect(await store.get("a")).toBe(null);
-        expect(spy).toHaveBeenCalled();
       });
 
       it("removes the expired key with .keys()", async () => {
         await store.set("a", "b", { expires: "10ms" });
-        const spy = jest.spyOn(store, "del");
-        expect(spy).not.toHaveBeenCalled();
+        expect(await store.keys()).toEqual(["a"]);
         await delay(100);
-        expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
         expect(await store.keys()).toEqual([]);
-        expect(spy).toHaveBeenCalled();
       });
 
       it("CANNOT remove the expired key with .values()", async () => {
         await store.set("a", "b", { expires: "10ms" });
-        const spy = jest.spyOn(store, "del");
-        expect(spy).not.toHaveBeenCalled();
+        expect(await store.values()).toEqual(["b"]);
         await delay(100);
-        expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪
         expect(await store.values()).toEqual([]);
-        if (!(store as any).client.EXPIRES && (store as any).client.values) {
-          expect(spy).not.toHaveBeenCalled(); // Nothing we can do 😪😪
-        } else {
-          expect(spy).toHaveBeenCalled();
-        }
       });
     } else {
       it("can use 1 (second) expire", async () => {

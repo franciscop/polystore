@@ -2,12 +2,12 @@ import clients from "./clients/index";
 import type { Client, Options, Serializable, StoreData } from "./types";
 import { createId, parse, unix } from "./utils";
 
-class Store {
+class Store<TDefault extends Serializable = Serializable> {
   PREFIX = "";
-  promise: Promise<any> | null;
+  promise: Promise<Client> | null;
   client!: Client;
 
-  constructor(clientPromise: any) {
+  constructor(clientPromise: any = new Map()) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = this.#find(client);
       this.#validate(this.client);
@@ -79,7 +79,9 @@ class Store {
     return false;
   }
 
-  async add<T extends Serializable>(
+  add(value: TDefault, options?: Options): Promise<string>;
+  add<T extends TDefault>(value: T, options?: Options): Promise<string>;
+  async add<T extends TDefault = TDefault>(
     value: T,
     options: Options = {},
   ): Promise<string> {
@@ -102,7 +104,13 @@ class Store {
     return this.set(key, value, { expires });
   }
 
-  async set<T extends Serializable>(
+  set(key: string, value: TDefault, options?: Options): Promise<string>;
+  set<T extends TDefault>(
+    key: string,
+    value: T,
+    options?: Options,
+  ): Promise<string>;
+  async set<T extends Serializable = TDefault>(
     key: string,
     value: T,
     options: Options = {},
@@ -128,23 +136,30 @@ class Store {
     return key;
   }
 
-  async get<T extends Serializable = Serializable>(
-    key: string,
-  ): Promise<T | null> {
+  get(key: string): Promise<TDefault | null>;
+  get<T extends TDefault>(key: string): Promise<T | null>;
+  async get<T extends TDefault = TDefault>(key: string): Promise<T | null> {
     await this.promise;
     const id = this.PREFIX + key;
 
-    const data = (await this.client.get<T>(id)) ?? null;
-
-    // No value; nothing to do/check
-    if (data === null) return null;
-
     // The client already managed expiration and there's STILL some data,
     // so we can assume it's the raw user data
-    if (this.client.EXPIRES) return data as T;
+    if (this.client.EXPIRES) {
+      const data = (await this.client.get<T>(id)) ?? null;
 
-    if (!this.#isFresh(data, key)) return null;
-    return data.value as T;
+      // No value; nothing to do/check
+      if (data === null) return null;
+
+      return data;
+    } else {
+      const data = (await this.client.get<T>(id)) ?? null;
+
+      // No value; nothing to do/check
+      if (data === null) return null;
+
+      if (!this.#isFresh(data, key)) return null;
+      return data.value;
+    }
   }
 
   async has(key: string): Promise<boolean> {
@@ -176,8 +191,14 @@ class Store {
     return key;
   }
 
+  [Symbol.asyncIterator](): AsyncGenerator<[string, TDefault], void, unknown>;
+  [Symbol.asyncIterator]<T extends TDefault>(): AsyncGenerator<
+    [string, T],
+    void,
+    unknown
+  >;
   async *[Symbol.asyncIterator]<
-    T extends Serializable = Serializable,
+    T extends TDefault = TDefault,
   >(): AsyncGenerator<[string, T], void, unknown> {
     await this.promise;
 
@@ -197,9 +218,9 @@ class Store {
     }
   }
 
-  async entries<T extends Serializable = Serializable>(): Promise<
-    [string, T][]
-  > {
+  entries(): Promise<[string, TDefault][]>;
+  entries<T extends TDefault>(): Promise<[string, T][]>;
+  async entries<T extends TDefault = TDefault>(): Promise<[string, T][]> {
     await this.promise;
     const trim = (key: string): string => key.slice(this.PREFIX.length);
 
@@ -248,7 +269,9 @@ class Store {
     return entries.map((e) => e[0]);
   }
 
-  async values<T extends Serializable>(): Promise<T[]> {
+  values(): Promise<TDefault[]>;
+  values<T extends TDefault>(): Promise<T[]>;
+  async values<T extends TDefault = TDefault>(): Promise<T[]> {
     await this.promise;
 
     if (this.client.values) {
@@ -263,7 +286,9 @@ class Store {
     return entries.map((e) => e[1]);
   }
 
-  async all<T extends Serializable>(): Promise<Record<string, T>> {
+  all(): Promise<Record<string, TDefault>>;
+  all<T extends TDefault>(): Promise<Record<string, T>>;
+  async all<T extends TDefault = TDefault>(): Promise<Record<string, T>> {
     const entries = await this.entries<T>();
     return Object.fromEntries(entries);
   }
@@ -284,8 +309,8 @@ class Store {
     await Promise.all(keys.map((key) => this.del(key)));
   }
 
-  prefix(prefix = ""): Store {
-    const store = new Store(
+  prefix(prefix = ""): Store<TDefault> {
+    const store = new Store<TDefault>(
       Promise.resolve(this.promise).then(() => this.client),
     );
     store.PREFIX = this.PREFIX + prefix;
@@ -301,5 +326,11 @@ class Store {
   }
 }
 
-export default (client?: any): Store => new Store(client);
-export type { Store };
+export default function createStore(): Store<Serializable>;
+export default function createStore<T extends Serializable = Serializable>(
+  client?: any,
+): Store<T>;
+export default function createStore(client?: any): Store {
+  return new Store(client);
+}
+export type { Client, Serializable, Store };

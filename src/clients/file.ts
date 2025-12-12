@@ -4,6 +4,9 @@ import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class File extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false as const;
+
   fsp!: typeof FsPromises;
   file: string = "";
   #lock: Promise<void> = Promise.resolve();

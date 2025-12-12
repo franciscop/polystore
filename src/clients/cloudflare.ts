@@ -10,7 +10,7 @@ type CFReply = {
 // Use Cloudflare's KV store
 export default class Cloudflare extends Client {
   // It handles expirations natively
-  EXPIRES = true;
+  EXPIRES = true as const;
 
   // Check whether the given store is a FILE-type
   static test = (client: any): boolean =>

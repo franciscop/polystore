@@ -4,7 +4,7 @@ import Client from "./Client";
 // A client that uses a single file (JSON) as a store
 export default class Cookie extends Client {
   // It handles expirations natively
-  EXPIRES = true;
+  EXPIRES = true as const;
 
   // Check if this is the right class for the given client
   static test = (client: string | unknown) => {

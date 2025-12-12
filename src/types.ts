@@ -16,8 +16,8 @@ export type Serializable =
   | number
   | boolean
   | null
-  | Serializable[]
-  | { [key: string]: Serializable };
+  | (Serializable | null)[]
+  | { [key: string]: Serializable | null };
 
 export interface ClientExpires {
   EXPIRES: true;
@@ -55,7 +55,7 @@ export interface ClientExpires {
 }
 
 export interface ClientNonExpires {
-  EXPIRES?: false;
+  EXPIRES: false;
   promise?: Promise<any>;
   test?: (client: any) => boolean;
   get<T extends Serializable>(

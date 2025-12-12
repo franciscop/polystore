@@ -5,8 +5,8 @@ type StoreData<T extends Serializable = Serializable> = {
     value: T;
     expires: number | null;
 };
-type Serializable = string | number | boolean | null | Serializable[] | {
-    [key: string]: Serializable;
+type Serializable = string | number | boolean | null | (Serializable | null)[] | {
+    [key: string]: Serializable | null;
 };
 interface ClientExpires {
     EXPIRES: true;
@@ -27,7 +27,7 @@ interface ClientExpires {
     close?(): Promise<any> | any;
 }
 interface ClientNonExpires {
-    EXPIRES?: false;
+    EXPIRES: false;
     promise?: Promise<any>;
     test?: (client: any) => boolean;
     get<T extends Serializable>(key: string): Promise<StoreData<T> | null> | StoreData<T> | null;
@@ -46,29 +46,37 @@ interface ClientNonExpires {
 }
 type Client = ClientExpires | ClientNonExpires;
 
-declare class Store {
+declare class Store<TDefault extends Serializable = Serializable> {
     #private;
     PREFIX: string;
-    promise: Promise<any> | null;
+    promise: Promise<Client> | null;
     client: Client;
-    constructor(clientPromise: any);
-    add<T extends Serializable>(value: T, options?: Options): Promise<string>;
-    set<T extends Serializable>(key: string, value: T, options?: Options): Promise<string>;
-    get<T extends Serializable = Serializable>(key: string): Promise<T | null>;
+    constructor(clientPromise?: any);
+    add(value: TDefault, options?: Options): Promise<string>;
+    add<T extends TDefault>(value: T, options?: Options): Promise<string>;
+    set(key: string, value: TDefault, options?: Options): Promise<string>;
+    set<T extends TDefault>(key: string, value: T, options?: Options): Promise<string>;
+    get(key: string): Promise<TDefault | null>;
+    get<T extends TDefault>(key: string): Promise<T | null>;
     has(key: string): Promise<boolean>;
     del(key: string): Promise<string>;
-    [Symbol.asyncIterator]<T extends Serializable = Serializable>(): AsyncGenerator<[string, T], void, unknown>;
-    entries<T extends Serializable = Serializable>(): Promise<[
+    [Symbol.asyncIterator](): AsyncGenerator<[string, TDefault], void, unknown>;
+    [Symbol.asyncIterator]<T extends TDefault>(): AsyncGenerator<[
         string,
         T
-    ][]>;
+    ], void, unknown>;
+    entries(): Promise<[string, TDefault][]>;
+    entries<T extends TDefault>(): Promise<[string, T][]>;
     keys(): Promise<string[]>;
-    values<T extends Serializable>(): Promise<T[]>;
-    all<T extends Serializable>(): Promise<Record<string, T>>;
+    values(): Promise<TDefault[]>;
+    values<T extends TDefault>(): Promise<T[]>;
+    all(): Promise<Record<string, TDefault>>;
+    all<T extends TDefault>(): Promise<Record<string, T>>;
     clear(): Promise<void>;
-    prefix(prefix?: string): Store;
+    prefix(prefix?: string): Store<TDefault>;
     close(): Promise<void>;
 }
-declare const _default: (client?: any) => Store;
+declare function createStore(): Store<Serializable>;
+declare function createStore<T extends Serializable = Serializable>(client?: any): Store<T>;
 
-export { Store, _default as default };
+export { type Client, type Serializable, Store, createStore as default };

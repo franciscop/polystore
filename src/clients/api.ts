@@ -4,7 +4,7 @@ import Client from "./Client";
 // Handle an API endpoint with fetch()
 export default class Api extends Client {
   // Indicate that the file handler DOES handle expirations
-  EXPIRES = true;
+  EXPIRES = true as const;
 
   static test = (client: string | unknown) =>
     typeof client === "string" && /^https?:\/\//.test(client);

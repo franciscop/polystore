@@ -3,7 +3,7 @@ import Client from "./Client";
 // Use a redis client to back up the store
 export default class Redis extends Client {
   // Indicate if this client handles expirations (true = it does)
-  EXPIRES = true;
+  EXPIRES = true as const;
 
   // Check if this is the right class for the given client
   static test = (client: any): boolean =>

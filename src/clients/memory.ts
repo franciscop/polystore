@@ -2,6 +2,9 @@ import Client from "./Client";
 
 // Use a Map() as an in-memory client
 export default class Memory extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false as const;
+
   // Check if this is the right class for the given client
   static test = (client: any): boolean => client instanceof Map;
 
