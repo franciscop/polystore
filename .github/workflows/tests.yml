@@ -6,23 +6,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+
       - name: Install dependencies
-        run: npm install
-      - name: Linter
-        run: npm run lint
+        run: bun install
+
+      - name: Build it
+        run: bun run lint
         env:
           CI: true
+
+      - name: Linter
+        run: bun run lint
+        env:
+          CI: true
+
       - name: Testing
-        run: npm test
+        run: bun test
         env:
           CI: true
