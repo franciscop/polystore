@@ -431,22 +431,8 @@ var SQLite = class extends Client {
   //  expirations much easier, so it's really "somewhere in between"
   EXPIRES = true;
   static test = (client) => typeof client?.prepare === "function";
-  constructor(c) {
-    if (typeof c?.prepare("SELECT 1").get === "function") {
-      super({
-        run: (sql, ...args) => c.prepare(sql).run(...args),
-        get: (sql, ...args) => c.prepare(sql).get(...args),
-        all: (sql, ...args) => c.prepare(sql).all(...args)
-      });
-      return;
-    }
-    super(c);
-  }
   get = (id) => {
-    const row = this.client.get(
-      `SELECT value, expires_at FROM kv WHERE id = ?`,
-      id
-    );
+    const row = this.client.prepare(`SELECT value, expires_at FROM kv WHERE id = ?`).get(id);
     if (!row) return null;
     if (row.expires_at && row.expires_at < Date.now()) {
       this.del(id);
@@ -457,21 +443,15 @@ var SQLite = class extends Client {
   set = (id, data, { expires } = {}) => {
     const value = this.encode(data);
     const expires_at = expires ? Date.now() + expires * 1e3 : null;
-    this.client.run(
-      `INSERT INTO kv (id, value, expires_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(id)
-        DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
-      id,
-      value,
-      expires_at
-    );
+    this.client.prepare(
+      `INSERT INTO kv (id, value, expires_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`
+    ).run(id, value, expires_at);
   };
-  del = (id) => {
-    this.client.run(`DELETE FROM kv WHERE id = ?`, id);
+  del = async (id) => {
+    await this.client.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
   };
   has = (id) => {
-    const row = this.client.get(`SELECT expires_at FROM kv WHERE id = ?`, id);
+    const row = this.client.prepare(`SELECT expires_at FROM kv WHERE id = ?`).get(id);
     if (!row) return false;
     if (row.expires_at && row.expires_at < Date.now()) {
       this.del(id);
@@ -481,29 +461,24 @@ var SQLite = class extends Client {
   };
   *iterate(prefix = "") {
     this.#clearExpired();
-    const sql = `
-      SELECT id, value FROM kv
-      WHERE (expires_at IS NULL OR expires_at > ?)
-        ${prefix ? "AND id LIKE ?" : ""}
+    const sql = `SELECT id, value FROM kv WHERE (expires_at IS NULL OR expires_at > ?) ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
-    for (const row of this.client.all(sql, ...params)) {
+    for (const row of this.client.prepare(sql).all(...params)) {
       yield [row.id, this.decode(row.value)];
     }
   }
   keys = (prefix = "") => {
     this.#clearExpired();
-    const sql = `
-      SELECT id FROM kv
-      WHERE (expires_at IS NULL OR expires_at > ?)
-        ${prefix ? "AND id LIKE ?" : ""}
+    const sql = `SELECT id FROM kv WHERE (expires_at IS NULL OR expires_at > ?)
+${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
-    const rows = this.client.all(sql, ...params);
+    const rows = this.client.prepare(sql).all(...params);
     return rows.map((r) => r.id);
   };
   #clearExpired = () => {
-    this.client.run(`DELETE FROM kv WHERE expires_at < ?`, Date.now());
+    this.client.prepare(`DELETE FROM kv WHERE expires_at < ?`).run(Date.now());
   };
   clearAll = () => {
     this.client.run(`DELETE FROM kv`);
@@ -686,6 +661,22 @@ var Store = class _Store {
       return data.value;
     }
   }
+  /**
+   * Check whether a key exists or not:
+   *
+   * ```js
+   * if (await store.has("key1")) { ... }
+   * ```
+   *
+   * If you are going to use the value, it's better to just read it:
+   *
+   * ```js
+   * const val = await store.get("key1");
+   * if (val) { ... }
+   * ```
+   *
+   * **[→ Full .has() Docs](https://polystore.dev/documentation#has)**
+   */
   async has(key) {
     await this.promise;
     const id = this.PREFIX + key;
@@ -694,6 +685,15 @@ var Store = class _Store {
     }
     return await this.get(key) !== null;
   }
+  /**
+   * Remove a single key and its value from the store:
+   *
+   * ```js
+   * const key = await store.del("key1");
+   * ```
+   *
+   * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
+   */
   async del(key) {
     await this.promise;
     const id = this.PREFIX + key;
@@ -752,6 +752,19 @@ var Store = class _Store {
       return list;
     }
   }
+  /**
+   * Return an array of the keys in the store:
+   *
+   * ```js
+   * const keys = await store.keys();
+   * // ["key1", "key2", ...]
+   *
+   * // To limit it to a given prefix, use `.prefix()`:
+   * const sessions = await store.prefix("session:").keys();
+   * ```
+   *
+   * **[→ Full .keys() Docs](https://polystore.dev/documentation#keys)**
+   */
   async keys() {
     await this.promise;
     if (this.client.keys) {
@@ -776,6 +789,17 @@ var Store = class _Store {
     const entries = await this.entries();
     return Object.fromEntries(entries);
   }
+  /**
+   * Delete all of the records of the store:
+   *
+   * ```js
+   * await store.clear();
+   * ```
+   *
+   * It's useful for cache invalidation, clearing the data, and testing.
+   *
+   * **[→ Full .clear() Docs](https://polystore.dev/documentation#clear)**
+   */
   async clear() {
     await this.promise;
     if (!this.PREFIX && this.client.clearAll) {
@@ -787,6 +811,21 @@ var Store = class _Store {
     const keys = await this.keys();
     await Promise.all(keys.map((key) => this.del(key)));
   }
+  /**
+   * Create a substore where all the keys are stored with
+   * the given prefix:
+   *
+   * ```js
+   * const session = store.prefix("session:");
+   * await session.set("key1", "value1");
+   * console.log(await session.entries());  // session.
+   * // [["key1", "value1"]]
+   * console.log(await store.entries());  // store.
+   * // [["session:key1", "value1"]]
+   * ```
+   *
+   * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
+   */
   prefix(prefix = "") {
     const store = new _Store(
       Promise.resolve(this.promise).then(() => this.client)
@@ -794,6 +833,17 @@ var Store = class _Store {
     store.PREFIX = this.PREFIX + prefix;
     return store;
   }
+  /**
+   * Stop the connection to the store, if any:
+   *
+   * ```js
+   * await session.set("key1", "value1");
+   * await store.close();
+   * await session.set("key2", "value2");  // error
+   * ```
+   *
+   * **[→ Full .close() Docs](https://polystore.dev/documentation#close)**
+   */
   async close() {
     await this.promise;
     if (this.client.close) {

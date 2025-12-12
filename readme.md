@@ -910,6 +910,80 @@ You'll need to be running the etcd store for this to work as expected.
   </ul>
 </details>
 
+
+## SQLite
+
+Supports both **`bun:sqlite`** and **`better-sqlite3`** directly. Pass an already-opened database instance to `kv()` and Polystore will use the `kv` table to store keys, values, and expirations:
+
+> [!IMPORTANT]
+> The table `kv` must already exist in the Database
+
+```js
+import kv from "polystore";
+import Database from "better-sqlite3";
+// Or: import Database from "bun:sqlite";
+
+const db = new Database("data.db")
+const store = kv(db);
+
+await store.set("key1", "Hello world", { expires: "1h" });
+console.log(await store.get("key1"));
+// "Hello world"
+```
+
+### SQLite schema
+
+This is the required schema:
+
+```sql
+CREATE TABLE kv (
+  id TEXT PRIMARY KEY,
+  value TEXT,
+  expires_at INTEGER
+);
+```
+
+You can create these with failsafes to make it much easier to initialize:
+
+```js
+db.run(`
+  CREATE TABLE IF NOT EXISTS kv (
+    id TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    expires_at INTEGER
+  )
+`);
+db.run(
+  `CREATE INDEX IF NOT EXISTS idx_kv_expires_at ON kv (expires_at)`,
+);
+````
+
+### SQLite expirations
+
+If `expires` is provided, Polystore will convert it to a timestamp and persist it in `expires_at`. We handle reading/writing rows and expiration checks.
+
+However, these are not auto-evicted since SQLite doesn't have a native expiration. To avoid having stale data that is not used anymore, it's recommended you set a periodic check and clear expired records manually:
+
+```js
+// Clear expired keys once every 10 minutes
+setInterval(() => {
+  db.prepare(`DELETE FROM kv WHERE expires_at < ?`).run(Date.now());
+}, 10 * 60 * 1000);
+````
+
+Note that Polystore is self-reliant and won't have any problem even if you don't set that script, it will never render a stale record. It's just for both your convenience and privacy reasons.
+
+<details>
+  <summary>Why use polystore with <code>SQLite</code>?</summary>
+  <p>These benefits apply when wrapping a SQLite DB with polystore:</p>
+  <ul>
+    <li><strong>Intuitive expirations</strong>: specify expiration times like <code>10min</code> or <code>2h</code> without manual date handling.</li>
+    <li><strong>Substores</strong>: use prefixes to isolate sets of keys cleanly.</li>
+    <li><strong>Simple persistence</strong>: full on-disk durability with a minimal driver.</li>
+  </ul>
+</details>
+
+
 ### Postgres
 
 Use PostgreSQL with the `pg` library as a key-value store:
