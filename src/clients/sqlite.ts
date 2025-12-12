@@ -1,35 +1,36 @@
 import Client from "./Client";
 
+type Args = (string | number | boolean | Date)[];
+
 export default class SQLite extends Client {
-  EXPIRES = true;
-  table = "kv";
+  // This one is doing manual time management internally even though
+  // sqlite does not natively support expirations. This is because it does
+  // support creating a `expires_at:Date` column that makes managing
+  //  expirations much easier, so it's really "somewhere in between"
+  EXPIRES = true as const;
 
-  static test = (client: any): boolean =>
-    typeof client?.prepare === "function" &&
-    typeof client?.prepare("SELECT 1").get === "function";
+  static test = (client: any): boolean => typeof client?.prepare === "function";
 
-  prefix(prefix: string): SQLite {
-    if (!prefix) return this;
-
-    const table = prefix.endsWith(":") ? prefix.slice(0, -1) : prefix;
-
-    if (typeof table !== "string" || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
-      throw new Error("Invalid table name");
+  constructor(c: any) {
+    // Allow for a bit of flexibility
+    if (typeof c?.prepare("SELECT 1").get === "function") {
+      super({
+        run: (sql: string, ...args: Args) => c.prepare(sql).run(...args),
+        get: (sql: string, ...args: Args) => c.prepare(sql).get(...args),
+        all: (sql: string, ...args: Args) => c.prepare(sql).all(...args),
+      });
+      return;
     }
-
-    const instance = new SQLite(this.client);
-    instance.table = table;
-    return instance;
+    super(c);
   }
 
-  get = (id: string): any => {
-    const stmt = this.client.prepare(
-      `SELECT value, expiresAt FROM ${this.table} WHERE id = ?`,
+  get = <T>(id: string): T | null => {
+    const row = this.client.get(
+      `SELECT value, expires_at FROM kv WHERE id = ?`,
+      id,
     );
-    const row = stmt.get(id);
     if (!row) return null;
-
-    if (row.expiresAt && row.expiresAt < Date.now()) {
+    if (row.expires_at && row.expires_at < Date.now()) {
       this.del(id);
       return null;
     }
@@ -43,30 +44,28 @@ export default class SQLite extends Client {
     { expires }: { expires?: number | null } = {},
   ): void => {
     const value = this.encode(data);
-    const expiresAt = expires ? Date.now() + expires * 1000 : null;
+    const expires_at = expires ? Date.now() + expires * 1000 : null;
 
-    const stmt = this.client.prepare(
-      `INSERT INTO ${this.table} (id, value, expiresAt)
-       VALUES (?, ?, ?)
-       ON CONFLICT(id)
-       DO UPDATE SET value = excluded.value, expiresAt = excluded.expiresAt`,
+    this.client.run(
+      `INSERT INTO kv (id, value, expires_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(id)
+        DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
+      id,
+      value,
+      expires_at,
     );
-
-    stmt.run(id, value, expiresAt);
   };
 
   del = (id: string): void => {
-    this.client.prepare(`DELETE FROM ${this.table} WHERE id = ?`).run(id);
+    this.client.run(`DELETE FROM kv WHERE id = ?`, id);
   };
 
   has = (id: string): boolean => {
-    const stmt = this.client.prepare(
-      `SELECT expiresAt FROM ${this.table} WHERE id = ?`,
-    );
-    const row = stmt.get(id);
+    const row = this.client.get(`SELECT expires_at FROM kv WHERE id = ?`, id);
     if (!row) return false;
 
-    if (row.expiresAt && row.expiresAt < Date.now()) {
+    if (row.expires_at && row.expires_at < Date.now()) {
       this.del(id);
       return false;
     }
@@ -74,56 +73,40 @@ export default class SQLite extends Client {
     return true;
   };
 
-  *iterate(): Generator<[string, any]> {
+  *iterate(prefix = ""): Generator<[string, any]> {
     this.#clearExpired();
-
-    const stmt = this.client.prepare(
-      `SELECT id, value FROM ${this.table}
-       WHERE expiresAt IS NULL OR expiresAt > ?`,
-    );
-
-    const rows = stmt.all(Date.now());
-
-    for (const row of rows) {
+    const sql = `
+      SELECT id, value FROM kv
+      WHERE (expires_at IS NULL OR expires_at > ?)
+        ${prefix ? "AND id LIKE ?" : ""}
+    `;
+    const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
+    for (const row of this.client.all(sql, ...params)) {
       yield [row.id, this.decode(row.value)];
     }
   }
 
-  keys = (): string[] => {
+  keys = (prefix = ""): string[] => {
     this.#clearExpired();
-
-    const stmt = this.client.prepare(
-      `SELECT id FROM ${this.table}
-       WHERE expiresAt IS NULL OR expiresAt > ?`,
-    );
-
-    const rows = stmt.all(Date.now());
-    return rows.map((r: any) => r.id);
-  };
-
-  entries = (): [string, any][] => {
-    this.#clearExpired();
-
-    const stmt = this.client.prepare(
-      `SELECT id, value FROM ${this.table}
-       WHERE expiresAt IS NULL OR expiresAt > ?`,
-    );
-
-    const rows = stmt.all(Date.now());
-    return rows.map((r: any) => [r.id, this.decode(r.value)]);
+    const sql = `
+      SELECT id FROM kv
+      WHERE (expires_at IS NULL OR expires_at > ?)
+        ${prefix ? "AND id LIKE ?" : ""}
+    `;
+    const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
+    const rows = this.client.all(sql, ...params);
+    return rows.map((r: { id: string }) => r.id);
   };
 
   #clearExpired = (): void => {
-    this.client
-      .prepare(`DELETE FROM ${this.table} WHERE expiresAt < ?`)
-      .run(Date.now());
+    this.client.run(`DELETE FROM kv WHERE expires_at < ?`, Date.now());
   };
 
   clearAll = (): void => {
-    this.client.prepare(`DELETE FROM ${this.table}`).run();
+    this.client.run(`DELETE FROM kv`);
   };
 
   close = (): void => {
-    if (this.client.close) this.client.close();
+    this.client.close?.();
   };
 }

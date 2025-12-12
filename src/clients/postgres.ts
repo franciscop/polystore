@@ -4,7 +4,7 @@ import Client from "./Client";
 // Pass the pool directly: kv(pool)
 export default class Postgres extends Client {
   // Indicate that this client handles expirations
-  EXPIRES = true;
+  EXPIRES = true as const;
 
   // The table name to use
   table = "kv";

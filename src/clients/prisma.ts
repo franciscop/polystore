@@ -4,7 +4,7 @@ import Client from "./Client";
 // Pass the table directly: kv(prisma.store)
 export default class Prisma extends Client {
   // Indicate that this client handles expirations
-  EXPIRES = true;
+  EXPIRES = true as const;
 
   // Check if this is the right class for the given client (Prisma model delegate)
   static test = (client: any): boolean =>

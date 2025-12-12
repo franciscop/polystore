@@ -2,6 +2,9 @@ import Client from "./Client";
 
 // Use localForage for managing the KV
 export default class Forage extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false as const;
+
   // Check if this is the right class for the given client
   static test = (client: any): boolean =>
     client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;

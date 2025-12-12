@@ -2,6 +2,9 @@ import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class WebStorage extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false as const;
+
   // Check if this is the right class for the given client
   static test(client: any): boolean {
     if (typeof Storage === "undefined") return false;

@@ -3,6 +3,9 @@ import Client from "./Client";
 
 // Use a redis client to back up the store
 export default class Etcd extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false as const;
+
   // Check if this is the right class for the given client
   static test = (client: any): boolean => client?.constructor?.name === "Etcd3";
 

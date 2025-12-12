@@ -1,5 +1,5 @@
 export default class Client {
-  EXPIRES?: boolean;
+  EXPIRES?: boolean = false;
 
   client: any;
   encode = (val: any): string => JSON.stringify(val, null, 2);

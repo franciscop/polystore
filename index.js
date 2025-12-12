@@ -1,6 +1,6 @@
 // src/clients/Client.ts
 var Client = class {
-  EXPIRES;
+  EXPIRES = false;
   client;
   encode = (val) => JSON.stringify(val, null, 2);
   decode = (val) => val ? JSON.parse(val) : null;
@@ -136,6 +136,8 @@ var Cookie = class extends Client {
 
 // src/clients/etcd.ts
 var Etcd = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   // Check if this is the right class for the given client
   static test = (client) => client?.constructor?.name === "Etcd3";
   get = (key) => this.client.get(key).json();
@@ -161,6 +163,8 @@ var Etcd = class extends Client {
 
 // src/clients/file.ts
 var File = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   fsp;
   file = "";
   #lock = Promise.resolve();
@@ -252,6 +256,8 @@ var noFileOk = (error) => {
   throw error;
 };
 var Folder = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   fsp;
   folder;
   // Check if this is the right class for the given client
@@ -292,6 +298,8 @@ var Folder = class extends Client {
 
 // src/clients/forage.ts
 var Forage = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   // Check if this is the right class for the given client
   static test = (client) => client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
   get = (key) => this.client.getItem(key);
@@ -323,6 +331,8 @@ var notFound = (error) => {
   throw error;
 };
 var Level = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   // Check if this is the right class for the given client
   static test = (client) => client?.constructor?.name === "ClassicLevel";
   get = (key) => this.client.get(key, { valueEncoding }).catch(notFound);
@@ -355,6 +365,8 @@ var Level = class extends Client {
 
 // src/clients/memory.ts
 var Memory = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   // Check if this is the right class for the given client
   static test = (client) => client instanceof Map;
   get = (key) => this.client.get(key) ?? null;
@@ -366,85 +378,6 @@ var Memory = class extends Client {
     }
   }
   clearAll = () => this.client.clear();
-};
-
-// src/clients/prisma.ts
-var Prisma = class extends Client {
-  // Indicate that this client handles expirations
-  EXPIRES = true;
-  // Check if this is the right class for the given client (Prisma model delegate)
-  static test = (client) => client && client.findUnique && client.upsert && client.findMany;
-  get = async (id) => {
-    const record = await this.client.findUnique({ where: { id } });
-    if (!record) return null;
-    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
-      await this.del(id);
-      return null;
-    }
-    return this.decode(record.value);
-  };
-  set = async (id, data, { expires } = {}) => {
-    const value = this.encode(data);
-    const expiresAt = expires ? new Date(Date.now() + expires * 1e3) : null;
-    await this.client.upsert({
-      where: { id },
-      update: { value, expiresAt },
-      create: { id, value, expiresAt }
-    });
-  };
-  del = async (id) => {
-    try {
-      await this.client.delete({ where: { id } });
-    } catch (error) {
-      if (error.code !== "P2025") throw error;
-    }
-  };
-  has = async (id) => {
-    const record = await this.client.findUnique({
-      where: { id },
-      select: { id: true, expiresAt: true }
-    });
-    if (!record) return false;
-    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
-      await this.del(id);
-      return false;
-    }
-    return true;
-  };
-  async *iterate(prefix = "") {
-    const now = /* @__PURE__ */ new Date();
-    const records = await this.client.findMany({
-      where: {
-        id: { startsWith: prefix }
-      }
-    });
-    for (const record of records) {
-      if (record.expiresAt && record.expiresAt < now) continue;
-      yield [record.id, this.decode(record.value)];
-    }
-  }
-  keys = async (prefix = "") => {
-    const now = /* @__PURE__ */ new Date();
-    const records = await this.client.findMany({
-      where: {
-        id: { startsWith: prefix }
-      },
-      select: { id: true, expiresAt: true }
-    });
-    return records.filter((r) => !r.expiresAt || r.expiresAt >= now).map((r) => r.id);
-  };
-  entries = async (prefix = "") => {
-    const now = /* @__PURE__ */ new Date();
-    const records = await this.client.findMany({
-      where: {
-        id: { startsWith: prefix }
-      }
-    });
-    return records.filter((r) => !r.expiresAt || r.expiresAt >= now).map((r) => [r.id, this.decode(r.value)]);
-  };
-  clearAll = async () => {
-    await this.client.deleteMany({});
-  };
 };
 
 // src/clients/redis.ts
@@ -490,8 +423,100 @@ var Redis = class extends Client {
   close = () => this.client.quit();
 };
 
+// src/clients/sqlite.ts
+var SQLite = class extends Client {
+  // This one is doing manual time management internally even though
+  // sqlite does not natively support expirations. This is because it does
+  // support creating a `expires_at:Date` column that makes managing
+  //  expirations much easier, so it's really "somewhere in between"
+  EXPIRES = true;
+  static test = (client) => typeof client?.prepare === "function";
+  constructor(c) {
+    if (typeof c?.prepare("SELECT 1").get === "function") {
+      super({
+        run: (sql, ...args) => c.prepare(sql).run(...args),
+        get: (sql, ...args) => c.prepare(sql).get(...args),
+        all: (sql, ...args) => c.prepare(sql).all(...args)
+      });
+      return;
+    }
+    super(c);
+  }
+  get = (id) => {
+    const row = this.client.get(
+      `SELECT value, expires_at FROM kv WHERE id = ?`,
+      id
+    );
+    if (!row) return null;
+    if (row.expires_at && row.expires_at < Date.now()) {
+      this.del(id);
+      return null;
+    }
+    return this.decode(row.value);
+  };
+  set = (id, data, { expires } = {}) => {
+    const value = this.encode(data);
+    const expires_at = expires ? Date.now() + expires * 1e3 : null;
+    this.client.run(
+      `INSERT INTO kv (id, value, expires_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(id)
+        DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
+      id,
+      value,
+      expires_at
+    );
+  };
+  del = (id) => {
+    this.client.run(`DELETE FROM kv WHERE id = ?`, id);
+  };
+  has = (id) => {
+    const row = this.client.get(`SELECT expires_at FROM kv WHERE id = ?`, id);
+    if (!row) return false;
+    if (row.expires_at && row.expires_at < Date.now()) {
+      this.del(id);
+      return false;
+    }
+    return true;
+  };
+  *iterate(prefix = "") {
+    this.#clearExpired();
+    const sql = `
+      SELECT id, value FROM kv
+      WHERE (expires_at IS NULL OR expires_at > ?)
+        ${prefix ? "AND id LIKE ?" : ""}
+    `;
+    const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
+    for (const row of this.client.all(sql, ...params)) {
+      yield [row.id, this.decode(row.value)];
+    }
+  }
+  keys = (prefix = "") => {
+    this.#clearExpired();
+    const sql = `
+      SELECT id FROM kv
+      WHERE (expires_at IS NULL OR expires_at > ?)
+        ${prefix ? "AND id LIKE ?" : ""}
+    `;
+    const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
+    const rows = this.client.all(sql, ...params);
+    return rows.map((r) => r.id);
+  };
+  #clearExpired = () => {
+    this.client.run(`DELETE FROM kv WHERE expires_at < ?`, Date.now());
+  };
+  clearAll = () => {
+    this.client.run(`DELETE FROM kv`);
+  };
+  close = () => {
+    this.client.close?.();
+  };
+};
+
 // src/clients/storage.ts
 var WebStorage = class extends Client {
+  // It desn't handle expirations natively
+  EXPIRES = false;
   // Check if this is the right class for the given client
   static test(client) {
     if (typeof Storage === "undefined") return false;
@@ -526,10 +551,10 @@ var clients_default = {
   level: Level,
   memory: Memory,
   // postgres,
-  prisma: Prisma,
+  // prisma,
   redis: Redis,
-  storage: WebStorage
-  // sqlite,
+  storage: WebStorage,
+  sqlite: SQLite
 };
 
 // src/utils.ts
@@ -573,7 +598,7 @@ var Store = class _Store {
   PREFIX = "";
   promise;
   client;
-  constructor(clientPromise) {
+  constructor(clientPromise = /* @__PURE__ */ new Map()) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = this.#find(client);
       this.#validate(this.client);
@@ -650,11 +675,16 @@ var Store = class _Store {
   async get(key) {
     await this.promise;
     const id = this.PREFIX + key;
-    const data = await this.client.get(id) ?? null;
-    if (data === null) return null;
-    if (this.client.EXPIRES) return data;
-    if (!this.#isFresh(data, key)) return null;
-    return data.value;
+    if (this.client.EXPIRES) {
+      const data = await this.client.get(id) ?? null;
+      if (data === null) return null;
+      return data;
+    } else {
+      const data = await this.client.get(id) ?? null;
+      if (data === null) return null;
+      if (!this.#isFresh(data, key)) return null;
+      return data.value;
+    }
   }
   async has(key) {
     await this.promise;
@@ -771,7 +801,9 @@ var Store = class _Store {
     }
   }
 };
-var index_default = (client) => new Store(client);
+function createStore(client) {
+  return new Store(client);
+}
 export {
-  index_default as default
+  createStore as default
 };
