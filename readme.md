@@ -38,12 +38,13 @@ Available clients for the KV store:
 - [**Fetch API** `"https://..."`](#fetch-api) (fe+be): call an API to save/retrieve the data
 - [**File** `"file:///[...].json"`](#file) (be): store the data in a single JSON file in your FS
 - [**Folder** `"file:///[...]/"`](#folder) (be): store each key in a folder as json files
-- [**Redis Client** `redisClient`](#redis-client) (be): use the Redis instance that you connect to
+- [**Redis Client** `redisClient`](#redis) (be): use the Redis instance that you connect to
+- [**SQLite** `sqlite`](#sqlite) (be): use a SQLite instance with a table called `kv`
+- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
-- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library
-- [**Prisma** `prisma.store`](#prisma) (be): use Prisma ORM as a key-value store
+- (coming soon) ~[**Prisma** `prisma`](#prisma) (be): use Prisma ORM as a key-value store~
 - [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 3 methods!
 
 I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser) and tiny (~3KB). For example, let's say you create an API library, then you can accept the stores from your client:
@@ -648,7 +649,7 @@ console.log(await store.get("key1"));
   </ul>
 </details>
 
-### Redis Client
+### Redis
 
 Supports the official Node Redis Client. You can pass either the client or the promise:
 
@@ -911,7 +912,7 @@ You'll need to be running the etcd store for this to work as expected.
 </details>
 
 
-## SQLite
+### SQLite
 
 Supports both **`bun:sqlite`** and **`better-sqlite3`** directly. Pass an already-opened database instance to `kv()` and Polystore will use the `kv` table to store keys, values, and expirations:
 
@@ -931,7 +932,7 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-### SQLite schema
+#### SQLite schema
 
 This is the required schema:
 
@@ -958,7 +959,7 @@ db.run(
 );
 ````
 
-### SQLite expirations
+#### SQLite expirations
 
 If `expires` is provided, Polystore will convert it to a timestamp and persist it in `expires_at`. We handle reading/writing rows and expiration checks.
 

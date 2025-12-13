@@ -48,7 +48,7 @@ global.console = {
   warn: jest.fn() as any,
 };
 
-describe("potato", () => {
+describe("base API", () => {
   it("a potato is not a valid store", async () => {
     expect(kv("potato").get("any")).rejects.toThrow();
   });
@@ -93,6 +93,26 @@ describe("potato", () => {
     ).rejects.toThrow(
       "You can only define client.values() when the client manages the expiration.",
     );
+  });
+
+  it("ClientNonExpires: expired entries are treated as non-existent", async () => {
+    const s = kv({
+      EXPIRES: false as const,
+      get: (key: string) =>
+        key === "a" ? { value: "x", expires: -100 } : null,
+      set: () => {},
+      iterate: function* () {
+        yield ["a", { value: "x", expires: -100 }];
+      },
+    });
+
+    expect(await s.get("a")).toBe(null);
+    expect(await s.has("a")).toBe(false);
+    expect(await s.keys()).toEqual([]);
+
+    const items = [];
+    for await (const entry of s) items.push(entry);
+    expect(items).toEqual([]);
   });
 });
 
@@ -626,6 +646,23 @@ describe.each(storeEntries)("%s", (name, store) => {
       expect((await store.keys()).sort()).toEqual(["a", "session:c"]);
       await session.clear();
       expect(await store.keys()).toEqual(["a"]);
+    });
+
+    it("does not leak between overlapping prefixes", async () => {
+      const a = store.prefix("a:");
+      const ab = store.prefix("a:b:");
+
+      await a.set("1", "x");
+      await ab.set("2", "y");
+
+      expect((await a.keys()).sort()).toEqual(["1", "b:2"]);
+      expect(await ab.keys()).toEqual(["2"]);
+
+      await ab.clear();
+
+      expect(await a.keys()).toEqual(["1"]);
+      expect(await ab.keys()).toEqual([]);
+      expect(await store.keys()).toEqual(["a:1"]);
     });
   });
 
