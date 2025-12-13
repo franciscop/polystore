@@ -35,13 +35,13 @@ Available clients for the KV store:
 - [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage.
 - [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
 - [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
+- [**Redis** `redisClient`](#redis) (be): use the Redis instance that you connect to
+- [**SQLite** `sqlite`](#sqlite) (be): use a SQLite instance with a table called `kv`
 - [**Fetch API** `"https://..."`](#fetch-api) (fe+be): call an API to save/retrieve the data
 - [**File** `"file:///[...].json"`](#file) (be): store the data in a single JSON file in your FS
 - [**Folder** `"file:///[...]/"`](#folder) (be): store each key in a folder as json files
-- [**Redis Client** `redisClient`](#redis) (be): use the Redis instance that you connect to
-- [**SQLite** `sqlite`](#sqlite) (be): use a SQLite instance with a table called `kv`
-- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
+- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
 - (coming soon) ~[**Prisma** `prisma`](#prisma) (be): use Prisma ORM as a key-value store~
