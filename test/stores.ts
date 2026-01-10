@@ -5,7 +5,6 @@ import localForage from "localforage";
 import { createClient } from "redis";
 
 import kv, { Store } from "../src/index.ts";
-import bunsqlite from "./bunsqlite.ts";
 // import customCloudflare from "./customCloudflare.js";
 import customFull from "./customFull.ts";
 import customSimple from "./customSimple.ts";
@@ -29,7 +28,7 @@ type StoreType =
   | 'new Level("data")'
   | "redis"
   | "sqlite"
-  | "bunsqlite"
+  | "sqlite"
   | "new Etcd3()"
   | "customSimple"
   | "customFull"
@@ -86,7 +85,17 @@ if (process.env.ETCD) {
 }
 
 // SQL stores
-stores["bunsqlite"] = kv(bunsqlite);
+stores["sqlite"] = kv(
+  (async () => {
+    if (typeof globalThis.Bun !== "undefined") {
+      const { Database } = await import("bun:sqlite");
+      return new Database(":memory:");
+    } else {
+      const { default: Database } = (await import("better-sqlite3")) as any;
+      return new Database(":memory:");
+    }
+  })(),
+);
 // stores['postgres'] = kv(postgres);
 
 // Custom stores
@@ -95,7 +104,7 @@ stores["customFull"] = kv(customFull);
 // stores["customCloudflare"] = kv(customCloudflare);
 
 // Only run some specific stores (empty = all)
-const only: string[] = [];
+const only: StoreType[] = [];
 
 export const doNotSupportMs: StoreType[] = [
   `"cookie"`,
@@ -110,11 +119,9 @@ export const doNotSupportExpiration: StoreType[] = [
 ];
 
 for (const key of Object.keys(stores).filter(
-  (p) => only.length && only.includes(p[0]),
+  (p) => only.length && !only.includes(p as StoreType),
 )) {
-  if (!only.includes(key)) {
-    delete stores[key as keyof typeof stores];
-  }
+  delete stores[key as keyof typeof stores];
 }
 
 export default stores;

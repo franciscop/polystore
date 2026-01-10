@@ -102,6 +102,11 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       await store.close();
     });
 
+    it("has a type", () => {
+      expect(store.type).not.toBe("UNKNOWN");
+      expect(store.type).not.toBe(null);
+    });
+
     it("can perform a CRUD", async () => {
       expect(await store.get("a")).toBe(null);
       expect(await store.has("a")).toBe(false);

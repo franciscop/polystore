@@ -8,12 +8,13 @@ const notFound = (error: any): null => {
 
 // Level KV DB - https://github.com/Level/level
 export default class Level extends Client {
+  TYPE = "LEVEL";
+
   // It desn't handle expirations natively
   EXPIRES = false as const;
 
   // Check if this is the right class for the given client
-  static test = (client: any): boolean =>
-    client?.constructor?.name === "ClassicLevel";
+  static testKeys = ["attachResource", "detachResource", "prependOnceListener"];
 
   get = (key: string): Promise<any> =>
     this.client.get(key, { valueEncoding }).catch(notFound);

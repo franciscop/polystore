@@ -3,6 +3,8 @@
 import Client from "./Client";
 
 export default class Postgres extends Client {
+  TYPE = "POSTGRES";
+
   // This one is doing manual time management internally even though
   // sqlite does not natively support expirations. This is because it does
   // support creating a `expires_at:Date` column that makes managing

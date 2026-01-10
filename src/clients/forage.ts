@@ -2,6 +2,8 @@ import Client from "./Client";
 
 // Use localForage for managing the KV
 export default class Forage extends Client {
+  TYPE = "FORAGE";
+
   // It desn't handle expirations natively
   EXPIRES = false as const;
 

@@ -1,6 +1,7 @@
 import { Serializable } from "../types";
 
 export default class Client {
+  TYPE: string;
   EXPIRES?: boolean = false;
 
   client: any;

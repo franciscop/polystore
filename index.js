@@ -1,5 +1,6 @@
 // src/clients/Client.ts
 var Client = class {
+  TYPE;
   EXPIRES = false;
   client;
   encode = (val) => JSON.stringify(val, null, 2);
@@ -11,6 +12,7 @@ var Client = class {
 
 // src/clients/api.ts
 var Api = class extends Client {
+  TYPE = "API";
   // Indicate that the file handler DOES handle expirations
   EXPIRES = true;
   static test = (client) => typeof client === "string" && /^https?:\/\//.test(client);
@@ -45,12 +47,13 @@ var Api = class extends Client {
 
 // src/clients/cloudflare.ts
 var Cloudflare = class extends Client {
+  TYPE = "CLOUDFLARE";
   // It handles expirations natively
   EXPIRES = true;
-  // Check whether the given store is a FILE-type
-  static test = (client) => client?.constructor?.name === "KvNamespace" || client?.constructor?.name === "EdgeKVNamespace";
+  static testKeys = ["getWithMetadata", "get", "list", "delete"];
   get = async (key) => {
-    return this.decode(await this.client.get(key));
+    const value = await this.client.get(key);
+    return this.decode(value);
   };
   set = async (key, data, opts) => {
     const expirationTtl = opts.expires ? Math.round(opts.expires) : void 0;
@@ -93,6 +96,7 @@ var Cloudflare = class extends Client {
 
 // src/clients/cookie.ts
 var Cookie = class extends Client {
+  TYPE = "COOKIE";
   // It handles expirations natively
   EXPIRES = true;
   // Check if this is the right class for the given client
@@ -139,10 +143,11 @@ var Cookie = class extends Client {
 
 // src/clients/etcd.ts
 var Etcd = class extends Client {
+  TYPE = "ETCD3";
   // It desn't handle expirations natively
   EXPIRES = false;
   // Check if this is the right class for the given client
-  static test = (client) => client?.constructor?.name === "Etcd3";
+  static testKeys = ["leaseClient", "watchClient", "watchManager"];
   get = async (key) => {
     const data = await this.client.get(key).json();
     return data;
@@ -157,14 +162,6 @@ var Etcd = class extends Client {
       yield [key, await this.get(key)];
     }
   }
-  keys = (prefix = "") => {
-    return this.client.getAll().prefix(prefix).keys();
-  };
-  entries = async (prefix = "") => {
-    const keys = await this.keys(prefix);
-    const values = await Promise.all(keys.map((k) => this.get(k)));
-    return keys.map((k, i) => [k, values[i]]);
-  };
   clear = async (prefix = "") => {
     if (!prefix) return this.client.delete().all();
     return this.client.delete().prefix(prefix);
@@ -173,6 +170,7 @@ var Etcd = class extends Client {
 
 // src/clients/file.ts
 var File = class extends Client {
+  TYPE = "FILE";
   // It desn't handle expirations natively
   EXPIRES = false;
   fsp;
@@ -266,6 +264,7 @@ var noFileOk = (error) => {
   throw error;
 };
 var Folder = class extends Client {
+  TYPE = "FOLDER";
   // It desn't handle expirations natively
   EXPIRES = false;
   fsp;
@@ -311,6 +310,7 @@ var Folder = class extends Client {
 
 // src/clients/forage.ts
 var Forage = class extends Client {
+  TYPE = "FORAGE";
   // It desn't handle expirations natively
   EXPIRES = false;
   // Check if this is the right class for the given client
@@ -344,10 +344,11 @@ var notFound = (error) => {
   throw error;
 };
 var Level = class extends Client {
+  TYPE = "LEVEL";
   // It desn't handle expirations natively
   EXPIRES = false;
   // Check if this is the right class for the given client
-  static test = (client) => client?.constructor?.name === "ClassicLevel";
+  static testKeys = ["attachResource", "detachResource", "prependOnceListener"];
   get = (key) => this.client.get(key, { valueEncoding }).catch(notFound);
   set = (key, value) => this.client.put(key, value, { valueEncoding });
   del = (key) => this.client.del(key);
@@ -378,6 +379,7 @@ var Level = class extends Client {
 
 // src/clients/memory.ts
 var Memory = class extends Client {
+  TYPE = "MEMORY";
   // It desn't handle expirations natively
   EXPIRES = false;
   // Check if this is the right class for the given client
@@ -395,6 +397,7 @@ var Memory = class extends Client {
 
 // src/clients/redis.ts
 var Redis = class extends Client {
+  TYPE = "REDIS";
   // Indicate if this client handles expirations (true = it does)
   EXPIRES = true;
   // Check if this is the right class for the given client
@@ -438,6 +441,7 @@ var Redis = class extends Client {
 
 // src/clients/sqlite.ts
 var SQLite = class extends Client {
+  TYPE = "SQLITE";
   // This one is doing manual time management internally even though
   // sqlite does not natively support expirations. This is because it does
   // support creating a `expires_at:Date` column that makes managing
@@ -524,6 +528,7 @@ ${prefix ? "AND id LIKE ?" : ""}
 
 // src/clients/storage.ts
 var WebStorage = class extends Client {
+  TYPE = "STORAGE";
   // It desn't handle expirations natively
   EXPIRES = false;
   // Check if this is the right class for the given client
@@ -607,20 +612,27 @@ var Store = class _Store {
   PREFIX = "";
   promise;
   client;
+  type = "UNKNOWN";
   constructor(clientPromise = /* @__PURE__ */ new Map()) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = this.#find(client);
       this.#validate(this.client);
       this.promise = null;
       await this.client.promise;
+      this.type = this.client?.TYPE || this.type;
       return client;
     });
   }
   #find(store) {
     if (store instanceof _Store) return store.client;
     for (let client of Object.values(clients_default)) {
-      if (client.test && client.test(store)) {
+      if ("test" in client && client.test(store)) {
         return new client(store);
+      }
+      if ("testKeys" in client && typeof store === "object") {
+        if (client.testKeys.every((key) => store[key])) {
+          return new client(store);
+        }
       }
     }
     if (typeof store === "function" && /^class\s/.test(Function.prototype.toString.call(store))) {
