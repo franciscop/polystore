@@ -74,10 +74,7 @@ stores[`"${path4}"` as StoreType] = kv(path4);
 stores["new KVNamespace()"] = kv(new KVNamespace());
 stores[`new Level("data")`] = kv(new Level("data"));
 const url = "http://localhost:3000/";
-const apiAvailable = true;
-//await fetch(url)
-//   .then((res) => res.status === 200)
-//   .catch(() => false);
+const apiAvailable = !process.env.CI;
 if (apiAvailable) {
   stores[`${url}` as StoreType] = kv(url);
 }
