@@ -1,13 +1,43 @@
+// SQLite client - uses a sqlite instance with a table
+// called `kv` containing 'id', 'value', and 'expires_at' columns
 import Client from "./Client";
 
 export default class SQLite extends Client {
   // This one is doing manual time management internally even though
   // sqlite does not natively support expirations. This is because it does
   // support creating a `expires_at:Date` column that makes managing
-  //  expirations much easier, so it's really "somewhere in between"
+  // expirations much easier, so it's really "somewhere in between"
   EXPIRES = true as const;
 
-  static test = (client: any): boolean => typeof client?.prepare === "function";
+  // The table name to use
+  table = "kv";
+
+  // Make sure the folder already exists, so attempt to create it
+  // It fails if it already exists, hence the catch case
+  promise = (async () => {
+    // Light validation, including the table name
+    if (!/^[a-zA-Z_]+$/.test(this.table)) {
+      throw new Error(`Invalid table name ${this.table}`);
+    }
+    this.client.exec(`
+      CREATE TABLE IF NOT EXISTS ${this.table} (
+        id TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        expires_at INTEGER
+      )
+    `);
+    this.client.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`,
+    );
+  })();
+
+  static test = (client: any): boolean => {
+    // Both Bun:sqlite and better-sqlite3 have both `.prepare()` and `.exec()`
+    return (
+      typeof client?.prepare === "function" &&
+      typeof client?.exec === "function"
+    );
+  };
 
   get = <T>(id: string): T | null => {
     const row = this.client
@@ -80,7 +110,7 @@ ${prefix ? "AND id LIKE ?" : ""}
   };
 
   clearAll = (): void => {
-    this.client.run(`DELETE FROM kv`);
+    this.client.exec(`DELETE FROM kv`);
   };
 
   close = (): void => {

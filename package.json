@@ -16,11 +16,13 @@
     "index.d.ts"
   ],
   "scripts": {
-    "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && gzip-size index.min.js && rm index.min.js",
+    "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",
     "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24",
     "lint": "npx tsc --noEmit",
     "start": "bun test --watch",
-    "test": "bun test",
+    "test": "npm run test:bun && npm run test:jest",
+    "test:bun": "bun test ./test/index.test.ts",
+    "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit",
     "run:db": "etcd",
     "run:server": "bun ./src/server.ts"
   },
@@ -35,21 +37,27 @@
   "license": "MIT",
   "devDependencies": {
     "@deno/kv": "^0.8.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/bun": "^1.3.3",
+    "@types/jest": "^30.0.0",
     "@types/jsdom": "^27.0.0",
-    "better-sqlite3": "^12.5.0",
+    "better-sqlite3": "^12.6.0",
     "check-dts": "^0.8.0",
-    "cross-fetch": "^4.0.0",
+    "cross-fetch": "^4.1.0",
     "dotenv": "^16.3.1",
     "edge-mock": "^0.0.15",
     "esbuild": "^0.27.0",
     "etcd3": "^1.1.2",
     "gzip-size-cli": "^5.1.0",
+    "jest": "^30.2.0",
     "jsdom": "^27.2.0",
     "level": "^8.0.1",
     "localforage": "^1.10.0",
     "redis": "^4.6.10",
-    "tsup": "^8.5.1"
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   },
   "documentation": {
     "title": "🏬 Polystore - A universal library for standardizing any KV-store",

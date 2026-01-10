@@ -9,12 +9,12 @@ export default class Api extends Client {
   static test = (client: string | unknown) =>
     typeof client === "string" && /^https?:\/\//.test(client);
 
-  #api = async (
+  #api = async <T>(
     key: string,
     opts = "",
     method = "GET",
     body?: string,
-  ): Promise<Serializable> => {
+  ): Promise<T | null> => {
     const url = `${this.client.replace(/\/$/, "")}/${encodeURIComponent(key)}${opts}`;
     const headers: Record<string, string> = {
       accept: "application/json",
@@ -22,26 +22,27 @@ export default class Api extends Client {
     };
     const res = await fetch(url, { method, headers, body });
     if (!res.ok) return null;
-    return this.decode(await res.text());
+    return this.decode<T>(await res.text());
   };
 
-  get = (key: string): Promise<Serializable> => this.#api(key);
-  set = async (
+  get = <T>(key: string): Promise<T | null> => this.#api<T>(key);
+  set = async <T extends Serializable>(
     key: string,
-    value: Serializable,
+    value: T,
     { expires }: ClientOptions = {},
   ) => {
     const exp = typeof expires === "number" ? `?expires=${expires}` : "";
-    await this.#api(key, exp, "PUT", this.encode(value));
+    await this.#api<T>(key, exp, "PUT", this.encode(value));
   };
-  del = async (key: string) => {
-    await this.#api(key, "", "DELETE");
-  };
+  del = (key: string) => this.#api<null>(key, "", "DELETE");
 
-  async *iterate(prefix = ""): AsyncGenerator<[string, Serializable]> {
-    const data = await this.#api("", `?prefix=${encodeURIComponent(prefix)}`);
+  async *iterate<T>(prefix = ""): AsyncGenerator<[string, T]> {
+    const data = await this.#api<Record<string, T>>(
+      "",
+      `?prefix=${encodeURIComponent(prefix)}`,
+    );
     for (let [key, value] of Object.entries(data || {})) {
-      if (value !== null && value !== undefined) {
+      if (value !== null) {
         yield [prefix + key, value];
       }
     }

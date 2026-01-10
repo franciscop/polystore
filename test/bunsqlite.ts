@@ -1,16 +1,8 @@
-import { Database } from "bun:sqlite";
-
-const bunsqlite = new Database(":memory:");
-
-bunsqlite.run(`
-  CREATE TABLE IF NOT EXISTS kv (
-    id TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    expires_at INTEGER
-  )
-`);
-bunsqlite.run(
-  `CREATE INDEX IF NOT EXISTS idx_kv_expires_at ON kv (expires_at)`,
-);
-
-export default bunsqlite;
+export default (async () => {
+  if (typeof globalThis.Bun !== "undefined") {
+    const { Database } = await import("bun:sqlite");
+    return new Database(":memory:");
+  }
+  const { default: Database } = (await import("better-sqlite3")) as any;
+  return new Database(":memory:");
+})();

@@ -4,16 +4,17 @@ import { Level } from "level";
 import localForage from "localforage";
 import { createClient } from "redis";
 
-import kv, { Store } from "../src/index";
-import bunsqlite from "./bunsqlite";
+import kv, { Store } from "../src/index.ts";
+import bunsqlite from "./bunsqlite.ts";
 // import customCloudflare from "./customCloudflare.js";
-import customFull from "./customFull";
-import customSimple from "./customSimple";
+import customFull from "./customFull.ts";
+import customSimple from "./customSimple.ts";
 
 type FileURL = `file://${string}`;
 
 type StoreType =
   | "kv()"
+  | "kv(kv())"
   | "new Map()"
   | "localStorage"
   | "sessionStorage"
@@ -42,13 +43,22 @@ const stores: Partial<Record<StoreType, Store>> = {};
 
 // In-memory stores
 stores["kv()"] = kv();
+stores["kv(kv())"] = kv(kv()); //  Recursion testing
 stores["new Map()"] = kv(new Map());
 
 // Browser stores
-stores["localStorage"] = kv(localStorage);
-stores["sessionStorage"] = kv(sessionStorage);
-stores["localForage"] = kv(localForage);
-stores[`"cookie"`] = kv("cookie");
+if (typeof localStorage !== "undefined") {
+  stores["localStorage"] = kv(localStorage);
+}
+if (typeof sessionStorage !== "undefined") {
+  stores["sessionStorage"] = kv(sessionStorage);
+}
+if (typeof localStorage !== "undefined") {
+  stores["localForage"] = kv(localForage);
+}
+if (typeof document !== "undefined" && document.cookie) {
+  stores[`"cookie"`] = kv("cookie");
+}
 
 // File stores
 const path = `file://${process.cwd()}/data/kv.json` as FileURL;
@@ -64,9 +74,10 @@ stores[`"${path4}"` as StoreType] = kv(path4);
 stores["new KVNamespace()"] = kv(new KVNamespace());
 stores[`new Level("data")`] = kv(new Level("data"));
 const url = "http://localhost:3000/";
-const apiAvailable = await fetch(url)
-  .then((res) => res.status === 200)
-  .catch(() => false);
+const apiAvailable = true;
+//await fetch(url)
+//   .then((res) => res.status === 200)
+//   .catch(() => false);
 if (apiAvailable) {
   stores[`${url}` as StoreType] = kv(url);
 }
@@ -79,10 +90,34 @@ if (process.env.ETCD) {
 
 // SQL stores
 stores["bunsqlite"] = kv(bunsqlite);
+// stores['postgres'] = kv(postgres);
 
 // Custom stores
 stores["customSimple"] = kv(customSimple);
 stores["customFull"] = kv(customFull);
 // stores["customCloudflare"] = kv(customCloudflare);
+
+// Only run some specific stores (empty = all)
+const only: string[] = [];
+
+export const doNotSupportMs: StoreType[] = [
+  `"cookie"`,
+  `redis`,
+  `new Etcd3()`,
+  `customCloudflare`,
+];
+
+export const doNotSupportExpiration: StoreType[] = [
+  "new KVNamespace()", // The mock implementation does NOT support expiration 😪
+  `customCloudflare`, // Some stores expect 60s+ expiration times, too long to test automatically 😪
+];
+
+for (const key of Object.keys(stores).filter(
+  (p) => only.length && only.includes(p[0]),
+)) {
+  if (!only.includes(key)) {
+    delete stores[key as keyof typeof stores];
+  }
+}
 
 export default stores;

@@ -8,46 +8,44 @@ const store1 = kv(new Map()); // in-memory
 const store2 = kv(localStorage); // Persist in the browser
 const store3 = kv(redisClient); // Use a Redis client for backend persistence
 const store4 = kv(yourOwnStore); // Create a store based on your code
-// Many more here
+// Many more clients available
 ```
 
 These are all the methods of the [API](#api) (they are all `async`):
 
 - [`.get(key)`](#get): read a single value, or `null` if it doesn't exist or is expired.
 - [`.set(key, value, options?)`](#set): save a single value that is serializable.
-- [`.add(value, options?)`](#add): same as `.set()`, but auto-generates the key.
-- [`.has(key)`](#has): check whether a key exists or not.
-- [`.del(key)`](#del): delete a single value from the store.
-- [`.keys()`](#keys): get a list of all the available strings in the store.
-- [`.values()`](#values): get a list of all the values in the store.
-- [`.entries()`](#entries): get a list of all the key-value pairs.
-- [`.all()`](#all): get an object with the key:values mapped.
+- [`.add(value, options?)`](#add): save a single value with an auto-generated key.
+- [`.has(key)`](#has): check whether a key exists and is not expired.
+- [`.del(key)`](#del): delete a single key/value from the store.
+- [Iterator](#iterator): go through all of the key/values one by one.
+- [`.keys()`](#keys): get a list of all the available keys in the store.
+- [`.values()`](#values): get a list of all the available values in the store.
+- [`.entries()`](#entries): get a list of all the available key-value pairs.
+- [`.all()`](#all): get an object of all the key:values mapped.
 - [`.clear()`](#clear): delete ALL of the data in the store, effectively resetting it.
 - [`.close()`](#close): (only _some_ stores) ends the connection to the store.
 - [`.prefix(prefix)`](#prefix): create a sub-store that manages the keys with that prefix.
-
-> This library has very high performance with the item methods (GET/SET/ADD/HAS/DEL). For other methods or to learn more, see [the performance considerations](#performance) and read the docs on your specific client.
 
 Available clients for the KV store:
 
 - [**Memory** `new Map()`](#memory) (fe+be): an in-memory API to keep your KV store.
 - [**Local Storage** `localStorage`](#local-storage) (fe): persist the data in the browser's localStorage.
 - [**Session Storage** `sessionStorage`](#session-storage) (fe): persist the data in the browser's sessionStorage.
-- [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies
-- [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB
-- [**Redis** `redisClient`](#redis) (be): use the Redis instance that you connect to
-- [**SQLite** `sqlite`](#sqlite) (be): use a SQLite instance with a table called `kv`
-- [**Fetch API** `"https://..."`](#fetch-api) (fe+be): call an API to save/retrieve the data
-- [**File** `"file:///[...].json"`](#file) (be): store the data in a single JSON file in your FS
-- [**Folder** `"file:///[...]/"`](#folder) (be): store each key in a folder as json files
-- [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store
-- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library
-- [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem
+- [**Cookies** `"cookie"`](#cookies) (fe): persist the data using cookies.
+- [**LocalForage** `localForage`](#local-forage) (fe): persist the data on IndexedDB.
+- [**Redis** `redisClient`](#redis) (be): use the Redis instance that you connect to.
+- [**SQLite** `sqlite`](#sqlite) (be): use a SQLite instance with a table called `kv`.
+- [**Fetch API** `"https://..."`](#fetch-api) (fe+be): call an API to save/retrieve the data.
+- [**File** `"file:///[...].json"`](#file) (be): store the data in a single JSON file in your FS.
+- [**Folder** `"file:///[...]/"`](#folder) (be): store each key in a folder as json files.
+- [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store.
+- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library.
+- [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem.
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
-- (coming soon) ~[**Prisma** `prisma`](#prisma) (be): use Prisma ORM as a key-value store~
 - [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 3 methods!
 
-I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser) and tiny (~3KB). For example, let's say you create an API library, then you can accept the stores from your client:
+I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser), idempotent (`kv(kv(A))` ~= `kv(A)`) and tiny (~4KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
@@ -80,7 +78,7 @@ const REDIS = process.env.REDIS_URL;
 const store = kv(createClient({ url: REDIS }).connect());
 ```
 
-Now your store is ready to use! Add, set, get, del different keys. [See full API](#api).
+This follows the recommended naming, the default exported `kv()` for the base function, then `store` for the store instance. Now your store is ready to use! Add, set, get, del different keys. [See full API](#api).
 
 ```js
 const key = await store.add("Hello");
@@ -93,7 +91,7 @@ await store.del(key);
 
 ## API
 
-See how to initialize each store [in the Clients list documentation](#clients). But basically for every store, it's like this:
+The base `kv()` initialization is shared across clients ([see full clients list](#clients)); single argument that receives the client or a string representing the client:
 
 ```js
 import kv from "polystore";
@@ -104,9 +102,10 @@ const store = kv(MyClientOrStoreInstance);
 // use the store
 ```
 
-The above represents the recommended naming; the default export, `kv` in this case, is a wrapper that will generate a "store" that then you use all around your codebase.
+> [!IMPORTANT]
+> The library delivers excellent performance for item-level operations (GET, SET, ADD, HAS, DEL). For other methods or detailed guidance, check the performance considerations and consult your specific client’s documentation.
 
-You can enforce the **types** for the store values directly at the store creation, or at the method level:
+You can enforce **types** for store values either at store creation or at the method level:
 
 ```ts
 const store = kv<number>(new Map());
@@ -123,9 +122,12 @@ store.set<number>("abc", 10);
 store.set<number>("abc", "hello"); // FAILS
 ````
 
-> If you try to enforce data structure at _both_ the store level AND method level, then the method data type _should_ be a subclass of the store data structure, e.g. `kv<string | number>().get<string>("a")` will work, but `kv<string>().get<number>("a")` will _not_ work.
+> [!WARNING]
+> If you enforce types at _both_ the store level and method level, the method type must be a subset of the store type. For example, `kv<string | number>().get<string>("a")` works, but `kv<string>().get<number>("a")` _won't work_.
 
-The type should always be `Serializable`, which is `number | string | boolean | Object | Array` (values can be `null` inside Object+Array). These types, along with the Store and Client, are exported as well:
+Store values must be JSON-like data. The Serializable type represents values composed of `string`, `number`, `boolean`, `null`, and `arrays` and plain `objects` whose values are serializable. Class instances or non-plain objects will lose their prototypes and methods when stored.
+
+These are the exported types, `Client`, `Serializable` and `Store`:
 
 ```ts
 import kv from "polystore";
@@ -138,9 +140,9 @@ const value: Serializable = store.get('hello');
 
 ### .get()
 
-Retrieve a single value from the store. Will return `null` if the value is not set in the store, or if it was set but has already expired:
+Retrieves a single value from the store. If the key has never been set, was deleted, or has expired, it returns `null`:
 
-```js
+```ts
 const value = await store.get(key: string);
 
 console.log(await store.get("key1"));  // "Hello World"
@@ -148,13 +150,75 @@ console.log(await store.get("key2"));  // ["my", "grocery", "list"]
 console.log(await store.get("key3"));  // { name: "Francisco" }
 ```
 
-If the value is returned, it can be a simple type like `boolean`, `string` or `number`, or it can be a plain `Object` or `Array`, or any combination of those.
+You can specify the type either at [the store level](#api) or at the method level:
 
-When there's no value (either never set, or expired), `null` will be returned from the operation.
+```ts
+console.log(await store.get<string>("key1"));  // "Hello World"
+console.log(await store.get<string[]>("key2"));  // ["my", "grocery", "list"]
+console.log(await store.get<User>("key3"));  // { name: "Francisco" }
+```
+
+<details>
+  <summary>The value and its types must be <b>Serializable</b></summary>
+
+The value returned by `.get()` must be **serializable**. Valid types include:
+
+* `string`, `number`, `boolean`
+* Arrays or plain objects whose values are themselves serializable
+* Nested `null` values are allowed
+
+Class instances or non-plain objects will lose their prototypes and methods when stored. Only JSON-serializable data is safe. Examples:
+
+```ts
+// Valid
+type ValueType = string;
+type ValueType = string | number;
+type ValueType = { id: number; name: string; age: number | null };
+
+// Invalid
+type ValueType = Date;      // Loses prototype
+type ValueType = null;      // Only allowed as nested value
+type ValueType = Infinity;  // Not serializable
+```
+
+In short, only JSON-serializable data is safe to store.
+</details>
+
+When there's no value (either never set, deleted, or expired), `.get()` will return `null`:
+
+```ts
+// Never set
+console.log(await store.get("key1"));   // null
+
+// Deleted
+await store.set("key2", "Hello");
+console.log(await store.get("key2"));   // "Hello"
+await store.del('key2');
+console.log(await store.get("key2"));   // null
+
+// Expired
+await store.set("key3", "Hello", { expires: '1s' });
+console.log(await store.get("key3"));   // "Hello"
+await new Promise((done) => setTimeout(done, 2000)); // Wait 2 seconds
+console.log(await store.get("key3"));   // null (already expired)
+```
+
+> [!WARNING]
+> Attempting to read an expired key that wasn't automatically evicted will trigger a delete internally. This should not affect you directly, but it's good to know since you might expect a `read` operation not to modify the underlying data. See the [Eviction](#eviction) section and your specific client for details.
+
+If you are using a substore with `.prefix()`, `.get()` will respect it:
+
+```ts
+const session = store.prefix('session:');
+
+console.log(await session.get('key1')); 
+// Same as store.get("session:key1")
+```
+
 
 ### .set()
 
-Create or update a value in the store. Will return a promise that resolves with the key when the value has been saved. The value needs to be serializable:
+Create or update a value in the store. Will return a promise that resolves with the key when the value has been saved:
 
 ```js
 await store.set(key: string, value: any, options?: { expires: number|string });
@@ -164,7 +228,39 @@ await store.set("key2", ["my", "grocery", "list"], { expires: "1h" });
 await store.set("key3", { name: "Francisco" }, { expires: 60 * 60 });
 ```
 
-The value can be a simple type like `boolean`, `string` or `number`, or it can be a plain `Object` or `Array`, or a combination of those. It **cannot** be a more complex or non-serializable values like a `Date()`, `Infinity`, `undefined` (casted to `null`), a `Symbol`, etc.
+You can specify the type either at [the store level](#api) or at the method level:
+
+```ts
+await store.set<string>("key1", "Hello World");
+await store.set<string[]>("key2", ["my", "grocery", "list"]);
+await store.set<User>("key3", { name: "Francisco" });
+```
+
+<details>
+  <summary>The value and its types must be <b>Serializable</b></summary>
+
+The value returned by `.get()` must be **serializable**. Valid types include:
+
+* `string`, `number`, `boolean`
+* Arrays or plain objects whose values are themselves serializable
+* Nested `null` values are allowed
+
+Class instances or non-plain objects will lose their prototypes and methods when stored. Only JSON-serializable data is safe. Examples:
+
+```ts
+// Valid
+type ValueType = string;
+type ValueType = string | number;
+type ValueType = { id: number; name: string; age: number | null };
+
+// Invalid
+type ValueType = Date;      // Loses prototype
+type ValueType = null;      // Only allowed as nested value
+type ValueType = Infinity;  // Not serializable
+```
+
+In short, only JSON-serializable data is safe to store.
+</details>  
 
 - By default the keys _don't expire_.
 - Setting the `value` to `null`, or the `expires` to `0` is the equivalent of deleting the key+value.
@@ -684,7 +780,7 @@ You don't need to `await` for the connect or similar, this will process it prope
 Supports both **`bun:sqlite`** and **`better-sqlite3`** directly. Pass an already-opened database instance to `kv()` and Polystore will use the `kv` table to store keys, values, and expirations:
 
 > [!IMPORTANT]
-> The table `kv` must already exist in the Database
+> The table `kv` will be created if it doesn't already exist
 
 ```js
 import kv from "polystore";
@@ -724,14 +820,14 @@ CREATE TABLE kv (
 You can create these with failsafes to make it much easier to initialize:
 
 ```js
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS kv (
     id TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     expires_at INTEGER
   )
 `);
-db.run(
+db.exec(
   `CREATE INDEX IF NOT EXISTS idx_kv_expires_at ON kv (expires_at)`,
 );
 ````
@@ -740,7 +836,9 @@ db.run(
 
 If `expires` is provided, Polystore will convert it to a timestamp and persist it in `expires_at`. We handle reading/writing rows and expiration checks.
 
-However, these are not auto-evicted since SQLite doesn't have a native expiration. To avoid having stale data that is not used anymore, it's recommended you set a periodic check and clear expired records manually:
+However, these are not auto-evicted since SQLite doesn't have native expiration eviction. To avoid having stale data that is not used anymore, it's recommended you set a periodic check and clear expired records manually.
+
+There's many ways of doing this, but a simple/basic one is this:
 
 ```js
 // Clear expired keys once every 10 minutes
@@ -1039,45 +1137,6 @@ This maps prefixes to table names for better performance on group operations.
     <li><strong>Database-backed persistence</strong>: leverage your existing database for key-value storage.</li>
     <li><strong>Table-based substores</strong>: <code>.prefix()</code> maps to different tables for optimal query performance.</li>
     <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-  </ul>
-</details>
-
-### Prisma
-
-Use Prisma as a key-value store by passing a table model directly:
-
-```js
-import kv from "polystore";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-const store = kv(prisma.session);
-
-await store.set("key1", "Hello world", { expires: "1h" });
-console.log(await store.get("key1"));
-// "Hello world"
-```
-
-Your Prisma schema needs a model with three columns: `id` (String), `value` (String/Text), and `expiresAt` (DateTime, nullable):
-
-```prisma
-model session {
-  id        String    @id
-  value     String    @db.Text
-  expiresAt DateTime?
-}
-```
-
-All three columns are required. The `expiresAt` column should be nullable (`DateTime?`) to support records without expiration.
-
-<details>
-  <summary>Why use polystore with Prisma?</summary>
-  <p>These benefits are for wrapping Prisma with polystore:</p>
-  <ul>
-    <li><strong>Unified API</strong>: use the same API across all your storage backends.</li>
-    <li><strong>Database-backed persistence</strong>: leverage your existing database for key-value storage.</li>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expiration">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
   </ul>
 </details>
 

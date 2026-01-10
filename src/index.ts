@@ -154,7 +154,7 @@ class Store<TDefault extends Serializable = Serializable> {
 
     // In the data we need the timestamp since we need it "absolute":
     expires = unix(expires);
-    await this.client.set(id, { expires, value });
+    await this.client.set<T>(id, { expires, value });
     return key;
   }
 
