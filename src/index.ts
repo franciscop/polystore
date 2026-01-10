@@ -6,6 +6,7 @@ class Store<TDefault extends Serializable = Serializable> {
   PREFIX = "";
   promise: Promise<Client> | null;
   client!: Client;
+  type: string = "UNKNOWN";
 
   constructor(clientPromise: any = new Map()) {
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
@@ -13,6 +14,7 @@ class Store<TDefault extends Serializable = Serializable> {
       this.#validate(this.client);
       this.promise = null;
       await this.client.promise;
+      this.type = this.client?.TYPE || this.type;
       return client;
     });
   }
@@ -24,9 +26,14 @@ class Store<TDefault extends Serializable = Serializable> {
     // One of the supported ones, so we receive an instance and
     // wrap it with the client wrapper
     for (let client of Object.values(clients)) {
-      if (client.test && client.test(store)) {
+      if ("test" in client && client.test(store)) {
         // Some TS BS
         return new client(store) as Client;
+      }
+      if ("testKeys" in client && typeof store === "object") {
+        if (client.testKeys.every((key) => store[key])) {
+          return new client(store) as Client;
+        }
       }
     }
 

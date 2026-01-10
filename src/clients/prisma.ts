@@ -3,6 +3,8 @@ import Client from "./Client";
 // Use a Prisma table model with 'id', 'value', and optionally 'expiresAt' columns
 // Pass the table directly: kv(prisma.store)
 export default class Prisma extends Client {
+  TYPE = "PRISMA";
+
   // Indicate that this client handles expirations
   EXPIRES = true as const;
 

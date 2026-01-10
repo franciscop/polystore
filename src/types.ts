@@ -20,9 +20,11 @@ export type Serializable =
   | { [key: string]: Serializable | null };
 
 export interface ClientExpires {
+  TYPE: string;
   EXPIRES: true;
   promise?: Promise<any>;
   test?: (client: any) => boolean;
+  // testKeys?: string[];
   get<T extends Serializable>(key: string): Promise<T | null> | T | null;
   set<T extends Serializable>(
     key: string,
@@ -55,9 +57,11 @@ export interface ClientExpires {
 }
 
 export interface ClientNonExpires {
+  TYPE: string;
   EXPIRES: false;
   promise?: Promise<any>;
   test?: (client: any) => boolean;
+  // testKeys?: string[];
   get<T extends Serializable>(
     key: string,
   ): Promise<StoreData<T> | null> | StoreData<T> | null;

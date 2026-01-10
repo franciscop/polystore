@@ -2,6 +2,8 @@ import Client from "./Client";
 
 // Use a Map() as an in-memory client
 export default class Memory extends Client {
+  TYPE = "MEMORY";
+
   // It desn't handle expirations natively
   EXPIRES = false as const;
 

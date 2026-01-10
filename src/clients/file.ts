@@ -4,6 +4,8 @@ import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class File extends Client {
+  TYPE = "FILE";
+
   // It desn't handle expirations natively
   EXPIRES = false as const;
 

@@ -4,12 +4,13 @@ import Client from "./Client";
 
 // Use a redis client to back up the store
 export default class Etcd extends Client {
+  TYPE = "ETCD3";
+
   // It desn't handle expirations natively
   EXPIRES = false as const;
 
   // Check if this is the right class for the given client
-  static test = (client: Namespace): boolean =>
-    client?.constructor?.name === "Etcd3";
+  static testKeys = ["leaseClient", "watchClient", "watchManager"];
 
   get = async <T extends Serializable>(key: string) => {
     const data = await (this.client as Namespace).get(key).json();
@@ -33,18 +34,6 @@ export default class Etcd extends Client {
       yield [key, await this.get<T>(key)];
     }
   }
-
-  keys = (prefix = ""): Promise<string[]> => {
-    return this.client.getAll().prefix(prefix).keys();
-  };
-
-  entries = async <T extends Serializable>(
-    prefix = "",
-  ): Promise<[string, T][]> => {
-    const keys = await this.keys(prefix);
-    const values = await Promise.all(keys.map((k) => this.get<T>(k)));
-    return keys.map((k, i) => [k, values[i]]);
-  };
 
   clear = async (prefix = ""): Promise<void> => {
     if (!prefix) return this.client.delete().all();

@@ -9,16 +9,16 @@ type CFReply = {
 
 // Use Cloudflare's KV store
 export default class Cloudflare extends Client {
+  TYPE = "CLOUDFLARE";
+
   // It handles expirations natively
   EXPIRES = true as const;
 
-  // Check whether the given store is a FILE-type
-  static test = (client: any): boolean =>
-    client?.constructor?.name === "KvNamespace" ||
-    client?.constructor?.name === "EdgeKVNamespace";
+  static testKeys = ["getWithMetadata", "get", "list", "delete"];
 
   get = async <T extends Serializable>(key: string): Promise<T | null> => {
-    return this.decode<T>(await this.client.get(key));
+    const value = await this.client.get(key);
+    return this.decode<T>(value);
   };
 
   set = async <T extends Serializable>(

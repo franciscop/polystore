@@ -2,6 +2,8 @@ import Client from "./Client";
 
 // Use a redis client to back up the store
 export default class Redis extends Client {
+  TYPE = "REDIS";
+
   // Indicate if this client handles expirations (true = it does)
   EXPIRES = true as const;
 

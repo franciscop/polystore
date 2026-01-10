@@ -2,6 +2,8 @@ import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
 export default class WebStorage extends Client {
+  TYPE = "STORAGE";
+
   // It desn't handle expirations natively
   EXPIRES = false as const;
 

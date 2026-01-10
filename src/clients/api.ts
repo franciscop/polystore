@@ -3,6 +3,8 @@ import Client from "./Client";
 
 // Handle an API endpoint with fetch()
 export default class Api extends Client {
+  TYPE = "API";
+
   // Indicate that the file handler DOES handle expirations
   EXPIRES = true as const;
 
