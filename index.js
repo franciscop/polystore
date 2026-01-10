@@ -29,13 +29,14 @@ var Api = class extends Client {
     const exp = typeof expires === "number" ? `?expires=${expires}` : "";
     await this.#api(key, exp, "PUT", this.encode(value));
   };
-  del = async (key) => {
-    await this.#api(key, "", "DELETE");
-  };
+  del = (key) => this.#api(key, "", "DELETE");
   async *iterate(prefix = "") {
-    const data = await this.#api("", `?prefix=${encodeURIComponent(prefix)}`);
+    const data = await this.#api(
+      "",
+      `?prefix=${encodeURIComponent(prefix)}`
+    );
     for (let [key, value] of Object.entries(data || {})) {
-      if (value !== null && value !== void 0) {
+      if (value !== null) {
         yield [prefix + key, value];
       }
     }
@@ -48,13 +49,15 @@ var Cloudflare = class extends Client {
   EXPIRES = true;
   // Check whether the given store is a FILE-type
   static test = (client) => client?.constructor?.name === "KvNamespace" || client?.constructor?.name === "EdgeKVNamespace";
-  get = async (key) => this.decode(await this.client.get(key));
-  set = (key, data, opts) => {
+  get = async (key) => {
+    return this.decode(await this.client.get(key));
+  };
+  set = async (key, data, opts) => {
     const expirationTtl = opts.expires ? Math.round(opts.expires) : void 0;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }
-    return this.client.put(key, this.encode(data), { expirationTtl });
+    await this.client.put(key, this.encode(data), { expirationTtl });
   };
   del = (key) => this.client.delete(key);
   // Since we have pagination, we don't want to get all of the
@@ -84,7 +87,7 @@ var Cloudflare = class extends Client {
   entries = async (prefix = "") => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
-    return keys.map((k, i) => [k, values[i]]);
+    return keys.map((k, i) => [k, values[i]]).filter((p) => p[1] !== null);
   };
 };
 
@@ -140,8 +143,13 @@ var Etcd = class extends Client {
   EXPIRES = false;
   // Check if this is the right class for the given client
   static test = (client) => client?.constructor?.name === "Etcd3";
-  get = (key) => this.client.get(key).json();
-  set = (key, value) => this.client.put(key).value(this.encode(value));
+  get = async (key) => {
+    const data = await this.client.get(key).json();
+    return data;
+  };
+  set = async (key, value) => {
+    await this.client.put(key).value(this.encode(value));
+  };
   del = (key) => this.client.delete().key(key).exec();
   async *iterate(prefix = "") {
     const keys = await this.client.getAll().prefix(prefix).keys();
@@ -149,7 +157,9 @@ var Etcd = class extends Client {
       yield [key, await this.get(key)];
     }
   }
-  keys = (prefix = "") => this.client.getAll().prefix(prefix).keys();
+  keys = (prefix = "") => {
+    return this.client.getAll().prefix(prefix).keys();
+  };
   entries = async (prefix = "") => {
     const keys = await this.keys(prefix);
     const values = await Promise.all(keys.map((k) => this.get(k)));
@@ -274,13 +284,16 @@ var Folder = class extends Client {
     });
   })();
   file = (key) => this.folder + key + ".json";
-  get = (key) => {
-    return this.fsp.readFile(this.file(key), "utf8").then(this.decode, noFileOk);
+  get = async (key) => {
+    const file = await this.fsp.readFile(this.file(key), "utf8").catch(noFileOk);
+    return this.decode(file);
   };
-  set = (key, value) => {
-    return this.fsp.writeFile(this.file(key), this.encode(value), "utf8");
+  set = async (key, value) => {
+    await this.fsp.writeFile(this.file(key), this.encode(value), "utf8");
   };
-  del = (key) => this.fsp.unlink(this.file(key)).catch(noFileOk);
+  del = async (key) => {
+    await this.fsp.unlink(this.file(key)).catch(noFileOk);
+  };
   async *iterate(prefix = "") {
     const all = await this.fsp.readdir(this.folder);
     const keys = all.filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
@@ -288,7 +301,7 @@ var Folder = class extends Client {
       const key = name.slice(0, -".json".length);
       try {
         const data = await this.get(key);
-        yield [key, data];
+        if (data !== null && data !== void 0) yield [key, data];
       } catch {
         continue;
       }
@@ -428,9 +441,30 @@ var SQLite = class extends Client {
   // This one is doing manual time management internally even though
   // sqlite does not natively support expirations. This is because it does
   // support creating a `expires_at:Date` column that makes managing
-  //  expirations much easier, so it's really "somewhere in between"
+  // expirations much easier, so it's really "somewhere in between"
   EXPIRES = true;
-  static test = (client) => typeof client?.prepare === "function";
+  // The table name to use
+  table = "kv";
+  // Make sure the folder already exists, so attempt to create it
+  // It fails if it already exists, hence the catch case
+  promise = (async () => {
+    if (!/^[a-zA-Z_]+$/.test(this.table)) {
+      throw new Error(`Invalid table name ${this.table}`);
+    }
+    this.client.exec(`
+      CREATE TABLE IF NOT EXISTS ${this.table} (
+        id TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        expires_at INTEGER
+      )
+    `);
+    this.client.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`
+    );
+  })();
+  static test = (client) => {
+    return typeof client?.prepare === "function" && typeof client?.exec === "function";
+  };
   get = (id) => {
     const row = this.client.prepare(`SELECT value, expires_at FROM kv WHERE id = ?`).get(id);
     if (!row) return null;
@@ -481,7 +515,7 @@ ${prefix ? "AND id LIKE ?" : ""}
     this.client.prepare(`DELETE FROM kv WHERE expires_at < ?`).run(Date.now());
   };
   clearAll = () => {
-    this.client.run(`DELETE FROM kv`);
+    this.client.exec(`DELETE FROM kv`);
   };
   close = () => {
     this.client.close?.();

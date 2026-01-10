@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": true,
+
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "node",
@@ -13,7 +16,11 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["bun-types"]
+    "types": ["bun-types", "jest", "node"],
+
+    // Enable ESM-friendly module detection
+    "moduleDetection": "force",
+    "isolatedModules": true
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]

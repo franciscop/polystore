@@ -1,4 +1,5 @@
 import type { promises as FsPromises } from "node:fs";
+import { Serializable, StoreData } from "../types";
 import Client from "./Client";
 
 const noFileOk = (error: any): null => {
@@ -36,25 +37,36 @@ export default class Folder extends Client {
 
   file = (key: string): string => this.folder + key + ".json";
 
-  get = (key: string): Promise<any> => {
-    return this.fsp
+  get = async <T extends Serializable>(
+    key: string,
+  ): Promise<StoreData<T> | null> => {
+    const file = await this.fsp
       .readFile(this.file(key), "utf8")
-      .then(this.decode, noFileOk);
+      .catch(noFileOk);
+    return this.decode<StoreData<T>>(file);
   };
-  set = (key: string, value: any): Promise<void> => {
-    return this.fsp.writeFile(this.file(key), this.encode(value), "utf8");
-  };
-  del = (key: string): Promise<void | null> =>
-    this.fsp.unlink(this.file(key)).catch(noFileOk);
 
-  async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
+  set = async <T extends Serializable>(
+    key: string,
+    value: StoreData<T>,
+  ): Promise<void> => {
+    await this.fsp.writeFile(this.file(key), this.encode(value), "utf8");
+  };
+
+  del = async (key: string): Promise<void | null> => {
+    await this.fsp.unlink(this.file(key)).catch(noFileOk);
+  };
+
+  async *iterate<T extends Serializable>(
+    prefix = "",
+  ): AsyncGenerator<[string, StoreData<T>], void, unknown> {
     const all = await this.fsp.readdir(this.folder);
     const keys = all.filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
     for (const name of keys) {
       const key = name.slice(0, -".json".length);
       try {
-        const data = await this.get(key);
-        yield [key, data];
+        const data = await this.get<T>(key);
+        if (data !== null && data !== undefined) yield [key, data];
       } catch {
         continue; // skip unreadable files
       }

@@ -1,4 +1,4 @@
-import type { ClientOptions, Serializable } from "../types";
+import type { ClientOptions } from "../types";
 import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
@@ -12,8 +12,8 @@ export default class Cookie extends Client {
   };
 
   // Group methods
-  #read = (): Record<string, Serializable> => {
-    const all: Record<string, Serializable> = {};
+  #read = <T>(): Record<string, T> => {
+    const all: Record<string, T> = {};
     for (let entry of document.cookie.split(";")) {
       try {
         const [rawKey, rawValue] = entry.split("=");
@@ -28,12 +28,12 @@ export default class Cookie extends Client {
   };
 
   // For cookies, an empty value is the same as null, even `""`
-  get = (key: string): Serializable => {
-    const all = this.#read();
+  get = <T>(key: string): T | null => {
+    const all = this.#read<T>();
     return key in all ? all[key] : null;
   };
 
-  set = (key: string, data: Serializable, { expires }: ClientOptions): void => {
+  set = <T>(key: string, data: T, { expires }: ClientOptions): void => {
     const k = encodeURIComponent(key);
     const value = encodeURIComponent(this.encode(data ?? ""));
 
@@ -48,8 +48,8 @@ export default class Cookie extends Client {
 
   del = (key: string): void => this.set(key, "", { expires: -100 });
 
-  async *iterate(prefix = ""): AsyncGenerator<[string, Serializable]> {
-    for (let [key, value] of Object.entries(this.#read())) {
+  async *iterate<T>(prefix = ""): AsyncGenerator<[string, T]> {
+    for (let [key, value] of Object.entries(this.#read<T>())) {
       if (!key.startsWith(prefix)) continue;
       yield [key, value];
     }
