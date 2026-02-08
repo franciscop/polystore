@@ -53,8 +53,8 @@ console.log(await store.get("hi"));
         <h3>Easy peasy</h3>
       </header>
       <p>
-        It's a KV store. It has <code>add()</code>, <code>set()</code>,
-        <code>get()</code>, <code>has()</code>, <code>del()</code>
+        It's a KV store. It has <code>set()</code>, <code>get()</code>,
+        <code>has()</code>, <code>add()</code>, <code>del()</code>
         <a href="/documentation#api" target="_blank">and more</a>.
       </p>
     </div>
@@ -96,6 +96,7 @@ console.log(await store.get("hi"));
       </p>
     </div>
   </div>
+
   <div>
     <div class="feature">
       <header>
@@ -109,19 +110,16 @@ console.log(await store.get("hi"));
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="feather feather-globe"
+          class="feather feather-clock"
         >
           <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path
-            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-          ></path>
+          <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <h3>Universal Javascript</h3>
+        <h3>Intuitive expirations</h3>
       </header>
       <p>
-        Use it with React, Angular, Plain JS, Node.js, Bun, Tauri, Electron,
-        etc.
+        Write the TTL as <code>"100s"</code>, <code>"1week"</code>,
+        <code>"1h"</code> and forget time-related bugs.
       </p>
     </div>
   </div>
@@ -169,16 +167,19 @@ console.log(await store.get("hi"));
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="feather feather-clock"
+          class="feather feather-globe"
         >
           <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path
+            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+          ></path>
         </svg>
-        <h3>Intuitive expirations</h3>
+        <h3>Universal Javascript</h3>
       </header>
       <p>
-        Write the expiration as <code>100s</code>, <code>1week</code>, etc. and
-        forget time-related bugs.
+        Use it with React, Angular, Plain JS, Node.js, Bun, Tauri, Electron,
+        etc.
       </p>
     </div>
   </div>
