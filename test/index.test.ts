@@ -446,11 +446,11 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       });
     });
 
-    describe("expires", () => {
+    describe("ttl", () => {
       if (doNotSupportExpiration.includes(name)) return;
 
       it("BUG — del() fails to delete an expired entry", async () => {
-        await store.set("foo", "bar", { expires: -1 });
+        await store.set("foo", "bar", -1);
         const before = await store.get("foo");
         await store.del("foo");
         const after = await store.get("foo");
@@ -463,7 +463,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       });
 
       it("expires = 0 means immediately", async () => {
-        await store.set("a", "b", { expires: 0 });
+        await store.set("a", "b", 0);
         expect(await store.get("a")).toBe(null);
         expect(await store.has("a")).toBe(false);
         expect(await store.keys()).toEqual([]);
@@ -472,21 +472,21 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       });
 
       it("expires = potato means undefined = forever", async () => {
-        await store.set("a", "b", { expires: "potato" as any });
+        await store.set("a", "b", "potato");
         expect(await store.get("a")).toBe("b");
         await delay(100);
         expect(await store.get("a")).toBe("b");
       });
 
       it("expires = 5potato means undefined = forever", async () => {
-        await store.set("a", "b", { expires: "5potato" as any });
+        await store.set("a", "b", "5potato");
         expect(await store.get("a")).toBe("b");
         await delay(100);
         expect(await store.get("a")).toBe("b");
       });
 
       it("expires = null means never to expire it", async () => {
-        await store.set("a", "b", { expires: null });
+        await store.set("a", "b", null);
         expect(await store.get("a")).toBe("b");
         await delay(100);
         expect(await store.get("a")).toBe("b");
@@ -502,7 +502,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       if (!doNotSupportMs.includes(name) && !name.includes("http")) {
         it("can use 0.1 expire", async () => {
           // 10ms
-          await store.set("a", "b", { expires: 0.1 });
+          await store.set("a", "b", 0.1);
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
@@ -513,7 +513,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         });
 
         it("can use 0.1s expire", async () => {
-          await store.set("a", "b", { expires: "0.1s" });
+          await store.set("a", "b", "0.1s");
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
@@ -524,7 +524,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         });
 
         it("can use 0.1seconds expire", async () => {
-          await store.set("a", "b", { expires: "0.1seconds" });
+          await store.set("a", "b", "0.1seconds");
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
@@ -535,7 +535,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         });
 
         it("can use 100ms expire", async () => {
-          await store.set("a", "b", { expires: "100ms" });
+          await store.set("a", "b", "100ms");
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
@@ -546,28 +546,28 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         });
 
         it("removes the expired key with .get()", async () => {
-          await store.set("a", "b", { expires: "10ms" });
+          await store.set("a", "b", "10ms");
           expect(await store.get("a")).toBe("b");
           await delay(100);
           expect(await store.get("a")).toBe(null);
         });
 
         it("removes the expired key with .keys()", async () => {
-          await store.set("a", "b", { expires: "10ms" });
+          await store.set("a", "b", "10ms");
           expect(await store.keys()).toEqual(["a"]);
           await delay(100);
           expect(await store.keys()).toEqual([]);
         });
 
         it("CANNOT remove the expired key with .values()", async () => {
-          await store.set("a", "b", { expires: "10ms" });
+          await store.set("a", "b", "10ms");
           expect(await store.values()).toEqual(["b"]);
           await delay(100);
           expect(await store.values()).toEqual([]);
         });
       } else {
         it("can use 1 (second) expire", async () => {
-          await store.set("a", "b", { expires: 1 });
+          await store.set("a", "b", 1);
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
@@ -577,7 +577,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
           expect(await store.get("a")).toBe(null);
         });
         it("can use 1s expire", async () => {
-          await store.set("a", "b", { expires: "1s" });
+          await store.set("a", "b", "1s");
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");

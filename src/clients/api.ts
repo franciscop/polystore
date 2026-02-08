@@ -31,7 +31,7 @@ export default class Api extends Client {
   set = async <T extends Serializable>(
     key: string,
     value: T,
-    { expires }: ClientOptions = {},
+    expires: ClientOptions,
   ) => {
     const exp = typeof expires === "number" ? `?expires=${expires}` : "";
     await this.#api<T>(key, exp, "PUT", this.encode(value));

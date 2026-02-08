@@ -1,6 +1,6 @@
 # Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://bundlephobia.com/package/polystore)
 
-A key-value library to unify the API of [many clients](#clients), like localStorage, Redis, FileSystem, etc:
+A key-value library to unify the API of [many clients](#clients): localStorage, Redis, FileSystem, SQLite, etc.
 
 ```js
 import kv from "polystore";
@@ -14,8 +14,8 @@ const store4 = kv(yourOwnStore); // Create a store based on your code
 These are all the methods of the [API](#api) (they are all `async`):
 
 - [`.get(key)`](#get): read a single value, or `null` if it doesn't exist or is expired.
-- [`.set(key, value, options?)`](#set): save a single value that is serializable.
-- [`.add(value, options?)`](#add): save a single value with an auto-generated key.
+- [`.set(key, value, ttl?)`](#set): save a single value that is serializable.
+- [`.add(value, ttl?)`](#add): save a single value with an auto-generated key.
 - [`.has(key)`](#has): check whether a key exists and is not expired.
 - [`.del(key)`](#del): delete a single key/value from the store.
 - [Iterator](#iterator): go through all of the key/values one by one.
@@ -197,7 +197,7 @@ await store.del('key2');
 console.log(await store.get("key2"));   // null
 
 // Expired
-await store.set("key3", "Hello", { expires: '1s' });
+await store.set("key3", "Hello", "1s");
 console.log(await store.get("key3"));   // "Hello"
 await new Promise((done) => setTimeout(done, 2000)); // Wait 2 seconds
 console.log(await store.get("key3"));   // null (already expired)
@@ -221,11 +221,11 @@ console.log(await session.get('key1'));
 Create or update a value in the store. Will return a promise that resolves with the key when the value has been saved:
 
 ```js
-await store.set(key: string, value: any, options?: { expires: number|string });
+await store.set(key: string, value: any, expires?: number|string);
 
 await store.set("key1", "Hello World");
-await store.set("key2", ["my", "grocery", "list"], { expires: "1h" });
-await store.set("key3", { name: "Francisco" }, { expires: 60 * 60 });
+await store.set("key2", ["my", "grocery", "list"], "1h");
+await store.set("key3", { name: "Francisco" }, 60 * 60);
 ```
 
 You can specify the type either at [the store level](#api) or at the method level:
@@ -268,7 +268,7 @@ In short, only JSON-serializable data is safe to store.
 
 #### Expires
 
-When the `expires` option is set, it can be a number (**seconds**) or a string representing some time:
+When the `ttl` option is set, it can be a number (**seconds**) or a string representing some time:
 
 ```js
 // Valid "expire" values:
@@ -292,14 +292,14 @@ These are all the units available:
 Create a value in the store with an auto-generated key. Will return a promise that resolves with the key when the value has been saved. The value needs to be serializable:
 
 ```js
-const key:string = await store.add(value: any, options?: { expires: number|string });
+const key:string = await store.add(value: any, expires?: number|string);
 
 const key1 = await store.add("Hello World");
-const key2 = await store.add(["my", "grocery", "list"], { expires: "1h" });
-const key3 = await store.add({ name: "Francisco" }, { expires: 60 * 60  });
+const key2 = await store.add(["my", "grocery", "list"], "1h");
+const key3 = await store.add({ name: "Francisco" }, 60 * 60);
 ```
 
-The options and details are similar to [`.set()`](#set), except for the lack of the first argument, since `.add()` will generate the key automatically.
+The value and expires are similar to [`.set()`](#set), except for the lack of the first argument, since `.add()` will generate the key automatically.
 
 The default key is 24 AlphaNumeric characters (upper+lower case), however this can change if you are using a `.prefix()` or some clients might generate it differently (only custom clients can do that right now).
 
@@ -357,7 +357,7 @@ An example of an exception of the above is when you use it as a cache, then you 
 async function fetchUser(id) {
   if (!(await store.has(id))) {
     const { data } = await axios.get(`/users/${id}`);
-    await store.set(id, data, { expires: "1h" });
+    await store.set(id, data, "1h");
   }
   return store.get(id);
 }
@@ -599,7 +599,7 @@ import kv from "polystore";
 
 const store = kv(new Map());
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -615,7 +615,7 @@ console.log(await store.get("key1"));
 
 ```js
 // GOOD - with polystore
-await store.set("key1", { name: "Francisco" }, { expires: "2days" });
+await store.set("key1", { name: "Francisco" }, "2days");
 
 // COMPLEX - With sessionStorage
 const data = new Map();
@@ -632,7 +632,7 @@ import kv from "polystore";
 
 const store = kv(localStorage);
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -651,7 +651,7 @@ Same limitations as always apply to localStorage, if you think you are going to 
 
 ```js
 // GOOD - with polystore
-await store.set("key1", { name: "Francisco" }, { expires: "2days" });
+await store.set("key1", { name: "Francisco" }, "2days");
 
 // COMPLEX - With localStorage
 const serialValue = JSON.stringify({ name: "Francisco" });
@@ -668,7 +668,7 @@ import kv from "polystore";
 
 const store = kv(sessionStorage);
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -685,7 +685,7 @@ console.log(await store.get("key1"));
 
 ```js
 // GOOD - with polystore
-await store.set("key1", { name: "Francisco" }, { expires: "2days" });
+await store.set("key1", { name: "Francisco" }, "2days");
 
 // COMPLEX - With sessionStorage
 const serialValue = JSON.stringify({ name: "Francisco" });
@@ -702,7 +702,7 @@ import kv from "polystore";
 
 const store = kv("cookie"); // just a plain string
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -731,7 +731,7 @@ import localForage from "localforage";
 
 const store = kv(localForage);
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -755,7 +755,7 @@ import { createClient } from "redis";
 
 const store = kv(createClient().connect());
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -790,7 +790,7 @@ import Database from "better-sqlite3";
 const db = new Database("data.db")
 const store = kv(db);
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -862,7 +862,7 @@ import kv from "polystore";
 
 const store = kv("https://kv.example.com/");
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -882,7 +882,7 @@ import kv from "polystore";
 // Path is "/Users/me/project/cache.json"
 const store = kv("file:///Users/me/project/cache.json");
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -916,7 +916,7 @@ const store1 = kv(new URL(`file://${process.cwd()}/cache.json`));
 
 ```js
 // GOOD - with polystore
-await store.set("key1", { name: "Francisco" }, { expires: "2days" });
+await store.set("key1", { name: "Francisco" }, "2days");
 
 // COMPLEX - With native file managing
 const file = './data/users.json';
@@ -937,7 +937,7 @@ import kv from "polystore";
 
 const store = kv("file:///Users/me/project/data/");
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 // Writes "./data/key1.json"
 console.log(await store.get("key1"));
 // "Hello world"
@@ -975,7 +975,7 @@ const store1 = kv(new URL(`file://${process.cwd()}/cache/`));
 
 ```js
 // GOOD - with polystore
-await store.set("key1", { name: "Francisco" }, { expires: "2days" });
+await store.set("key1", { name: "Francisco" }, "2days");
 
 // COMPLEX - With native folder
 const file = './data/user/key1.json';
@@ -995,7 +995,7 @@ export default {
   async fetch(request, env, ctx) {
     const store = kv(env.YOUR_KV_NAMESPACE);
 
-    await store.set("key1", "Hello world", { expires: "1h" });
+    await store.set("key1", "Hello world", "1h");
     console.log(await store.get("key1"));
     // "Hello world"
 
@@ -1018,7 +1018,7 @@ It expects that you pass the namespace from Cloudflare straight as a `kv()` argu
 
 ```js
 // GOOD - with polystore
-await store.set("user", { name: "Francisco" }, { expires: "2days" });
+await store.set("user", { name: "Francisco" }, "2days");
 
 // COMPLEX - With native Cloudflare KV
 const serialValue = JSON.stringify({ name: "Francisco" });
@@ -1038,7 +1038,7 @@ import { Level } from "level";
 
 const store = kv(new Level("example", { valueEncoding: "json" }));
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -1055,7 +1055,7 @@ You will need to set the `valueEncoding` to `"json"` for the store to work as ex
 
 ```js
 // GOOD - with polystore
-await store.set("user", { hello: 'world' }, { expires: "2days" });
+await store.set("user", { hello: 'world' }, "2days");
 
 // With Level:
 ?? // Just not possible
@@ -1071,7 +1071,7 @@ import { Etcd3 } from "etcd3";
 
 const store = kv(new Etcd3());
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -1101,7 +1101,7 @@ await client.connect();
 
 const store = kv(client);
 
-await store.set("key1", "Hello world", { expires: "1h" });
+await store.set("key1", "Hello world", "1h");
 console.log(await store.get("key1"));
 // "Hello world"
 ```
@@ -1165,7 +1165,7 @@ We unify all of the clients diverse expiration methods into a single, easy one w
 ```js
 // in-memory store
 const store = polystore(new Map());
-await store.set("a", "b", { expires: "1s" });
+await store.set("a", "b", "1s");
 
 // These checks of course work:
 console.log(await store.keys()); // ['a']
@@ -1234,11 +1234,11 @@ class MyClient {
 
   // Mandatory methods
   get (key): Promise<any>;
-  set (key, value, { expires: null|number }): Promise<null>;
+  set (key, value, null|number): Promise<null>;
   iterate(prefix): AyncIterator<[string, any]>
 
   // Optional item methods (for optimization or customization)
-  add (prefix, data, { expires: null|number }): Promise<string>;
+  add (prefix, data, null|number): Promise<string>;
   has (key): Promise<boolean>;
   del (key): Promise<null>;
 
@@ -1283,7 +1283,7 @@ client.keys = (prefix) => {
 
 While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
 
-### Example: Plain Object client
+### Plain Object client
 
 This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own clients:
 
@@ -1442,3 +1442,134 @@ const store = kv(CloudflareCustom);
 ````
 
 It's lacking few things, so make sure to adapt to your needs, but it worked for my very simple cache needs.
+
+
+## Examples
+
+### Simple cache
+
+I've used Polystore in many projects as a simple cache. With `fetch()`, it's fairly easy:
+
+```ts
+async function getProductInfo(id: string) {
+  const data = await store.get(id);
+  if (data) return data;
+  
+  const res = await fetch(`https://some-url.com/products/${id}`);
+  const raw = await res.json();
+  
+  // Some processing here
+  const clean = raw??;
+  
+  await store.set(id, clean, '10days');
+  return clean;
+}
+```
+
+You can store either the raw data, or the processed data. Depending on whether the processing is sync or async, and the data size of the raw vs processing data, we pick one or the other.
+
+
+
+### Dev vs Prod
+
+With Polystore it's easy to configure your KV solution to use a different client in dev vs production. We've found particularly useful to use an easy-to-debug client in dev like [Folder](#folder) and a high-performance client in production like [Redis](#redis):
+
+```ts
+// store.ts
+import kv from "polystore";
+import { createClient } from "redis";
+
+let store;
+if (process.env.REDIS_URL) {
+  console.log('kv:redis using Redis for cache data');
+  store = kv(createClient(process.env.REDIS_URL).connect());
+} else {
+  console.log('kv:folder using a folder for cache data');
+  store = kv(`${process.cwd()}/data/`);
+}
+
+export default store;
+```
+
+
+### Better Auth
+
+Polystore is directly compatible with Better Auth, so no need for any wrapper. For example, for Redis:
+
+```ts
+import kv from "polystore";
+import { createClient } from "redis";
+import { betterAuth } from "better-auth";
+
+const secondaryStorage = kv(createClient().connect());
+
+export const auth = betterAuth({
+	// ... other options
+	secondaryStorage
+});
+````
+
+Compare that with their official documentation for using Redis:
+
+```ts
+import { createClient } from "redis";
+import { betterAuth } from "better-auth";
+
+const redis = createClient();
+await redis.connect();
+
+export const auth = betterAuth({
+	// ... other options
+	secondaryStorage: {
+		get: async (key) => {
+			return await redis.get(key);
+		},
+		set: async (key, value, ttl) => {
+			if (ttl) await redis.set(key, value, { EX: ttl });
+			// or for ioredis:
+			// if (ttl) await redis.set(key, value, 'EX', ttl)
+			else await redis.set(key, value);
+		},
+		delete: async (key) => {
+			await redis.del(key);
+		}
+	}
+});
+```
+
+### Express.js
+
+```ts
+import kv from 'polystore/express';
+
+// This is a special, Express-only store
+const store = kv();
+
+app.use(session({ store, ... }));
+````
+
+### Hono
+
+### Elysia?
+
+### Axios Cache Interceptor
+
+### @server/next
+
+> [!info]
+> @server/next is still experimental, but it's the main reason I created Polystore and so I wanted to document it as well
+
+Server.js supports Polystore directly:
+
+```ts
+import kv from "polystore";
+import server from "../../";
+
+const session = kv(new Map());
+
+export default server({ session }).get("/", (ctx) => {
+  if (!ctx.session.counter) ctx.session.counter = 0;
+  ctx.session.counter++;
+  return `User visited ${ctx.session.counter} times`;
+});
+```

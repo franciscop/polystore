@@ -48,7 +48,7 @@ async function fetch({ method, url, body }: FetchRequest): Promise<Response> {
     if (!id) return notFound();
     const data = await new Response(body).json();
     if (data === undefined) return notFound();
-    await local.set(id, data, { expires });
+    await local.set(id, data, expires);
     return sendJson(id);
   }
 

@@ -24,9 +24,9 @@ export default class Cloudflare extends Client {
   set = async <T extends Serializable>(
     key: string,
     data: T,
-    opts: ClientOptions,
+    expires: ClientOptions,
   ): Promise<void> => {
-    const expirationTtl = opts.expires ? Math.round(opts.expires) : undefined;
+    const expirationTtl = expires ? Math.round(expires) : undefined;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }

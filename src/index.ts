@@ -1,5 +1,5 @@
 import clients from "./clients/index";
-import type { Client, Options, Serializable, StoreData } from "./types";
+import type { Client, Expires, Serializable, StoreData } from "./types";
 import { createId, parse, unix } from "./utils";
 
 class Store<TDefault extends Serializable = Serializable> {
@@ -97,19 +97,19 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .add() Docs](https://polystore.dev/documentation#add)**
    */
-  add(value: TDefault, options?: Options): Promise<string>;
-  add<T extends TDefault>(value: T, options?: Options): Promise<string>;
+  add(value: TDefault, ttl?: Expires): Promise<string>;
+  add<T extends TDefault>(value: T, ttl?: Expires): Promise<string>;
   async add<T extends TDefault = TDefault>(
     value: T,
-    options: Options = {},
+    ttl: Expires,
   ): Promise<string> {
     await this.promise;
-    let expires: number | null = parse(options.expires);
+    let expires = parse(ttl);
 
     // Use the underlying one from the client if found
     if (this.client.add) {
       if (this.client.EXPIRES) {
-        return await this.client.add(this.PREFIX, value, { expires });
+        return await this.client.add(this.PREFIX, value, expires);
       }
 
       // In the data we need the timestamp since we need it "absolute":
@@ -119,7 +119,7 @@ class Store<TDefault extends Serializable = Serializable> {
     }
 
     const key = createId();
-    return this.set(key, value, { expires });
+    return this.set(key, value, expires);
   }
 
   /**
@@ -133,20 +133,20 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .set() Docs](https://polystore.dev/documentation#set)**
    */
-  set(key: string, value: TDefault, options?: Options): Promise<string>;
+  set(key: string, value: TDefault, ttl?: Expires): Promise<string>;
   set<T extends TDefault>(
     key: string,
     value: T,
-    options?: Options,
+    ttl?: Expires,
   ): Promise<string>;
   async set<T extends Serializable = TDefault>(
     key: string,
     value: T,
-    options: Options = {},
+    ttl: Expires,
   ): Promise<string> {
     await this.promise;
     const id = this.PREFIX + key;
-    let expires: number | null = parse(options.expires);
+    let expires: number | null = parse(ttl);
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
@@ -155,7 +155,7 @@ class Store<TDefault extends Serializable = Serializable> {
 
     // The client manages the expiration, so let it manage it
     if (this.client.EXPIRES) {
-      await this.client.set<T>(id, value, { expires });
+      await this.client.set<T>(id, value, expires);
       return key;
     }
 
@@ -251,12 +251,26 @@ class Store<TDefault extends Serializable = Serializable> {
     }
 
     if (this.client.EXPIRES) {
-      await this.client.set(id, null, { expires: 0 });
+      await this.client.set(id, null, 0);
     } else {
       await this.client.set(id, null);
     }
 
     return key;
+  }
+
+  /**
+   * @alias of .del(key: string)
+   * Remove a single key and its value from the store:
+   *
+   * ```js
+   * const key = await store.delete("key1");
+   * ```
+   *
+   * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
+   */
+  async delete(key: string): Promise<string> {
+    return this.del(key);
   }
 
   /**

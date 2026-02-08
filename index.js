@@ -27,7 +27,7 @@ var Api = class extends Client {
     return this.decode(await res.text());
   };
   get = (key) => this.#api(key);
-  set = async (key, value, { expires } = {}) => {
+  set = async (key, value, expires) => {
     const exp = typeof expires === "number" ? `?expires=${expires}` : "";
     await this.#api(key, exp, "PUT", this.encode(value));
   };
@@ -55,8 +55,8 @@ var Cloudflare = class extends Client {
     const value = await this.client.get(key);
     return this.decode(value);
   };
-  set = async (key, data, opts) => {
-    const expirationTtl = opts.expires ? Math.round(opts.expires) : void 0;
+  set = async (key, data, expires) => {
+    const expirationTtl = expires ? Math.round(expires) : void 0;
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }
@@ -122,7 +122,7 @@ var Cookie = class extends Client {
     const all = this.#read();
     return key in all ? all[key] : null;
   };
-  set = (key, data, { expires }) => {
+  set = (key, data, expires) => {
     const k = encodeURIComponent(key);
     const value = encodeURIComponent(this.encode(data ?? ""));
     let exp = "";
@@ -132,7 +132,7 @@ var Cookie = class extends Client {
     }
     document.cookie = `${k}=${value}${exp}`;
   };
-  del = (key) => this.set(key, "", { expires: -100 });
+  del = (key) => this.set(key, "", -100);
   async *iterate(prefix = "") {
     for (let [key, value] of Object.entries(this.#read())) {
       if (!key.startsWith(prefix)) continue;
@@ -403,7 +403,7 @@ var Redis = class extends Client {
   // Check if this is the right class for the given client
   static test = (client) => client && client.pSubscribe && client.sSubscribe;
   get = async (key) => this.decode(await this.client.get(key));
-  set = async (key, value, { expires } = {}) => {
+  set = async (key, value, expires) => {
     const EX = expires ? Math.round(expires) : void 0;
     return this.client.set(key, this.encode(value), { EX });
   };
@@ -478,7 +478,7 @@ var SQLite = class extends Client {
     }
     return this.decode(row.value);
   };
-  set = (id, data, { expires } = {}) => {
+  set = (id, data, expires) => {
     const value = this.encode(data);
     const expires_at = expires ? Date.now() + expires * 1e3 : null;
     this.client.prepare(
@@ -664,29 +664,29 @@ var Store = class _Store {
     if (key) this.del(key);
     return false;
   }
-  async add(value, options = {}) {
+  async add(value, ttl) {
     await this.promise;
-    let expires = parse(options.expires);
+    let expires = parse(ttl);
     if (this.client.add) {
       if (this.client.EXPIRES) {
-        return await this.client.add(this.PREFIX, value, { expires });
+        return await this.client.add(this.PREFIX, value, expires);
       }
       expires = unix(expires);
       const key2 = await this.client.add(this.PREFIX, { expires, value });
       return key2;
     }
     const key = createId();
-    return this.set(key, value, { expires });
+    return this.set(key, value, expires);
   }
-  async set(key, value, options = {}) {
+  async set(key, value, ttl) {
     await this.promise;
     const id = this.PREFIX + key;
-    let expires = parse(options.expires);
+    let expires = parse(ttl);
     if (value === null || typeof expires === "number" && expires <= 0) {
       return this.del(key);
     }
     if (this.client.EXPIRES) {
-      await this.client.set(id, value, { expires });
+      await this.client.set(id, value, expires);
       return key;
     }
     expires = unix(expires);
@@ -748,11 +748,24 @@ var Store = class _Store {
       return key;
     }
     if (this.client.EXPIRES) {
-      await this.client.set(id, null, { expires: 0 });
+      await this.client.set(id, null, 0);
     } else {
       await this.client.set(id, null);
     }
     return key;
+  }
+  /**
+   * @alias of .del(key: string)
+   * Remove a single key and its value from the store:
+   *
+   * ```js
+   * const key = await store.delete("key1");
+   * ```
+   *
+   * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
+   */
+  async delete(key) {
+    return this.del(key);
   }
   async *[Symbol.asyncIterator]() {
     await this.promise;

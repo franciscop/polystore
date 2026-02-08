@@ -39,20 +39,20 @@ kv<string>().get<number>("a");
 
 for (const store of stores) {
   const add1: string = await store.add("value");
-  const add2: string = await store.add("value", {});
-  const add3: string = await store.add("value", { expires: null });
-  const add4: string = await store.add("value", { expires: 100 });
-  const add5: string = await store.add("value", { expires: "100s" });
+  const add2: string = await store.add("value", undefined);
+  const add3: string = await store.add("value", null);
+  const add4: string = await store.add("value", 100);
+  const add5: string = await store.add("value", "100s");
   const add6: string = await store.add<string>("value");
   const add7: string = await store.add<Obj>({ hello: "value" });
   const add8: string = await store.add<Counter>({ count: 2 });
   const add9: string = await store.add<Names>(["value"]);
 
   const set1: string = await store.set("key", "value");
-  const set2: string = await store.set("key", "value", {});
-  const set3: string = await store.set("key", "value", { expires: null });
-  const set4: string = await store.set("key", "value", { expires: 100 });
-  const set5: string = await store.set("key", "value", { expires: "100s" });
+  const set2: string = await store.set("key", "value", undefined);
+  const set3: string = await store.set("key", "value", null);
+  const set4: string = await store.set("key", "value", 100);
+  const set5: string = await store.set("key", "value", "100s");
   const set6: string = await store.set<string>("key", "value");
   const set7: string = await store.set<Obj>("key", { hello: "value" });
   const set8: string = await store.set<Counter>("key", { count: 2 });
