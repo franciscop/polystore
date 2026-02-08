@@ -1,10 +1,6 @@
-export type Options = {
-  expires?: number | null | string;
-};
+export type Expires = number | null | string;
 
-export type ClientOptions = {
-  expires?: number | null;
-};
+export type ClientOptions = number | null;
 
 export type StoreData<T extends Serializable = Serializable> = {
   value: T;
@@ -29,7 +25,7 @@ export interface ClientExpires {
   set<T extends Serializable>(
     key: string,
     value: T,
-    options?: Options,
+    expires?: Expires,
   ): Promise<any> | any;
   iterate<T extends Serializable>(
     prefix: string,
@@ -39,7 +35,7 @@ export interface ClientExpires {
   add?<T extends Serializable>(
     prefix: string,
     value: T,
-    options?: Options,
+    expires?: Expires,
   ): Promise<string>;
   has?(key: string): Promise<boolean> | boolean;
   del?(key: string): Promise<any> | any;
@@ -68,7 +64,7 @@ export interface ClientNonExpires {
   set<T extends Serializable>(
     key: string,
     value: StoreData<T> | null,
-    options?: Options,
+    ttl?: Expires,
   ): Promise<any> | any;
   iterate<T extends Serializable>(
     prefix: string,
@@ -78,7 +74,7 @@ export interface ClientNonExpires {
   add?<T extends Serializable>(
     prefix: string,
     value: StoreData<T>,
-    options?: Options,
+    ttl?: Expires,
   ): Promise<string>;
   has?(key: string): Promise<boolean> | boolean;
   del?(key: string): Promise<any> | any;

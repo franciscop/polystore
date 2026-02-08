@@ -1,3 +1,4 @@
+import { ClientOptions } from "../types";
 import Client from "./Client";
 
 // Use a redis client to back up the store
@@ -16,7 +17,7 @@ export default class Redis extends Client {
   set = async (
     key: string,
     value: any,
-    { expires }: { expires?: number | null } = {},
+    expires: ClientOptions,
   ): Promise<any> => {
     const EX = expires ? Math.round(expires) : undefined;
     return this.client.set(key, this.encode(value), { EX });

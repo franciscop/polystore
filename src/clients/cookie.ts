@@ -35,7 +35,7 @@ export default class Cookie extends Client {
     return key in all ? all[key] : null;
   };
 
-  set = <T>(key: string, data: T, { expires }: ClientOptions): void => {
+  set = <T>(key: string, data: T, expires: ClientOptions): void => {
     const k = encodeURIComponent(key);
     const value = encodeURIComponent(this.encode(data ?? ""));
 
@@ -48,7 +48,7 @@ export default class Cookie extends Client {
     document.cookie = `${k}=${value}${exp}`;
   };
 
-  del = (key: string): void => this.set(key, "", { expires: -100 });
+  del = (key: string): void => this.set(key, "", -100);
 
   async *iterate<T>(prefix = ""): AsyncGenerator<[string, T]> {
     for (let [key, value] of Object.entries(this.#read<T>())) {

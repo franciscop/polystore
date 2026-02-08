@@ -1,5 +1,6 @@
 // SQLite client - uses a sqlite instance with a table
 // called `kv` containing 'id', 'value', and 'expires_at' columns
+import { ClientOptions } from "../types";
 import Client from "./Client";
 
 export default class SQLite extends Client {
@@ -54,11 +55,7 @@ export default class SQLite extends Client {
     return this.decode(row.value);
   };
 
-  set = (
-    id: string,
-    data: any,
-    { expires }: { expires?: number | null } = {},
-  ): void => {
+  set = (id: string, data: any, expires: ClientOptions): void => {
     const value = this.encode(data);
     const expires_at = expires ? Date.now() + expires * 1000 : null;
 

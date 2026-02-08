@@ -1,6 +1,4 @@
-type Options = {
-    expires?: number | null | string;
-};
+type Expires = number | null | string;
 type StoreData<T extends Serializable = Serializable> = {
     value: T;
     expires: number | null;
@@ -14,9 +12,9 @@ interface ClientExpires {
     promise?: Promise<any>;
     test?: (client: any) => boolean;
     get<T extends Serializable>(key: string): Promise<T | null> | T | null;
-    set<T extends Serializable>(key: string, value: T, options?: Options): Promise<any> | any;
+    set<T extends Serializable>(key: string, value: T, expires?: Expires): Promise<any> | any;
     iterate<T extends Serializable>(prefix: string): AsyncGenerator<[string, T], void, unknown> | Generator<[string, T], void, unknown>;
-    add?<T extends Serializable>(prefix: string, value: T, options?: Options): Promise<string>;
+    add?<T extends Serializable>(prefix: string, value: T, expires?: Expires): Promise<string>;
     has?(key: string): Promise<boolean> | boolean;
     del?(key: string): Promise<any> | any;
     keys?(prefix: string): Promise<string[]> | string[];
@@ -33,9 +31,9 @@ interface ClientNonExpires {
     promise?: Promise<any>;
     test?: (client: any) => boolean;
     get<T extends Serializable>(key: string): Promise<StoreData<T> | null> | StoreData<T> | null;
-    set<T extends Serializable>(key: string, value: StoreData<T> | null, options?: Options): Promise<any> | any;
+    set<T extends Serializable>(key: string, value: StoreData<T> | null, ttl?: Expires): Promise<any> | any;
     iterate<T extends Serializable>(prefix: string): AsyncGenerator<[string, StoreData<T>], void, unknown> | Generator<[string, StoreData<T>], void, unknown>;
-    add?<T extends Serializable>(prefix: string, value: StoreData<T>, options?: Options): Promise<string>;
+    add?<T extends Serializable>(prefix: string, value: StoreData<T>, ttl?: Expires): Promise<string>;
     has?(key: string): Promise<boolean> | boolean;
     del?(key: string): Promise<any> | any;
     keys?(prefix: string): Promise<string[]> | string[];
@@ -66,8 +64,8 @@ declare class Store<TDefault extends Serializable = Serializable> {
      *
      * **[→ Full .add() Docs](https://polystore.dev/documentation#add)**
      */
-    add(value: TDefault, options?: Options): Promise<string>;
-    add<T extends TDefault>(value: T, options?: Options): Promise<string>;
+    add(value: TDefault, ttl?: Expires): Promise<string>;
+    add<T extends TDefault>(value: T, ttl?: Expires): Promise<string>;
     /**
      * Save the data on the given key, can add expiration as well:
      *
@@ -79,8 +77,8 @@ declare class Store<TDefault extends Serializable = Serializable> {
      *
      * **[→ Full .set() Docs](https://polystore.dev/documentation#set)**
      */
-    set(key: string, value: TDefault, options?: Options): Promise<string>;
-    set<T extends TDefault>(key: string, value: T, options?: Options): Promise<string>;
+    set(key: string, value: TDefault, ttl?: Expires): Promise<string>;
+    set<T extends TDefault>(key: string, value: T, ttl?: Expires): Promise<string>;
     /**
      * Read a single value from the KV store:
      *
@@ -124,6 +122,17 @@ declare class Store<TDefault extends Serializable = Serializable> {
      * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
      */
     del(key: string): Promise<string>;
+    /**
+     * @alias of .del(key: string)
+     * Remove a single key and its value from the store:
+     *
+     * ```js
+     * const key = await store.delete("key1");
+     * ```
+     *
+     * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
+     */
+    delete(key: string): Promise<string>;
     /**
      * An iterator that goes through all of the key:value pairs in the client
      *

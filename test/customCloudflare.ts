@@ -12,23 +12,18 @@ const headers = {
 };
 
 export default class CustomCloudflare {
+  TYPE = "CLOUDFLAREAPI";
   EXPIRES = true;
 
   async get(key: string): Promise<any> {
     const res = await fetch(`${baseUrl}/values/${key}`, { headers });
     if (res.status === 404) return null; // It does not exist
-    const data = await (res.headers.get("content-type")?.includes("json")
-      ? res.json()
-      : res.text());
+    const data = await res.text();
     if (!data) return null;
     return JSON.parse(data);
   }
 
-  async set(
-    key: string,
-    body: any,
-    { expires }: { expires?: number | null },
-  ): Promise<string> {
+  async set(key: string, body: any, expires: number | null): Promise<string> {
     const expiration = expires ? `expiration_ttl=${expires}&` : "";
     const res = await fetch(`${baseUrl}/values/${key}?${expiration}`, {
       method: "PUT",

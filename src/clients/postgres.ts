@@ -1,5 +1,6 @@
 // Postgres client - uses a sqlite instance with a table
 // called `kv` containing 'id', 'value', and 'expires_at' columns
+import { ClientOptions } from "../types";
 import Client from "./Client";
 
 export default class Postgres extends Client {
@@ -38,7 +39,7 @@ export default class Postgres extends Client {
   set = async (
     id: string,
     data: any,
-    { expires }: { expires?: number | null } = {},
+    expires: ClientOptions,
   ): Promise<void> => {
     const value = this.encode(data);
     const expiresAt = expires ? new Date(Date.now() + expires * 1000) : null;

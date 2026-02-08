@@ -1,6 +1,8 @@
 const dataSource: Record<string, any> = {};
 
 export default class MyClient {
+  TYPE = "SIMPLECUSTOM";
+
   get(key: string): any {
     return dataSource[key];
   }
