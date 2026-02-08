@@ -261,6 +261,35 @@ const key1 = await store.del("key1");</code></pre>
 <section class="hero flex one two-900 center">
   <div>
     <div class="content">
+      <h2>⏰ Easy expiration time</h2>
+      <p>
+        Simply write <code>"1day"</code> with ANY client and forget about
+        calculating TTL, Unix time, seconds vs milliseconds bugs, etc.
+      </p>
+      <p>
+        <a class="pseudo button" href="/documentation#expiration-explained">
+          Expiration Documentation
+        </a>
+      </p>
+    </div>
+  </div>
+  <div>
+    <pre><code class="language-js">await store.get("key");  // null
+
+await store.set("key", "hi", "1second");
+await store.get("key");  // "hi"
+
+await sleep(2000);
+
+await store.get("key");  // null</code></pre>
+  </div>
+</section>
+
+<br />
+
+<section class="hero flex one two-900 center">
+  <div>
+    <div class="content">
       <h2>🛗 Create substores</h2>
       <p>
         Create a new substore with <code>.prefix()</code>, then you can ignore
@@ -283,35 +312,6 @@ console.log(await session.all());
 
 console.log(await store.all());
 // { "session:key1": "value1" }</code></pre>
-  </div>
-</section>
-
-<br />
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>⏰ Easy expiration time</h2>
-      <p>
-        Simply write <code>"1day"</code> with ANY client and forget about
-        calculating TTL, Unix time, seconds vs milliseconds bugs, etc.
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#expiration-explained">
-          Expiration Documentation
-        </a>
-      </p>
-    </div>
-  </div>
-  <div>
-    <pre><code class="language-js">await store.get("key");  // null
-
-await store.set("key", "hi", "1s");
-await store.get("key");  // "hi"
-
-await sleep(2000);
-
-await store.get("key");  // null</code></pre>
   </div>
 </section>
 
