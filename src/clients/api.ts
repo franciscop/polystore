@@ -1,4 +1,4 @@
-import type { ClientOptions, Serializable } from "../types";
+import type { Serializable } from "../types";
 import Client from "./Client";
 
 // Handle an API endpoint with fetch()
@@ -6,7 +6,7 @@ export default class Api extends Client {
   TYPE = "API";
 
   // Indicate that the file handler DOES handle expirations
-  EXPIRES = true as const;
+  HAS_EXPIRATION = true as const;
 
   static test = (client: string | unknown) =>
     typeof client === "string" && /^https?:\/\//.test(client);
@@ -31,7 +31,7 @@ export default class Api extends Client {
   set = async <T extends Serializable>(
     key: string,
     value: T,
-    expires: ClientOptions,
+    expires: number | null,
   ) => {
     const exp = typeof expires === "number" ? `?expires=${expires}` : "";
     await this.#api<T>(key, exp, "PUT", this.encode(value));

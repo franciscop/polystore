@@ -1,4 +1,3 @@
-import type { ClientOptions } from "../types";
 import Client from "./Client";
 
 // A client that uses a single file (JSON) as a store
@@ -6,7 +5,7 @@ export default class Cookie extends Client {
   TYPE = "COOKIE";
 
   // It handles expirations natively
-  EXPIRES = true as const;
+  HAS_EXPIRATION = true as const;
 
   // Check if this is the right class for the given client
   static test = (client: string | unknown) => {
@@ -35,7 +34,7 @@ export default class Cookie extends Client {
     return key in all ? all[key] : null;
   };
 
-  set = <T>(key: string, data: T, expires: ClientOptions): void => {
+  set = <T>(key: string, data: T, expires: number | null): void => {
     const k = encodeURIComponent(key);
     const value = encodeURIComponent(this.encode(data ?? ""));
 

@@ -7,7 +7,7 @@ export default class Etcd extends Client {
   TYPE = "ETCD3";
 
   // It desn't handle expirations natively
-  EXPIRES = false as const;
+  HAS_EXPIRATION = false as const;
 
   // Check if this is the right class for the given client
   static testKeys = ["leaseClient", "watchClient", "watchManager"];

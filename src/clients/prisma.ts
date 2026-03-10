@@ -1,4 +1,3 @@
-import { ClientOptions } from "../types";
 import Client from "./Client";
 
 // Use a Prisma table model with 'id', 'value', and optionally 'expiresAt' columns
@@ -7,7 +6,7 @@ export default class Prisma extends Client {
   TYPE = "PRISMA";
 
   // Indicate that this client handles expirations
-  EXPIRES = true as const;
+  HAS_EXPIRATION = true as const;
 
   // Check if this is the right class for the given client (Prisma model delegate)
   static test = (client: any): boolean =>
@@ -27,7 +26,7 @@ export default class Prisma extends Client {
   set = async (
     id: string,
     data: any,
-    expires: ClientOptions,
+    expires: number | null,
   ): Promise<void> => {
     const value = this.encode(data);
     const expiresAt = expires ? new Date(Date.now() + expires * 1000) : null;

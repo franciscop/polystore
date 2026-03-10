@@ -2,7 +2,7 @@ import { Serializable } from "../types";
 
 export default class Client {
   TYPE?: string;
-  EXPIRES?: boolean = false;
+  HAS_EXPIRATION?: boolean = false;
 
   client: any;
   encode = (val: Serializable): string => JSON.stringify(val, null, 2);
