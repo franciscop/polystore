@@ -1,4 +1,4 @@
-import { ClientOptions, Serializable } from "../types";
+import { Serializable } from "../types";
 import Client from "./Client";
 
 type CFReply = {
@@ -12,7 +12,7 @@ export default class Cloudflare extends Client {
   TYPE = "CLOUDFLARE";
 
   // It handles expirations natively
-  EXPIRES = true as const;
+  HAS_EXPIRATION = true as const;
 
   static testKeys = ["getWithMetadata", "get", "list", "delete"];
 
@@ -24,7 +24,7 @@ export default class Cloudflare extends Client {
   set = async <T extends Serializable>(
     key: string,
     data: T,
-    expires: ClientOptions,
+    expires: number | null,
   ): Promise<void> => {
     const expirationTtl = expires ? Math.round(expires) : undefined;
     if (expirationTtl && expirationTtl < 60) {

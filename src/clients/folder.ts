@@ -11,7 +11,7 @@ const noFileOk = (error: any): null => {
 export default class Folder extends Client {
   TYPE = "FOLDER";
   // It desn't handle expirations natively
-  EXPIRES = false as const;
+  HAS_EXPIRATION = false as const;
 
   fsp!: typeof FsPromises;
   folder!: string;

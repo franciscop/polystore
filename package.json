@@ -11,9 +11,17 @@
   "sideEffects": false,
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./express": "./src/express.js"
+  },
   "files": [
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "src/express.js"
   ],
   "scripts": {
     "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",

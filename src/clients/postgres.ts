@@ -1,6 +1,5 @@
 // Postgres client - uses a sqlite instance with a table
 // called `kv` containing 'id', 'value', and 'expires_at' columns
-import { ClientOptions } from "../types";
 import Client from "./Client";
 
 export default class Postgres extends Client {
@@ -10,7 +9,7 @@ export default class Postgres extends Client {
   // sqlite does not natively support expirations. This is because it does
   // support creating a `expires_at:Date` column that makes managing
   // expirations much easier, so it's really "somewhere in between"
-  EXPIRES = true as const;
+  HAS_EXPIRATION = true as const;
 
   // The table name to use
   table = "kv";
@@ -39,7 +38,7 @@ export default class Postgres extends Client {
   set = async (
     id: string,
     data: any,
-    expires: ClientOptions,
+    expires: number | null,
   ): Promise<void> => {
     const value = this.encode(data);
     const expiresAt = expires ? new Date(Date.now() + expires * 1000) : null;

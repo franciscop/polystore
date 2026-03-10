@@ -1,6 +1,7 @@
+export type Prefix = string;
 export type Expires = number | null | string;
 
-export type ClientOptions = number | null;
+export type Options = { prefix?: Prefix; expires?: Expires };
 
 export type StoreData<T extends Serializable = Serializable> = {
   value: T;
@@ -17,7 +18,7 @@ export type Serializable =
 
 export interface ClientExpires {
   TYPE: string;
-  EXPIRES: true;
+  HAS_EXPIRATION: true;
   promise?: Promise<any>;
   test?: (client: any) => boolean;
   // testKeys?: string[];
@@ -54,7 +55,7 @@ export interface ClientExpires {
 
 export interface ClientNonExpires {
   TYPE: string;
-  EXPIRES: false;
+  HAS_EXPIRATION: false;
   promise?: Promise<any>;
   test?: (client: any) => boolean;
   // testKeys?: string[];

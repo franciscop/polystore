@@ -9,6 +9,9 @@ import kv, { Store } from "../src/index.ts";
 import customFull from "./customFull.ts";
 import customSimple from "./customSimple.ts";
 
+// Only run some specific stores (empty = all)
+const only: StoreType[] = [];
+
 type FileURL = `file://${string}`;
 
 type StoreType =
@@ -103,17 +106,15 @@ stores["customSimple"] = kv(customSimple);
 stores["customFull"] = kv(customFull);
 // stores["customCloudflare"] = kv(customCloudflare);
 
-// Only run some specific stores (empty = all)
-const only: StoreType[] = [];
-
 export const doNotSupportMs: StoreType[] = [
   `"cookie"`,
   `redis`,
   `new Etcd3()`,
+  "new KVNamespace()",
   `customCloudflare`,
 ];
 
-export const doNotSupportExpiration: StoreType[] = [
+export const cannotTestExpiration: StoreType[] = [
   "new KVNamespace()", // The mock implementation does NOT support expiration 😪
   `customCloudflare`, // Some stores expect 60s+ expiration times, too long to test automatically 😪
 ];

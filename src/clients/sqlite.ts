@@ -1,6 +1,5 @@
 // SQLite client - uses a sqlite instance with a table
 // called `kv` containing 'id', 'value', and 'expires_at' columns
-import { ClientOptions } from "../types";
 import Client from "./Client";
 
 export default class SQLite extends Client {
@@ -10,7 +9,7 @@ export default class SQLite extends Client {
   // sqlite does not natively support expirations. This is because it does
   // support creating a `expires_at:Date` column that makes managing
   // expirations much easier, so it's really "somewhere in between"
-  EXPIRES = true as const;
+  HAS_EXPIRATION = true as const;
 
   // The table name to use
   table = "kv";
@@ -55,7 +54,7 @@ export default class SQLite extends Client {
     return this.decode(row.value);
   };
 
-  set = (id: string, data: any, expires: ClientOptions): void => {
+  set = (id: string, data: any, expires: number | null): void => {
     const value = this.encode(data);
     const expires_at = expires ? Date.now() + expires * 1000 : null;
 

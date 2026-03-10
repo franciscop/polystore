@@ -1,14 +1,31 @@
 import clients from "./clients/index";
-import type { Client, Expires, Serializable, StoreData } from "./types";
+import type {
+  Client,
+  Expires,
+  Options,
+  Prefix,
+  Serializable,
+  StoreData,
+} from "./types";
 import { createId, parse, unix } from "./utils";
 
-class Store<TDefault extends Serializable = Serializable> {
-  PREFIX = "";
+class Store<TD extends Serializable = Serializable> {
+  PREFIX: Prefix = "";
+  EXPIRES: Expires = null;
   promise: Promise<Client> | null;
   client!: Client;
   type: string = "UNKNOWN";
 
-  constructor(clientPromise: any = new Map()) {
+  constructor(
+    clientPromise: any = new Map(),
+    options: Options = {
+      prefix: "",
+      expires: null,
+    },
+  ) {
+    this.PREFIX = options.prefix || "";
+    this.EXPIRES = parse(options.expires || null);
+
     this.promise = Promise.resolve(clientPromise).then(async (client) => {
       this.client = this.#find(client);
       this.#validate(this.client);
@@ -56,7 +73,7 @@ class Store<TDefault extends Serializable = Serializable> {
     }
 
     // No need to validate the methods
-    if (client.EXPIRES) return;
+    if (client.HAS_EXPIRATION) return;
 
     for (let method of ["has", "keys", "values"]) {
       if ((client as any)[method]) {
@@ -66,24 +83,22 @@ class Store<TDefault extends Serializable = Serializable> {
     }
   }
 
-  // Check if the given data is fresh or not; if
+  // Check if the given data is fresh or not
   #isFresh(data: any, key?: string): data is StoreData {
     // Should never happen, but COULD happen; schedule it for
     // removal and mark it as stale
     if (!data || typeof data !== "object" || !("value" in data)) {
-      if (key) this.del(key);
       return false;
     }
 
-    // It never expires, so keep it
-    if (data.expires === null) return true;
+    // It never expires, or it's fresh
+    return data.expires === null || data.expires > Date.now();
+  }
 
-    // It's fresh, keep it
-    if (data.expires > Date.now()) return true;
-
-    // It's expired, remove it
-    if (key) this.del(key);
-    return false;
+  // Normalize returns the instance's `prefix` and `expires`
+  #expiration(expires?: Expires) {
+    // When the options.expires = null, it means we don't want it to expire
+    return parse(expires !== undefined ? expires : this.EXPIRES);
   }
 
   /**
@@ -97,29 +112,24 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .add() Docs](https://polystore.dev/documentation#add)**
    */
-  add(value: TDefault, ttl?: Expires): Promise<string>;
-  add<T extends TDefault>(value: T, ttl?: Expires): Promise<string>;
-  async add<T extends TDefault = TDefault>(
-    value: T,
-    ttl: Expires,
-  ): Promise<string> {
+  add(value: TD, options?: Options): Promise<string>;
+  add<T extends TD>(value: T, options?: Options): Promise<string>;
+  async add<T extends TD = TD>(value: T, options: Options): Promise<string> {
     await this.promise;
-    let expires = parse(ttl);
+    const expires = this.#expiration(options?.expires);
+    const prefix = options?.prefix || this.PREFIX;
 
     // Use the underlying one from the client if found
     if (this.client.add) {
-      if (this.client.EXPIRES) {
-        return await this.client.add(this.PREFIX, value, expires);
+      if (this.client.HAS_EXPIRATION) {
+        return this.client.add(prefix, value, expires);
       }
 
       // In the data we need the timestamp since we need it "absolute":
-      expires = unix(expires);
-      const key = await this.client.add(this.PREFIX, { expires, value });
-      return key;
+      return this.client.add(prefix, { expires: unix(expires), value });
     }
 
-    const key = createId();
-    return this.set(key, value, expires);
+    return this.set(createId(), value, { prefix, expires });
   }
 
   /**
@@ -133,20 +143,17 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .set() Docs](https://polystore.dev/documentation#set)**
    */
-  set(key: string, value: TDefault, ttl?: Expires): Promise<string>;
-  set<T extends TDefault>(
+  set(key: string, value: TD, options?: Options): Promise<string>;
+  set<T extends TD>(key: string, value: T, options?: Options): Promise<string>;
+  async set<T extends Serializable = TD>(
     key: string,
     value: T,
-    ttl?: Expires,
-  ): Promise<string>;
-  async set<T extends Serializable = TDefault>(
-    key: string,
-    value: T,
-    ttl: Expires,
+    options: Options,
   ): Promise<string> {
     await this.promise;
-    const id = this.PREFIX + key;
-    let expires: number | null = parse(ttl);
+    const expires = this.#expiration(options?.expires);
+    const prefix = options?.prefix || this.PREFIX;
+    const id = prefix + key;
 
     // Quick delete
     if (value === null || (typeof expires === "number" && expires <= 0)) {
@@ -154,14 +161,13 @@ class Store<TDefault extends Serializable = Serializable> {
     }
 
     // The client manages the expiration, so let it manage it
-    if (this.client.EXPIRES) {
+    if (this.client.HAS_EXPIRATION) {
       await this.client.set<T>(id, value, expires);
       return key;
     }
 
     // In the data we need the timestamp since we need it "absolute":
-    expires = unix(expires);
-    await this.client.set<T>(id, { expires, value });
+    await this.client.set<T>(id, { expires: unix(expires), value });
     return key;
   }
 
@@ -179,15 +185,15 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .get() Docs](https://polystore.dev/documentation#get)**
    */
-  get(key: string): Promise<TDefault | null>;
-  get<T extends TDefault>(key: string): Promise<T | null>;
-  async get<T extends TDefault = TDefault>(key: string): Promise<T | null> {
+  get(key: string): Promise<TD | null>;
+  get<T extends TD>(key: string): Promise<T | null>;
+  async get<T extends TD = TD>(key: string): Promise<T | null> {
     await this.promise;
     const id = this.PREFIX + key;
 
     // The client already managed expiration and there's STILL some data,
     // so we can assume it's the raw user data
-    if (this.client.EXPIRES) {
+    if (this.client.HAS_EXPIRATION) {
       const data = (await this.client.get<T>(id)) ?? null;
 
       // No value; nothing to do/check
@@ -250,7 +256,7 @@ class Store<TDefault extends Serializable = Serializable> {
       return key;
     }
 
-    if (this.client.EXPIRES) {
+    if (this.client.HAS_EXPIRATION) {
       await this.client.set(id, null, 0);
     } else {
       await this.client.set(id, null);
@@ -284,18 +290,20 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full Iterator Docs](https://polystore.dev/documentation#iterator)**
    */
-  [Symbol.asyncIterator](): AsyncGenerator<[string, TDefault], void, unknown>;
-  [Symbol.asyncIterator]<T extends TDefault>(): AsyncGenerator<
+  [Symbol.asyncIterator](): AsyncGenerator<[string, TD], void, unknown>;
+  [Symbol.asyncIterator]<T extends TD>(): AsyncGenerator<
     [string, T],
     void,
     unknown
   >;
-  async *[Symbol.asyncIterator]<
-    T extends TDefault = TDefault,
-  >(): AsyncGenerator<[string, T], void, unknown> {
+  async *[Symbol.asyncIterator]<T extends TD = TD>(): AsyncGenerator<
+    [string, T],
+    void,
+    unknown
+  > {
     await this.promise;
 
-    if (this.client.EXPIRES) {
+    if (this.client.HAS_EXPIRATION) {
       for await (const [name, data] of this.client.iterate<T>(this.PREFIX)) {
         const key = name.slice(this.PREFIX.length);
         yield [key, data];
@@ -324,15 +332,15 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .entries() Docs](https://polystore.dev/documentation#entries)**
    */
-  entries(): Promise<[string, TDefault][]>;
-  entries<T extends TDefault>(): Promise<[string, T][]>;
-  async entries<T extends TDefault = TDefault>(): Promise<[string, T][]> {
+  entries(): Promise<[string, TD][]>;
+  entries<T extends TD>(): Promise<[string, T][]>;
+  async entries<T extends TD = TD>(): Promise<[string, T][]> {
     await this.promise;
     const trim = (key: string): string => key.slice(this.PREFIX.length);
 
     // With a native method
     if (this.client.entries) {
-      if (this.client.EXPIRES) {
+      if (this.client.HAS_EXPIRATION) {
         const entries = await this.client.entries<T>(this.PREFIX);
         return entries.map(([k, v]) => [trim(k), v]);
       } else {
@@ -345,7 +353,7 @@ class Store<TDefault extends Serializable = Serializable> {
     }
 
     // No native method, iterate then
-    if (this.client.EXPIRES) {
+    if (this.client.HAS_EXPIRATION) {
       const list: [string, T][] = [];
       for await (const [k, v] of this.client.iterate<T>(this.PREFIX)) {
         list.push([trim(k), v]);
@@ -401,13 +409,13 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .values() Docs](https://polystore.dev/documentation#values)**
    */
-  values(): Promise<TDefault[]>;
-  values<T extends TDefault>(): Promise<T[]>;
-  async values<T extends TDefault = TDefault>(): Promise<T[]> {
+  values(): Promise<TD[]>;
+  values<T extends TD>(): Promise<T[]>;
+  async values<T extends TD = TD>(): Promise<T[]> {
     await this.promise;
 
     if (this.client.values) {
-      if (this.client.EXPIRES) return this.client.values<T>(this.PREFIX);
+      if (this.client.HAS_EXPIRATION) return this.client.values<T>(this.PREFIX);
       const list = await this.client.values<T>(this.PREFIX);
       return list
         .filter((data) => this.#isFresh(data))
@@ -431,11 +439,59 @@ class Store<TDefault extends Serializable = Serializable> {
    *
    * **[→ Full .all() Docs](https://polystore.dev/documentation#all)**
    */
-  all(): Promise<Record<string, TDefault>>;
-  all<T extends TDefault>(): Promise<Record<string, T>>;
-  async all<T extends TDefault = TDefault>(): Promise<Record<string, T>> {
+  all(): Promise<Record<string, TD>>;
+  all<T extends TD>(): Promise<Record<string, T>>;
+  async all<T extends TD = TD>(): Promise<Record<string, T>> {
     const entries = await this.entries<T>();
     return Object.fromEntries(entries);
+  }
+
+  /**
+   * Create a substore where all the keys are stored with
+   * the given prefix:
+   *
+   * ```js
+   * const session = store.prefix("session:");
+   * await session.set("key1", "value1");
+   * console.log(await session.entries());  // session.
+   * // [["key1", "value1"]]
+   * console.log(await store.entries());  // store.
+   * // [["session:key1", "value1"]]
+   * ```
+   *
+   * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
+   */
+  prefix(prefix: Prefix = ""): Store<TD> {
+    const store = new Store<TD>(
+      Promise.resolve(this.promise).then(() => this.client),
+    );
+    store.PREFIX = this.PREFIX + prefix;
+    store.EXPIRES = this.EXPIRES;
+    return store;
+  }
+
+  /**
+   * Create a substore where all the keys are stored with
+   * the given prefix:
+   *
+   * ```js
+   * const session = store.prefix("session:");
+   * await session.set("key1", "value1");
+   * console.log(await session.entries());  // session.
+   * // [["key1", "value1"]]
+   * console.log(await store.entries());  // store.
+   * // [["session:key1", "value1"]]
+   * ```
+   *
+   * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
+   */
+  expires(expires: Expires = null): Store<TD> {
+    const store = new Store<TD>(
+      Promise.resolve(this.promise).then(() => this.client),
+    );
+    store.EXPIRES = parse(expires);
+    store.PREFIX = this.PREFIX;
+    return store;
   }
 
   /**
@@ -466,26 +522,28 @@ class Store<TDefault extends Serializable = Serializable> {
   }
 
   /**
-   * Create a substore where all the keys are stored with
-   * the given prefix:
+   * Remove all expired records from the store.
    *
    * ```js
-   * const session = store.prefix("session:");
-   * await session.set("key1", "value1");
-   * console.log(await session.entries());  // session.
-   * // [["key1", "value1"]]
-   * console.log(await store.entries());  // store.
-   * // [["session:key1", "value1"]]
+   * await store.prune();
    * ```
    *
-   * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
+   * Only affects stores where expiration is managed by this wrapper.
    */
-  prefix(prefix = ""): Store<TDefault> {
-    const store = new Store<TDefault>(
-      Promise.resolve(this.promise).then(() => this.client),
-    );
-    store.PREFIX = this.PREFIX + prefix;
-    return store;
+  async prune(): Promise<void> {
+    await this.promise;
+
+    // Clients with native expiration don't need pruning
+    if (this.client.HAS_EXPIRATION) return;
+
+    for await (const [name, data] of this.client.iterate<StoreData>(
+      this.PREFIX,
+    )) {
+      const key = name.slice(this.PREFIX.length);
+      if (!this.#isFresh(data, key)) {
+        await this.del(key);
+      }
+    }
   }
 
   /**
@@ -511,8 +569,9 @@ class Store<TDefault extends Serializable = Serializable> {
 export default function createStore(): Store<Serializable>;
 export default function createStore<T extends Serializable = Serializable>(
   client?: any,
+  options?: Options,
 ): Store<T>;
-export default function createStore(client?: any): Store {
-  return new Store(client);
+export default function createStore(client?: any, options?: Options): Store {
+  return new Store(client, options);
 }
 export type { Client, Serializable, Store };

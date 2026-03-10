@@ -7,7 +7,7 @@ export default class File extends Client {
   TYPE = "FILE";
 
   // It desn't handle expirations natively
-  EXPIRES = false as const;
+  HAS_EXPIRATION = false as const;
 
   fsp!: typeof FsPromises;
   file: string = "";
