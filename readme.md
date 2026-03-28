@@ -63,7 +63,7 @@ MyApi({ cache: env.KV_NAMESPACE }); // OR
 
 First, install `polystore` and whatever [supported client](#clients) that you prefer. Let's see Redis as an example here:
 
-```
+```sh
 npm i polystore redis
 ```
 
@@ -93,7 +93,7 @@ await store.del(key);
 
 ## API
 
-The base `kv()` initialization is shared across clients ([see full clients list](#clients)); single argument that receives the client or a string representing the client:
+The base `kv()` initialization is shared across clients ([see full clients list](#clients)); an argument that receives the client or a string representing the client and then the options:
 
 ```js
 import kv from "polystore";
@@ -107,7 +107,7 @@ const store = kv(MyClientInstance, { expires: null, prefix: "" });
 > [!IMPORTANT]
 > The library delivers excellent performance for item-level operations (GET, SET, ADD, HAS, DEL). For other methods or detailed guidance, check the performance considerations and consult your specific client’s documentation.
 
-You can enforce **types** for store values either at store creation or at the method level:
+You can enforce **types** for the values either at store creation or at the method level:
 
 ```ts
 const store = kv<number>(new Map());
