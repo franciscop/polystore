@@ -508,6 +508,9 @@ class Store<TD extends Serializable = Serializable> {
   async clear(): Promise<void> {
     await this.promise;
 
+    // Some times we want to trigger a clearAll for no prefix, but need
+    // to do it manually for prefix, so by having a clearAll and NOT clear()
+    // we can do this (e.g. forage)
     if (!this.PREFIX && this.client.clearAll) {
       return this.client.clearAll();
     }
@@ -536,13 +539,8 @@ class Store<TD extends Serializable = Serializable> {
     // Clients with native expiration don't need pruning
     if (this.client.HAS_EXPIRATION) return;
 
-    for await (const [name, data] of this.client.iterate<StoreData>(
-      this.PREFIX,
-    )) {
-      const key = name.slice(this.PREFIX.length);
-      if (!this.#isFresh(data, key)) {
-        await this.del(key);
-      }
+    if (this.client.prune) {
+      await this.client.prune();
     }
   }
 

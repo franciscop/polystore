@@ -244,8 +244,10 @@ var File = class extends Client {
     }
   }
   // Bulk updates are worth creating a custom method here
-  clearAll = () => this.#withLock(() => this.#write({}));
   clear = async (prefix = "") => {
+    if (!prefix) {
+      await this.#withLock(() => this.#write({}));
+    }
     return this.#withLock(async () => {
       const data = await this.#read();
       for (let key in data) {
@@ -366,8 +368,10 @@ var Level = class extends Client {
       list.map(async (k) => [k, await this.get(k)])
     );
   };
-  clearAll = () => this.client.clear();
   clear = async (prefix = "") => {
+    if (!prefix) {
+      return await this.client.clear();
+    }
     const keys = await this.client.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
     return this.client.batch(
@@ -414,11 +418,11 @@ var Postgres = class extends Client {
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL,
-        "expiresAt" TIMESTAMP
+        expires_at TIMESTAMPTZ
       )
     `);
     await this.client.query(
-      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expiresAt ON ${this.table} ("expiresAt")`
+      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`
     );
   })();
   static test = (client) => {
@@ -426,76 +430,58 @@ var Postgres = class extends Client {
   };
   get = async (id) => {
     const result = await this.client.query(
-      `SELECT value, "expiresAt" FROM ${this.table} WHERE id = $1`,
+      `SELECT value
+       FROM ${this.table}
+       WHERE id = $1 AND (expires_at IS NULL OR expires_at > NOW())`,
       [id]
     );
-    if (result.rows.length === 0) return null;
-    const record = result.rows[0];
-    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
-      await this.del(id);
-      return null;
-    }
-    return this.decode(record.value);
+    if (!result.rows.length) return null;
+    return this.decode(result.rows[0].value);
   };
   set = async (id, data, expires) => {
     const value = this.encode(data);
-    const expiresAt = expires ? new Date(Date.now() + expires * 1e3) : null;
+    const expires_at = expires ? new Date(Date.now() + expires * 1e3) : null;
     await this.client.query(
-      `INSERT INTO ${this.table} (id, value, "expiresAt")
+      `INSERT INTO ${this.table} (id, value, expires_at)
        VALUES ($1, $2, $3)
-       ON CONFLICT (id) DO UPDATE SET value = $2, "expiresAt" = $3`,
-      [id, value, expiresAt]
+       ON CONFLICT (id) DO UPDATE
+       SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at`,
+      [id, value, expires_at]
     );
   };
   del = async (id) => {
     await this.client.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
   };
-  has = async (id) => {
-    const result = await this.client.query(
-      `SELECT "expiresAt" FROM ${this.table} WHERE id = $1`,
-      [id]
-    );
-    if (result.rows.length === 0) return false;
-    const record = result.rows[0];
-    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
-      await this.del(id);
-      return false;
-    }
-    return true;
-  };
-  async *iterate() {
+  async *iterate(prefix = "") {
     const result = await this.client.query(
       `SELECT id, value FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
+        WHERE (expires_at IS NULL OR expires_at > NOW()) ${prefix ? `AND id LIKE $1` : ""}`,
+      prefix ? [`${prefix}%`] : []
     );
-    this.#clearExpired();
-    for (const record of result.rows) {
-      yield [record.id, this.decode(record.value)];
+    for (const row of result.rows) {
+      yield [row.id, this.decode(row.value)];
     }
   }
-  keys = async () => {
+  async keys(prefix = "") {
     const result = await this.client.query(
       `SELECT id FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
+       WHERE (expires_at IS NULL OR expires_at > NOW())
+       ${prefix ? `AND id LIKE $1` : ""}`,
+      prefix ? [`${prefix}%`] : []
     );
-    this.#clearExpired();
     return result.rows.map((r) => r.id);
-  };
-  entries = async () => {
-    const result = await this.client.query(
-      `SELECT id, value FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
-    );
-    this.#clearExpired();
-    return result.rows.map((r) => [r.id, this.decode(r.value)]);
-  };
-  #clearExpired = async () => {
+  }
+  prune = async () => {
     await this.client.query(
-      `DELETE FROM ${this.table} WHERE "expiresAt" < NOW()`
+      `DELETE FROM ${this.table}
+       WHERE expires_at IS NOT NULL AND expires_at <= NOW()`
     );
   };
-  clearAll = async () => {
-    await this.client.query(`DELETE FROM ${this.table}`);
+  clear = async (prefix = "") => {
+    await this.client.query(
+      `DELETE FROM ${this.table} ${prefix ? `WHERE id LIKE $1` : ""}`,
+      prefix ? [`${prefix}%`] : []
+    );
   };
   close = async () => {
     if (this.client.end) {
@@ -579,13 +565,11 @@ var SQLite = class extends Client {
     return typeof client?.prepare === "function" && typeof client?.exec === "function";
   };
   get = (id) => {
-    const row = this.client.prepare(`SELECT value, expires_at FROM kv WHERE id = ?`).get(id);
-    if (!row) return null;
-    if (row.expires_at && row.expires_at < Date.now()) {
-      this.del(id);
-      return null;
-    }
-    return this.decode(row.value);
+    const value = this.client.prepare(
+      `SELECT value, expires_at FROM kv WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)`
+    ).get(id, Date.now())?.value;
+    if (!value) return null;
+    return this.decode(value);
   };
   set = (id, data, expires) => {
     const value = this.encode(data);
@@ -594,8 +578,8 @@ var SQLite = class extends Client {
       `INSERT INTO kv (id, value, expires_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`
     ).run(id, value, expires_at);
   };
-  del = async (id) => {
-    await this.client.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
+  del = (id) => {
+    this.client.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
   };
   has = (id) => {
     const row = this.client.prepare(`SELECT expires_at FROM kv WHERE id = ?`).get(id);
@@ -607,7 +591,6 @@ var SQLite = class extends Client {
     return true;
   };
   *iterate(prefix = "") {
-    this.#clearExpired();
     const sql = `SELECT id, value FROM kv WHERE (expires_at IS NULL OR expires_at > ?) ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
@@ -616,7 +599,6 @@ var SQLite = class extends Client {
     }
   }
   keys = (prefix = "") => {
-    this.#clearExpired();
     const sql = `SELECT id FROM kv WHERE (expires_at IS NULL OR expires_at > ?)
 ${prefix ? "AND id LIKE ?" : ""}
     `;
@@ -624,11 +606,15 @@ ${prefix ? "AND id LIKE ?" : ""}
     const rows = this.client.prepare(sql).all(...params);
     return rows.map((r) => r.id);
   };
-  #clearExpired = () => {
-    this.client.prepare(`DELETE FROM kv WHERE expires_at < ?`).run(Date.now());
+  prune = () => {
+    this.client.prepare(`DELETE FROM kv WHERE expires_at <= ?`).run(Date.now());
   };
-  clearAll = () => {
-    this.client.exec(`DELETE FROM kv`);
+  clear = (prefix = "") => {
+    if (!prefix) {
+      this.client.prepare(`DELETE FROM ${this.table}`).run();
+      return;
+    }
+    this.client.prepare(`DELETE FROM ${this.table} WHERE id LIKE ?`).run(`${prefix}%`);
   };
   close = () => {
     this.client.close?.();
@@ -1040,13 +1026,8 @@ var Store = class _Store {
   async prune() {
     await this.promise;
     if (this.client.HAS_EXPIRATION) return;
-    for await (const [name, data] of this.client.iterate(
-      this.PREFIX
-    )) {
-      const key = name.slice(this.PREFIX.length);
-      if (!this.#isFresh(data, key)) {
-        await this.del(key);
-      }
+    if (this.client.prune) {
+      await this.client.prune();
     }
   }
   /**

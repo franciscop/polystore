@@ -24,12 +24,11 @@ export default class Postgres extends Client {
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL,
-        "expiresAt" TIMESTAMP
+        expires_at TIMESTAMPTZ
       )
     `);
-
     await this.client.query(
-      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expiresAt ON ${this.table} ("expiresAt")`,
+      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`,
     );
   })();
 
@@ -40,18 +39,13 @@ export default class Postgres extends Client {
 
   get = async <T>(id: string): Promise<T | null> => {
     const result = await this.client.query(
-      `SELECT value, "expiresAt" FROM ${this.table} WHERE id = $1`,
+      `SELECT value
+       FROM ${this.table}
+       WHERE id = $1 AND (expires_at IS NULL OR expires_at > NOW())`,
       [id],
     );
-    if (result.rows.length === 0) return null;
-
-    const record = result.rows[0];
-    // Check if expired and delete if so
-    if (record.expiresAt && record.expiresAt < new Date()) {
-      await this.del(id);
-      return null;
-    }
-    return this.decode<T>(record.value);
+    if (!result.rows.length) return null;
+    return this.decode<T>(result.rows[0].value);
   };
 
   set = async (
@@ -60,12 +54,14 @@ export default class Postgres extends Client {
     expires: number | null,
   ): Promise<void> => {
     const value = this.encode(data);
-    const expiresAt = expires ? new Date(Date.now() + expires * 1000) : null;
+    const expires_at = expires ? new Date(Date.now() + expires * 1000) : null;
+
     await this.client.query(
-      `INSERT INTO ${this.table} (id, value, "expiresAt")
+      `INSERT INTO ${this.table} (id, value, expires_at)
        VALUES ($1, $2, $3)
-       ON CONFLICT (id) DO UPDATE SET value = $2, "expiresAt" = $3`,
-      [id, value, expiresAt],
+       ON CONFLICT (id) DO UPDATE
+       SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at`,
+      [id, value, expires_at],
     );
   };
 
@@ -73,59 +69,41 @@ export default class Postgres extends Client {
     await this.client.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
   };
 
-  has = async (id: string): Promise<boolean> => {
-    const result = await this.client.query(
-      `SELECT "expiresAt" FROM ${this.table} WHERE id = $1`,
-      [id],
-    );
-    if (result.rows.length === 0) return false;
-
-    const record = result.rows[0];
-    // Check if expired and delete if so
-    if (record.expiresAt && record.expiresAt < new Date()) {
-      await this.del(id);
-      return false;
-    }
-    return true;
-  };
-
-  async *iterate(): AsyncGenerator<[string, any], void, unknown> {
+  async *iterate(prefix = ""): AsyncGenerator<[string, any]> {
     const result = await this.client.query(
       `SELECT id, value FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`,
+        WHERE (expires_at IS NULL OR expires_at > NOW()) ${prefix ? `AND id LIKE $1` : ""}`,
+      prefix ? [`${prefix}%`] : [],
     );
-    this.#clearExpired(); // Fire and forget
-    for (const record of result.rows) {
-      yield [record.id, this.decode(record.value)];
+
+    for (const row of result.rows) {
+      yield [row.id, this.decode(row.value)];
     }
   }
 
-  keys = async (): Promise<string[]> => {
+  async keys(prefix = ""): Promise<string[]> {
     const result = await this.client.query(
       `SELECT id FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`,
+       WHERE (expires_at IS NULL OR expires_at > NOW())
+       ${prefix ? `AND id LIKE $1` : ""}`,
+      prefix ? [`${prefix}%`] : [],
     );
-    this.#clearExpired(); // Fire and forget
+
     return result.rows.map((r: any) => r.id);
-  };
+  }
 
-  entries = async (): Promise<[string, any][]> => {
-    const result = await this.client.query(
-      `SELECT id, value FROM ${this.table}
-       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`,
-    );
-    this.#clearExpired(); // Fire and forget
-    return result.rows.map((r: any) => [r.id, this.decode(r.value)]);
-  };
-
-  #clearExpired = async (): Promise<void> => {
+  prune = async (): Promise<void> => {
     await this.client.query(
-      `DELETE FROM ${this.table} WHERE "expiresAt" < NOW()`,
+      `DELETE FROM ${this.table}
+       WHERE expires_at IS NOT NULL AND expires_at <= NOW()`,
     );
   };
 
-  clearAll = async (): Promise<void> => {
-    await this.client.query(`DELETE FROM ${this.table}`);
+  clear = async (prefix = ""): Promise<void> => {
+    await this.client.query(
+      `DELETE FROM ${this.table} ${prefix ? `WHERE id LIKE $1` : ""}`,
+      prefix ? [`${prefix}%`] : [],
+    );
   };
 
   close = async (): Promise<void> => {

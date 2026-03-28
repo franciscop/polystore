@@ -1183,9 +1183,7 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-You can also use `pg.Pool` instead of `pg.Client` for connection pooling.
-
-Polystore will initialize the schema automatically (idempotent): it creates the `kv` table and expiration index if they do not exist yet, and does not fail if they already exist.
+Polystore will initialize the schema automatically: it creates the `kv` table and expiration index if they do not exist yet, and does not fail if they already exist.
 
 Required schema (auto-created by Polystore):
 

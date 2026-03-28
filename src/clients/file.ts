@@ -96,8 +96,10 @@ export default class File extends Client {
   }
 
   // Bulk updates are worth creating a custom method here
-  clearAll = (): Promise<void> => this.#withLock(() => this.#write({}));
   clear = async (prefix = ""): Promise<void> => {
+    if (!prefix) {
+      await this.#withLock(() => this.#write({}));
+    }
     return this.#withLock(async () => {
       const data = await this.#read();
       for (let key in data) {
