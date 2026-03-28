@@ -637,12 +637,12 @@ Quick overview:
 |---|---|---|---|---|
 | [Memory](#memory) | Node.js + Browser | ❌ | ❌ | Great for tests and ephemeral caches |
 | [Local Storage](#local-storage) | Browser | ✅ | ❌ | Persistent browser storage |
-| [Session Storage](#session-storage) | Browser | Session | ❌ | Cleared when tab/session ends |
+| [Session Storage](#session-storage) | Browser | ❌ | ❌ | Cleared when tab/session ends |
 | [Cookies](#cookies) | Browser | ✅ | ✅ | Browser-side cookies |
-| [Local Forage](#local-forage) | Browser | ✅ | Depends | Better capacity than localStorage |
+| [Local Forage](#local-forage) | Browser | ✅ | ❓ | Better capacity than localStorage |
 | [Redis](#redis) | Node.js | ✅ | ✅ | Good distributed cache backend |
 | [SQLite](#sqlite) | Node.js | ✅ | ❌ | Simple local persistence |
-| [Fetch API](#fetch-api) | Any with `fetch` | Depends | Depends | Bring your own KV HTTP API |
+| [Fetch API](#fetch-api) | Any with `fetch` | ❓ | ❓ | Bring your own KV HTTP API |
 | [File](#file) | Node.js | ✅ | ❌ | Single JSON file store |
 | [Folder](#folder) | Node.js | ✅ | ❌ | One-file-per-key store |
 | [Cloudflare KV](#cloudflare-kv) | Cloudflare | ✅ | ✅ | Edge-native KV |
@@ -1185,26 +1185,32 @@ console.log(await store.get("key1"));
 
 You can also use `pg.Pool` instead of `pg.Client` for connection pooling.
 
-Your database needs a table with three columns: `id` (text), `value` (text), and `expiresAt` (timestamp, nullable):
+Polystore will initialize the schema automatically (idempotent): it creates the `kv` table and expiration index if they do not exist yet, and does not fail if they already exist.
+
+Required schema (auto-created by Polystore):
 
 ```sql
-CREATE TABLE kv (
+CREATE TABLE IF NOT EXISTS kv (
   id TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   "expiresAt" TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_kv_expiresAt
+  ON kv ("expiresAt");
 ```
 
-The default table name is `kv`, but you can use different tables via `.prefix()`:
+The default table name is `kv`. Key prefixes still work as normal key namespaces:
 
 ```js
-const sessions = store.prefix("session:"); // Uses 'session' table
-const cache = store.prefix("cache:");      // Uses 'cache' table
+const sessions = store.prefix("session:");
+const cache = store.prefix("cache:");
 
 await sessions.set("user123", { name: "Alice" });
+// Stored key in Postgres: "session:user123"
 ```
 
-This maps prefixes to table names for better performance on group operations.
+This keeps a single table while preserving namespace-style grouping through prefixed keys.
 
 <details>
   <summary>Why use polystore with Postgres?</summary>

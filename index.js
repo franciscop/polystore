@@ -395,6 +395,115 @@ var Memory = class extends Client {
   clearAll = () => this.client.clear();
 };
 
+// src/clients/postgres.ts
+var Postgres = class extends Client {
+  TYPE = "POSTGRES";
+  // This one is doing manual time management internally even though
+  // sqlite does not natively support expirations. This is because it does
+  // support creating a `expires_at:Date` column that makes managing
+  // expirations much easier, so it's really "somewhere in between"
+  HAS_EXPIRATION = true;
+  // The table name to use
+  table = "kv";
+  // Ensure schema exists before any operation
+  promise = (async () => {
+    if (!/^[a-zA-Z_]+$/.test(this.table)) {
+      throw new Error(`Invalid table name ${this.table}`);
+    }
+    await this.client.query(`
+      CREATE TABLE IF NOT EXISTS ${this.table} (
+        id TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        "expiresAt" TIMESTAMP
+      )
+    `);
+    await this.client.query(
+      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expiresAt ON ${this.table} ("expiresAt")`
+    );
+  })();
+  static test = (client) => {
+    return client && client.query && !client.filename;
+  };
+  get = async (id) => {
+    const result = await this.client.query(
+      `SELECT value, "expiresAt" FROM ${this.table} WHERE id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) return null;
+    const record = result.rows[0];
+    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
+      await this.del(id);
+      return null;
+    }
+    return this.decode(record.value);
+  };
+  set = async (id, data, expires) => {
+    const value = this.encode(data);
+    const expiresAt = expires ? new Date(Date.now() + expires * 1e3) : null;
+    await this.client.query(
+      `INSERT INTO ${this.table} (id, value, "expiresAt")
+       VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO UPDATE SET value = $2, "expiresAt" = $3`,
+      [id, value, expiresAt]
+    );
+  };
+  del = async (id) => {
+    await this.client.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
+  };
+  has = async (id) => {
+    const result = await this.client.query(
+      `SELECT "expiresAt" FROM ${this.table} WHERE id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) return false;
+    const record = result.rows[0];
+    if (record.expiresAt && record.expiresAt < /* @__PURE__ */ new Date()) {
+      await this.del(id);
+      return false;
+    }
+    return true;
+  };
+  async *iterate() {
+    const result = await this.client.query(
+      `SELECT id, value FROM ${this.table}
+       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
+    );
+    this.#clearExpired();
+    for (const record of result.rows) {
+      yield [record.id, this.decode(record.value)];
+    }
+  }
+  keys = async () => {
+    const result = await this.client.query(
+      `SELECT id FROM ${this.table}
+       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
+    );
+    this.#clearExpired();
+    return result.rows.map((r) => r.id);
+  };
+  entries = async () => {
+    const result = await this.client.query(
+      `SELECT id, value FROM ${this.table}
+       WHERE "expiresAt" IS NULL OR "expiresAt" > NOW()`
+    );
+    this.#clearExpired();
+    return result.rows.map((r) => [r.id, this.decode(r.value)]);
+  };
+  #clearExpired = async () => {
+    await this.client.query(
+      `DELETE FROM ${this.table} WHERE "expiresAt" < NOW()`
+    );
+  };
+  clearAll = async () => {
+    await this.client.query(`DELETE FROM ${this.table}`);
+  };
+  close = async () => {
+    if (this.client.end) {
+      await this.client.end();
+    }
+  };
+};
+
 // src/clients/redis.ts
 var Redis = class extends Client {
   TYPE = "REDIS";
@@ -564,7 +673,7 @@ var clients_default = {
   forage: Forage,
   level: Level,
   memory: Memory,
-  // postgres,
+  postgres: Postgres,
   redis: Redis,
   storage: WebStorage,
   sqlite: SQLite
