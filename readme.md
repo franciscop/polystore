@@ -635,20 +635,20 @@ Quick overview:
 
 | Client | Runtime | Persistence | Native expiration | Notes |
 |---|---|---|---|---|
-| [Memory](#memory) | Node + Browser | No | No | Great for tests and ephemeral caches |
-| [Local Storage](#local-storage) | Browser | Yes | No | Persistent browser storage |
-| [Session Storage](#session-storage) | Browser | Session | No | Cleared when tab/session ends |
-| [Cookies](#cookies) | Browser | Yes | Yes | Browser-side cookies |
-| [Local Forage](#local-forage) | Browser | Yes | Depends | Better capacity than localStorage |
-| [Redis](#redis) | Node | Yes | Yes | Good distributed cache backend |
-| [SQLite](#sqlite) | Node + Bun | Yes | No | Simple local persistence |
+| [Memory](#memory) | Node.js + Browser | ❌ | ❌ | Great for tests and ephemeral caches |
+| [Local Storage](#local-storage) | Browser | ✅ | ❌ | Persistent browser storage |
+| [Session Storage](#session-storage) | Browser | Session | ❌ | Cleared when tab/session ends |
+| [Cookies](#cookies) | Browser | ✅ | ✅ | Browser-side cookies |
+| [Local Forage](#local-forage) | Browser | ✅ | Depends | Better capacity than localStorage |
+| [Redis](#redis) | Node.js | ✅ | ✅ | Good distributed cache backend |
+| [SQLite](#sqlite) | Node.js | ✅ | ❌ | Simple local persistence |
 | [Fetch API](#fetch-api) | Any with `fetch` | Depends | Depends | Bring your own KV HTTP API |
-| [File](#file) | Node + Bun | Yes | No | Single JSON file store |
-| [Folder](#folder) | Node + Bun | Yes | No | One-file-per-key store |
-| [Cloudflare KV](#cloudflare-kv) | Cloudflare Workers | Yes | Yes | Edge-native KV |
-| [Level](#level) | Node | Yes | No | Uses Level ecosystem |
-| [Etcd](#etcd) | Node | Yes | Yes | Distributed KV |
-| [Postgres](#postgres) | Node | Yes | No (query-filtered by Polystore) | Table-backed KV |
+| [File](#file) | Node.js | ✅ | ❌ | Single JSON file store |
+| [Folder](#folder) | Node.js | ✅ | ❌ | One-file-per-key store |
+| [Cloudflare KV](#cloudflare-kv) | Cloudflare | ✅ | ✅ | Edge-native KV |
+| [Level](#level) | Node.js | ✅ | ❌ | Uses Level ecosystem |
+| [Etcd](#etcd) | Node.js | ✅ | ✅ | Distributed KV |
+| [Postgres](#postgres) | Node.js | ✅ | ❌ | Table-backed KV |
 
 While you can keep a reference to the client and access it directly, we strongly recommend to only access it through `polystore`, since we might add custom serialization and extra properties for e.g. expiration time:
 
