@@ -42,16 +42,13 @@ export default class SQLite extends Client {
   };
 
   get = <T>(id: string): T | null => {
-    const row = this.client
-      .prepare(`SELECT value, expires_at FROM kv WHERE id = ?`)
-      .get(id);
-    if (!row) return null;
-    if (row.expires_at && row.expires_at < Date.now()) {
-      this.del(id);
-      return null;
-    }
-
-    return this.decode(row.value);
+    const value = this.client
+      .prepare(
+        `SELECT value, expires_at FROM kv WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)`,
+      )
+      .get(id, Date.now())?.value;
+    if (!value) return null;
+    return this.decode<T>(value);
   };
 
   set = (id: string, data: any, expires: number | null): void => {
@@ -65,8 +62,8 @@ export default class SQLite extends Client {
       .run(id, value, expires_at);
   };
 
-  del = async (id: string): Promise<void> => {
-    await this.client.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
+  del = (id: string): void => {
+    this.client.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
   };
 
   has = (id: string): boolean => {
@@ -84,7 +81,6 @@ export default class SQLite extends Client {
   };
 
   *iterate(prefix = ""): Generator<[string, any]> {
-    this.#clearExpired();
     const sql = `SELECT id, value FROM kv WHERE (expires_at IS NULL OR expires_at > ?) ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
@@ -94,7 +90,6 @@ export default class SQLite extends Client {
   }
 
   keys = (prefix = ""): string[] => {
-    this.#clearExpired();
     const sql = `SELECT id FROM kv WHERE (expires_at IS NULL OR expires_at > ?)
 ${prefix ? "AND id LIKE ?" : ""}
     `;
@@ -103,12 +98,19 @@ ${prefix ? "AND id LIKE ?" : ""}
     return rows.map((r: { id: string }) => r.id);
   };
 
-  #clearExpired = (): void => {
-    this.client.prepare(`DELETE FROM kv WHERE expires_at < ?`).run(Date.now());
+  prune = (): void => {
+    this.client.prepare(`DELETE FROM kv WHERE expires_at <= ?`).run(Date.now());
   };
 
-  clearAll = (): void => {
-    this.client.exec(`DELETE FROM kv`);
+  clear = (prefix = ""): void => {
+    if (!prefix) {
+      this.client.prepare(`DELETE FROM ${this.table}`).run();
+      return;
+    }
+
+    this.client
+      .prepare(`DELETE FROM ${this.table} WHERE id LIKE ?`)
+      .run(`${prefix}%`);
   };
 
   close = (): void => {

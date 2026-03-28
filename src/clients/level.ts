@@ -38,8 +38,10 @@ export default class Level extends Client {
     );
   };
 
-  clearAll = (): Promise<void> => this.client.clear();
   clear = async (prefix = ""): Promise<void> => {
+    if (!prefix) {
+      return await this.client.clear();
+    }
     const keys: string[] = await this.client.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
     return this.client.batch(

@@ -2,6 +2,7 @@ import { EdgeKVNamespace as KVNamespace } from "edge-mock";
 import { Etcd3 } from "etcd3";
 import { Level } from "level";
 import localForage from "localforage";
+import { Client } from "pg";
 import { createClient } from "redis";
 
 import kv, { Store } from "../src/index.ts";
@@ -31,7 +32,7 @@ type StoreType =
   | 'new Level("data")'
   | "redis"
   | "sqlite"
-  | "sqlite"
+  | "postgres"
   | "new Etcd3()"
   | "customSimple"
   | "customFull"
@@ -99,7 +100,11 @@ stores["sqlite"] = kv(
     }
   })(),
 );
-// stores['postgres'] = kv(postgres);
+if (process.env.POSTGRES_URL) {
+  stores["postgres"] = kv(
+    new Client({ connectionString: process.env.POSTGRES_URL }).connect(),
+  );
+}
 
 // Custom stores
 stores["customSimple"] = kv(customSimple);
@@ -109,6 +114,7 @@ stores["customFull"] = kv(customFull);
 export const doNotSupportMs: StoreType[] = [
   `"cookie"`,
   `redis`,
+  "postgres",
   `new Etcd3()`,
   "new KVNamespace()",
   `customCloudflare`,

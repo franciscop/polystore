@@ -89,6 +89,7 @@ export interface ClientNonExpires {
   all?<T extends Serializable>(
     prefix: string,
   ): Promise<Record<string, StoreData<T>>> | Record<string, StoreData<T>>;
+  prune?(): Promise<any> | any;
   clear?(prefix: string): Promise<any> | any;
   clearAll?(): Promise<any> | any;
   close?(): Promise<any> | any;

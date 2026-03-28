@@ -45,6 +45,7 @@ interface ClientNonExpires {
     values?<T extends Serializable>(prefix: string): Promise<StoreData<T>[]> | StoreData<T>[];
     entries?<T extends Serializable>(prefix: string): Promise<[string, StoreData<T>][]> | [string, StoreData<T>][];
     all?<T extends Serializable>(prefix: string): Promise<Record<string, StoreData<T>>> | Record<string, StoreData<T>>;
+    prune?(): Promise<any> | any;
     clear?(prefix: string): Promise<any> | any;
     clearAll?(): Promise<any> | any;
     close?(): Promise<any> | any;
