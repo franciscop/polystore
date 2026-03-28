@@ -21,9 +21,9 @@ import { createClient } from "redis";
 const url = process.env.REDIS_URL;
 const store = kv(createClient({ url }).connect());
 
-await store.set("hi", data, "1h");
+await store.set("hi", data, { expires: "1h" });
 console.log(await store.get("hi"));
-// { hello: &quot;world&quot; }</code></pre>
+// { hello: "world" }</code></pre>
   </div>
 </section>
 

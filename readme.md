@@ -631,6 +631,25 @@ A client is the library that manages the low-level store operations. For example
 
 Polystore provides a unified API you can use `Promises`, `expires` and `.prefix()` even with those stores that do not support these operations natively.
 
+Quick overview:
+
+| Client | Runtime | Persistence | Native expiration | Notes |
+|---|---|---|---|---|
+| [Memory](#memory) | Node + Browser | No | No | Great for tests and ephemeral caches |
+| [Local Storage](#local-storage) | Browser | Yes | No | Persistent browser storage |
+| [Session Storage](#session-storage) | Browser | Session | No | Cleared when tab/session ends |
+| [Cookies](#cookies) | Browser | Yes | Yes | Browser-side cookies |
+| [Local Forage](#local-forage) | Browser | Yes | Depends | Better capacity than localStorage |
+| [Redis](#redis) | Node | Yes | Yes | Good distributed cache backend |
+| [SQLite](#sqlite) | Node + Bun | Yes | No | Simple local persistence |
+| [Fetch API](#fetch-api) | Any with `fetch` | Depends | Depends | Bring your own KV HTTP API |
+| [File](#file) | Node + Bun | Yes | No | Single JSON file store |
+| [Folder](#folder) | Node + Bun | Yes | No | One-file-per-key store |
+| [Cloudflare KV](#cloudflare-kv) | Cloudflare Workers | Yes | Yes | Edge-native KV |
+| [Level](#level) | Node | Yes | No | Uses Level ecosystem |
+| [Etcd](#etcd) | Node | Yes | Yes | Distributed KV |
+| [Postgres](#postgres) | Node | Yes | No (query-filtered by Polystore) | Table-backed KV |
+
 While you can keep a reference to the client and access it directly, we strongly recommend to only access it through `polystore`, since we might add custom serialization and extra properties for e.g. expiration time:
 
 ```js
@@ -1202,7 +1221,9 @@ This maps prefixes to table names for better performance on group operations.
 
 Please see the [creating a store](#creating-a-store) section for all the details!
 
-## Performance
+## Guides
+
+### Performance
 
 > TL;DR: if you only use the item operations (add, set, get, has, del) and your client supports expiration natively, you have nothing to worry about! Otherwise, please read on.
 
@@ -1214,7 +1235,7 @@ While all of our stores support `expires`, `.prefix()` and group operations, the
 
 **Substores** when dealing with a `.prefix()` substore, the same applies. Item operations should see no performance degradation from `.prefix()`, but group operations follow the above performance considerations. Some engines might have native prefix support, so performance in those is better for group operations in a substore than the whole store. But in general you should consider `.prefix()` as a convenient way of classifying your keys and not as a performance fix for group operations.
 
-## Expirations
+### Expirations
 
 > Warning: if a client doesn't support expiration natively, we will hide expired keys on the API calls for a nice DX, but _old data might not be evicted automatically_. See [the notes in Performance](#performance) for details on how to work around this.
 
@@ -1258,7 +1279,7 @@ These are all the units available:
 
 This is great because with polystore we do ensure that if a key has expired, it doesn't show up in `.keys()`, `.entries()`, `.values()`, `.has()` or `.get()`.
 
-### Eviction
+#### Eviction
 
 However, in some stores this does come with some potential performance disadvantages. For example, both the in-memory example above and localStorage _don't_ have a native expiration/eviction process, so we have to store that information as metadata, meaning that even to check if a key exists we need to read and decode its value. For one or few keys it's not a problem, but for large sets this can become an issue.
 
@@ -1266,7 +1287,7 @@ For other stores like Redis this is not a problem, because the low-level operati
 
 These details are explained in the respective client information.
 
-## Substores
+### Substores
 
 > There's some [basic `.prefix()` API info](#prefix) for everyday usage, this section is the in-depth explanation.
 
@@ -1280,7 +1301,46 @@ When dealing with large or complex amounts of data in a KV store, sometimes it's
 
 For these and more situations, you can use `.prefix()` to simplify your life further.
 
-## Creating a store
+### Error Handling
+
+Polystore methods return promises and surface errors from the underlying client. A good rule of thumb is to treat errors in three categories:
+
+1. **Connectivity/runtime errors**  
+   Network/database/filesystem/client runtime failures (for example Redis unavailable, failed fetch, permission denied on files).
+
+2. **Data/serialization errors**  
+   Invalid JSON payloads, invalid value encoding, or data that was written outside Polystore and cannot be decoded with its metadata expectations.
+
+3. **Usage/configuration errors**  
+   Invalid client setup, invalid URLs/paths, or unsupported operations in a specific runtime.
+
+Recommended patterns:
+
+- Use `try/catch` around all write/read operations in production paths.
+- Prefer returning safe fallbacks for cache-like usage (`null`, stale response, or refetch).
+- Log enough context (`client type`, `key`, operation name) without logging sensitive values.
+- For remote clients, consider retry/backoff only for transient failures.
+- Call `.close()` during shutdown when the client supports it.
+
+Example:
+
+```js
+const key = `user:${userId}`;
+
+try {
+  const cached = await store.get(key);
+  if (cached) return cached;
+
+  const fresh = await fetchUserFromAPI(userId);
+  await store.set(key, fresh, { expires: "10min" });
+  return fresh;
+} catch (err) {
+  console.error("polystore error", { key, err });
+  return fetchUserFromAPI(userId);
+}
+```
+
+### Creating a store
 
 To create a store, you define a class with these properties and methods:
 
@@ -1341,6 +1401,10 @@ client.keys = (prefix) => {
 
 While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
 
+
+
+## Examples
+
 ### Plain Object client
 
 This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own clients:
@@ -1371,7 +1435,7 @@ class MyClient {
 
 We don't set `HAS_EXPIRATION` to true since plain objects do NOT support expiration natively. So by not adding the `HAS_EXPIRATION` property, it's the same as setting it to `false`, and polystore will manage all the expirations as a layer on top of the data. We could be more explicit and set it to `HAS_EXPIRATION = false`, but it's not needed in this case.
 
-### Example: custom ID generation
+### Custom ID generation
 
 You might want to provide your custom key generation algorithm, which I'm going to call `customId()` for example purposes. The only place where `polystore` generates IDs is in `add`, so you can provide your client with a custom generator:
 
@@ -1404,7 +1468,7 @@ const id2 = await store.prefix("hello:").add({ hello: "world" });
 // this is `hello:{your own custom id}`
 ```
 
-### Example: serializing the data
+### Serializing the data
 
 If you need to serialize the data before storing it, you can do it within your custom client. Here's an example of how you can handle data serialization when setting values:
 
@@ -1429,7 +1493,7 @@ class MyClient {
 }
 ```
 
-### Example: Cloudflare API calls
+### Cloudflare API calls
 
 In this example on one of my projects, I needed to use Cloudflare's REST API since I didn't have access to any KV store I was happy with on Netlify's Edge Functions. So I created it like this:
 
@@ -1501,9 +1565,6 @@ const store = kv(CloudflareCustom);
 
 It's lacking a few things, so make sure to adapt to your needs, but it worked for my very simple cache needs.
 
-
-## Examples
-
 ### Simple cache
 
 I've used Polystore in many projects as a simple cache. With `fetch()`, it's fairly easy:
@@ -1514,12 +1575,9 @@ async function getProductInfo(id: string) {
   if (data) return data;
   
   const res = await fetch(`https://some-url.com/products/${id}`);
-  const raw = await res.json();
+  const data = await res.json();
   
-  // Some processing here
-  const clean = raw??;
-  
-  await store.set(id, clean, { expires: "10days" });
+  await store.set(id, data, { expires: "10days" });
   return clean;
 }
 ```
