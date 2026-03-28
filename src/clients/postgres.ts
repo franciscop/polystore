@@ -14,6 +14,25 @@ export default class Postgres extends Client {
   // The table name to use
   table = "kv";
 
+  // Ensure schema exists before any operation
+  promise = (async () => {
+    if (!/^[a-zA-Z_]+$/.test(this.table)) {
+      throw new Error(`Invalid table name ${this.table}`);
+    }
+
+    await this.client.query(`
+      CREATE TABLE IF NOT EXISTS ${this.table} (
+        id TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        "expiresAt" TIMESTAMP
+      )
+    `);
+
+    await this.client.query(
+      `CREATE INDEX IF NOT EXISTS idx_${this.table}_expiresAt ON ${this.table} ("expiresAt")`,
+    );
+  })();
+
   static test = (client: any): boolean => {
     // .filename is for sqlite
     return client && client.query && !client.filename;

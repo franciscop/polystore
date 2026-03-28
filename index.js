@@ -565,7 +565,6 @@ var clients_default = {
   level: Level,
   memory: Memory,
   // postgres,
-  // prisma,
   redis: Redis,
   storage: WebStorage,
   sqlite: SQLite

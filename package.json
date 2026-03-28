@@ -32,6 +32,7 @@
     "test:bun": "bun test ./test/index.test.ts",
     "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit",
     "run:db": "etcd",
+    "run:redis": "brew services start redis",
     "run:server": "bun ./src/server.ts"
   },
   "keywords": [
