@@ -7,7 +7,7 @@ import folder from "./folder";
 import forage from "./forage";
 import level from "./level";
 import memory from "./memory";
-// import postgres from "./postgres";
+import postgres from "./postgres";
 
 import redis from "./redis";
 import sqlite from "./sqlite";
@@ -23,7 +23,7 @@ export default {
   forage,
   level,
   memory,
-  // postgres,
+  postgres,
 
   redis,
   storage,
