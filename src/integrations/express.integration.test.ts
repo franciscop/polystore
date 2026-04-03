@@ -98,14 +98,14 @@ describe("Express integration", () => {
       await request(app).get("/set");
 
       const sessions = await new Promise<any[]>((resolve, reject) =>
-        store.all((err, s) => (err ? reject(err) : resolve(s!))),
+        store.all((err, s) => (err ? reject(err) : resolve(s as any[]))),
       );
       expect(sessions.length).toBeGreaterThanOrEqual(2);
     });
 
     it("returns empty array when no sessions exist", async () => {
       const sessions = await new Promise<any[]>((resolve, reject) =>
-        store.all((err, s) => (err ? reject(err) : resolve(s!))),
+        store.all((err, s) => (err ? reject(err) : resolve(s as any[]))),
       );
       expect(sessions).toEqual([]);
     });
