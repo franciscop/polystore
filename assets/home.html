@@ -18,8 +18,7 @@
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
 import { createClient } from "redis";
 
-const url = process.env.REDIS_URL;
-const store = kv(createClient({ url }).connect());
+const store = kv(createClient().connect());
 
 await store.set("hi", data, { expires: "1h" });
 console.log(await store.get("hi"));

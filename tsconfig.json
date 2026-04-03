@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "polystore": ["./src/index.ts"] },
     "emitDeclarationOnly": true,
     "allowImportingTsExtensions": true,
 

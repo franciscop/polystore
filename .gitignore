@@ -45,4 +45,5 @@ build/Release
 node_modules/
 *.log
 .env
+.claude
 data/

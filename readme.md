@@ -1225,6 +1225,96 @@ This keeps a single table while preserving namespace-style grouping through pref
 
 Please see the [creating a store](#creating-a-store) section for all the details!
 
+## Integrations
+
+Polystore has some easy integrations for you to use it as a simple connector.
+
+### Express
+
+Use any Polystore-compatible store as an [express-session](https://github.com/expressjs/session) store:
+
+```js
+import session from "express-session";
+import expressStore from "polystore/express";
+
+app.use(session({
+  secret: "my-secret",
+  store: expressStore(),
+}));
+```
+
+By default it uses an in-memory `Map`, which is fine for development. For production, pass any Polystore client:
+
+```js
+import { createClient } from "redis";
+// `npm install polystore`
+import expressStore from "polystore/express";
+
+const store = expressStore(createClient().connect());
+
+app.use(session({ secret: "my-secret", store }));
+```
+
+Any client works — Redis, Postgres, SQLite, file-based, etc. Session TTL is read automatically from `cookie.originalMaxAge` so you don't need to configure it separately.
+
+Use `.prefix()` to namespace sessions, for example in a multi-tenant app:
+
+```js
+const store = expressStore(createClient().connect());
+
+app.use((req, res, next) => {
+  req.sessionStore = store.prefix(`tenant:${req.params.tenant}:`);
+  next();
+});
+```
+
+### Hono Sessions
+
+Use any Polystore-compatible store as a [hono-sessions](https://github.com/jcs224/hono_sessions) store:
+
+```js
+import { Hono } from "hono";
+import { sessionMiddleware } from "hono-sessions";
+import honoStore from "polystore/hono-sessions";
+
+const app = new Hono();
+
+app.use("*", sessionMiddleware({
+  store: honoStore(),
+  encryptionKey: process.env.SESSION_KEY,
+  expireAfterSeconds: 3600,
+}));
+```
+
+By default it uses an in-memory `Map`. For production, pass any Polystore client:
+
+```js
+import { createClient } from "redis";
+import honoStore from "polystore/hono-sessions";
+
+app.use("*", sessionMiddleware({
+  store: honoStore(createClient().connect()),
+  encryptionKey: process.env.SESSION_KEY,
+  expireAfterSeconds: 3600,
+}));
+```
+
+Session TTL is derived automatically from `expireAfterSeconds` — hono-sessions writes it to `_expire` on the session data, and Polystore uses it to set the underlying store TTL for automatic cleanup.
+
+Use `.prefix()` to namespace sessions per tenant:
+
+```js
+const store = honoStore(createClient().connect());
+
+app.use("*", (c, next) => {
+  const tenant = c.req.param("tenant");
+  return sessionMiddleware({
+    store: store.prefix(`tenant:${tenant}:`),
+    encryptionKey: process.env.SESSION_KEY,
+  })(c, next);
+});
+```
+
 ## Guides
 
 ### Performance
