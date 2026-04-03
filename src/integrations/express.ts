@@ -1,11 +1,7 @@
 import session from "express-session";
+import type { SessionData } from "express-session";
 import kv from "polystore";
 import type { Store } from "polystore";
-
-interface SessionData {
-  cookie?: { originalMaxAge?: number | null; [key: string]: any };
-  [key: string]: any;
-}
 
 type Callback = (err?: any) => void;
 
@@ -37,7 +33,7 @@ export class PolystoreSessionStore extends session.Store {
 
   set(sid: string, data: SessionData, cb?: Callback): void {
     this.store
-      .set(sid, data, ttlFromSession(data))
+      .set(sid, data as any, ttlFromSession(data))
       .then(() => cb?.())
       .catch((err) => cb?.(err));
   }
@@ -51,15 +47,15 @@ export class PolystoreSessionStore extends session.Store {
 
   touch(sid: string, data: SessionData, cb?: Callback): void {
     this.store
-      .set(sid, data, ttlFromSession(data))
+      .set(sid, data as any, ttlFromSession(data))
       .then(() => cb?.())
       .catch((err) => cb?.(err));
   }
 
-  all(cb: (err: any, sessions?: SessionData[]) => void): void {
+  all(cb: (err: any, sessions?: SessionData[] | { [sid: string]: SessionData } | null) => void): void {
     this.store
       .values()
-      .then((vals) => cb(null, vals as SessionData[]))
+      .then((vals) => cb(null, vals as unknown as SessionData[]))
       .catch(cb);
   }
 
