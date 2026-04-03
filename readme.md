@@ -1315,6 +1315,65 @@ app.use("*", (c, next) => {
 });
 ```
 
+
+### fch
+
+[Fch](https://www.npmjs.com/package/fch) is a lightweight fetch wrapper that uses Polystore natively for caching. Pass any Polystore store as the `cache` option and GET responses are cached automatically:
+
+```js
+import fch from "fch";
+import kv from "polystore";
+
+const api = fch.create({
+  baseUrl: "https://api.example.com",
+  cache: kv(new Map(), { expires: "1h" }),
+});
+
+await api.get("/users"); // fetched from network, stored in cache
+await api.get("/users"); // served from cache
+```
+
+Swap the backend without changing anything else:
+
+```js
+import { createClient } from "redis";
+
+const api = fch.create({
+  cache: kv(createClient().connect(), { expires: "10min" }),
+});
+```
+
+You can override or skip the cache per request:
+
+```js
+const shortCache = kv(new Map(), { expires: "30s" });
+
+api.get("/realtime", { cache: null });         // skip cache
+api.get("/prices", { cache: shortCache });      // use a different cache
+```
+
+
+### @server/next
+
+> [!WARNING]
+> @server/next is still experimental, but it's the main reason I created Polystore and so I wanted to document it as well
+
+Server.js supports Polystore directly:
+
+```ts
+import kv from "polystore";
+import server from "@server/next";
+
+const session = kv(new Map());
+
+export default server({ session }).get("/", (ctx) => {
+  if (!ctx.session.counter) ctx.session.counter = 0;
+  ctx.session.counter++;
+  return `User visited ${ctx.session.counter} times`;
+});
+```
+
+
 ## Guides
 
 ### Performance
@@ -1699,24 +1758,4 @@ if (process.env.REDIS_URL) {
 }
 
 export default store;
-```
-
-### @server/next
-
-> [!info]
-> @server/next is still experimental, but it's the main reason I created Polystore and so I wanted to document it as well
-
-Server.js supports Polystore directly:
-
-```ts
-import kv from "polystore";
-import server from "../../";
-
-const session = kv(new Map());
-
-export default server({ session }).get("/", (ctx) => {
-  if (!ctx.session.counter) ctx.session.counter = 0;
-  ctx.session.counter++;
-  return `User visited ${ctx.session.counter} times`;
-});
 ```
