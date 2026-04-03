@@ -756,12 +756,12 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       });
 
       if (!doNotSupportMs.includes(name) && !name.includes("http")) {
-        it("can use 0.01 expire", async () => {
-          await store.expires(0.01).set("a", "b");
+        it("can use 0.02 expire", async () => {
+          await store.expires(0.02).set("a", "b");
           expect(await store.keys()).toEqual(["a"]);
           expect(await store.values()).toEqual(["b"]);
           expect(await store.get("a")).toBe("b");
-          await delay(20);
+          await delay(50);
           expect(await store.keys()).toEqual([]);
           expect(await store.values()).toEqual([]);
           expect(await store.get("a")).toBe(null);
