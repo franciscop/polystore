@@ -16,25 +16,36 @@
       "types": "./index.d.ts",
       "import": "./index.js"
     },
-    "./express": "./src/express.js"
+    "./express": {
+      "types": "./src/integrations/express.d.ts",
+      "import": "./src/integrations/express.js"
+    },
+    "./hono-sessions": {
+      "types": "./src/integrations/hono-sessions.d.ts",
+      "import": "./src/integrations/hono-sessions.js"
+    }
   },
   "files": [
     "index.js",
     "index.d.ts",
-    "src/express.js"
+    "src/integrations/express.js",
+    "src/integrations/express.d.ts",
+    "src/integrations/hono-sessions.js",
+    "src/integrations/hono-sessions.d.ts"
   ],
   "scripts": {
     "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",
-    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24",
+    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/integrations/express.ts src/integrations/hono-sessions.ts --format esm --dts --out-dir src/integrations --target node24 --external polystore --external express-session --external hono-sessions",
     "lint": "npx tsc --noEmit",
     "start": "bun test --watch",
+    "service:db": "etcd",
+    "service:redis": "brew services start redis",
+    "service:postgres": "brew services start postgresql",
+    "service:server": "bun ./src/server.ts",
+    "services": "concurrently \"npm run service:db\" \"npm run service:redis\" \"npm run service:postgres\" \"npm run service:server\"",
     "test": "npm run test:bun && npm run test:jest",
-    "test:bun": "bun test ./test/index.test.ts",
-    "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit",
-    "run:db": "etcd",
-    "run:redis": "brew services start redis",
-    "run:postgres": "brew services start postgresql",
-    "run:server": "bun ./src/server.ts"
+    "test:bun": "bun test ./test/index.test.ts ./src/integrations/",
+    "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
   },
   "keywords": [
     "kv",
@@ -49,23 +60,32 @@
     "@deno/kv": "^0.8.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/bun": "^1.3.3",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.2",
     "@types/jest": "^30.0.0",
     "@types/jsdom": "^27.0.0",
     "@types/pg": "^8.11.10",
+    "@types/supertest": "^7.2.0",
     "better-sqlite3": "^12.6.0",
     "check-dts": "^0.8.0",
+    "concurrently": "^9.2.1",
     "cross-fetch": "^4.1.0",
     "dotenv": "^16.3.1",
     "edge-mock": "^0.0.15",
     "esbuild": "^0.27.0",
     "etcd3": "^1.1.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "gzip-size-cli": "^5.1.0",
+    "hono": "^4.12.10",
+    "hono-sessions": "^0.8.1",
     "jest": "^30.2.0",
     "jsdom": "^27.2.0",
     "level": "^8.0.1",
     "localforage": "^1.10.0",
     "pg": "^8.13.1",
     "redis": "^4.6.10",
+    "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
