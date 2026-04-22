@@ -179,7 +179,7 @@ var File = class extends Client {
   // Check if this is the right class for the given client
   static test = (client) => {
     if (client instanceof URL) client = client.href;
-    return typeof client === "string" && client.startsWith("file://") && client.includes(".");
+    return typeof client === "string" && client.startsWith("file://") && client.endsWith(".json");
   };
   // We want to make sure the file already exists, so attempt to
   // create the folders and the file (but not OVERWRITE it, that's why the x flag)
