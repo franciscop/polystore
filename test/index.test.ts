@@ -1,6 +1,8 @@
 import "dotenv/config";
 
 import kv from "../src/index";
+import File from "../src/clients/file";
+import Folder from "../src/clients/folder";
 import stores, { cannotTestExpiration, doNotSupportMs } from "./stores.ts";
 
 const delay = (t: number): Promise<void> =>
@@ -9,6 +11,30 @@ const delay = (t: number): Promise<void> =>
 console.log(
   `\x1b[1m${typeof Bun === "undefined" ? "Jest" : "Bun"}\x1b[0m Testing\n`,
 );
+
+describe("File client detection", () => {
+  it("matches a file:// URL with an extension", () => {
+    expect(File.test("file:///path/to/store.json")).toBe(true);
+  });
+  it("does not match a file:// URL ending with /", () => {
+    expect(File.test("file:///path/to/folder/")).toBe(false);
+  });
+  it("does not match a file:// URL with a dotfile directory (e.g. .cache/)", () => {
+    expect(File.test("file:///path/to/.cache/")).toBe(false);
+  });
+});
+
+describe("Folder client detection", () => {
+  it("matches a file:// URL ending with /", () => {
+    expect(Folder.test("file:///path/to/folder/")).toBe(true);
+  });
+  it("matches a file:// URL with a dotfile directory", () => {
+    expect(Folder.test("file:///path/to/.cache/")).toBe(true);
+  });
+  it("does not match a file:// URL with an extension", () => {
+    expect(Folder.test("file:///path/to/store.json")).toBe(false);
+  });
+});
 
 describe("base API", () => {
   it("a potato is not a valid store", async () => {

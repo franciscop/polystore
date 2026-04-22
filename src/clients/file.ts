@@ -16,10 +16,11 @@ export default class File extends Client {
   // Check if this is the right class for the given client
   static test = (client: string | unknown): boolean => {
     if (client instanceof URL) client = client.href;
+    // Ends with an extension like `.json`
     return (
       typeof client === "string" &&
       client.startsWith("file://") &&
-      client.includes(".")
+      client.endsWith(".json")
     );
   };
 
@@ -27,9 +28,7 @@ export default class File extends Client {
   // create the folders and the file (but not OVERWRITE it, that's why the x flag)
   // It fails if it already exists, hence the catch case
   promise = (async () => {
-    this.fsp = (await import(
-      "node:fs/promises"
-    )) as unknown as typeof FsPromises;
+    this.fsp = (await import("node:fs/promises")) as typeof FsPromises;
     this.file = (this.client?.href || this.client).replace(/^file:\/\//, "");
     const folder = this.file.split("/").slice(0, -1).join("/");
     await this.fsp.mkdir(folder, { recursive: true }).catch(() => {});
