@@ -36,7 +36,7 @@
   "scripts": {
     "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",
     "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/integrations/express.ts src/integrations/hono-sessions.ts --format esm --dts --out-dir src/integrations --target node24 --external polystore --external express-session --external hono-sessions",
-    "lint": "npx tsc --noEmit",
+    "lint": "tsc",
     "start": "bun test --watch",
     "service:db": "etcd",
     "service:redis": "brew services start redis",
