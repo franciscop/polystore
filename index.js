@@ -508,9 +508,12 @@ var Redis = class extends Client {
   async *iterate(prefix = "") {
     const MATCH = prefix + "*";
     for await (const key of this.client.scanIterator({ MATCH })) {
-      const value = await this.get(key);
-      if (value !== null && value !== void 0) {
-        yield [key, value];
+      const keys = typeof key === "string" ? [key] : key;
+      for (const key2 of keys) {
+        const value = await this.get(key2);
+        if (value !== null && value !== void 0) {
+          yield [key2, value];
+        }
       }
     }
   }
@@ -519,7 +522,7 @@ var Redis = class extends Client {
     const MATCH = prefix + "*";
     const keys = [];
     for await (const key of this.client.scanIterator({ MATCH })) {
-      keys.push(key);
+      keys.push(...typeof key === "string" ? [key] : key);
     }
     return keys;
   };

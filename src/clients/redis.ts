@@ -30,10 +30,13 @@ export default class Redis extends Client {
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
     const MATCH = prefix + "*";
     for await (const key of this.client.scanIterator({ MATCH })) {
-      const value = await this.get(key);
-      // By the time this specific value is read, it could be gone!
-      if (value !== null && value !== undefined) {
-        yield [key, value];
+      const keys = typeof key === "string" ? [key] : key;
+      for (const key of keys) {
+        const value = await this.get(key);
+        // By the time this specific value is read, it could be gone!
+        if (value !== null && value !== undefined) {
+          yield [key, value];
+        }
       }
     }
   }
@@ -43,7 +46,7 @@ export default class Redis extends Client {
     const MATCH = prefix + "*";
     const keys: string[] = [];
     for await (const key of this.client.scanIterator({ MATCH })) {
-      keys.push(key);
+      keys.push(...(typeof key === "string" ? [key] : key));
     }
     return keys;
   };
