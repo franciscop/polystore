@@ -1,4 +1,4 @@
-# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/blob/master/.github/workflows/tests.yml) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://bundlephobia.com/package/polystore)
+# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/actions) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://bundlephobia.com/package/polystore) [![dependencies](https://img.shields.io/badge/dependencies-0-limegreen.svg)](https://github.com/franciscop/polystore/blob/master/package.json)
 
 A key-value library to unify the API of [many clients](#clients): localStorage, Redis, FileSystem, SQLite, etc.
 

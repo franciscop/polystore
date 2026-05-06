@@ -1,8 +1,8 @@
 import "dotenv/config";
 
-import kv from "../src/index";
 import File from "../src/clients/file";
 import Folder from "../src/clients/folder";
+import kv from "../src/index";
 import stores, { cannotTestExpiration, doNotSupportMs } from "./stores.ts";
 
 const delay = (t: number): Promise<void> =>
