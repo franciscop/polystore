@@ -1,9 +1,10 @@
 export default {
-  preset: "ts-jest/presets/default-esm", // ESM + TS
+  preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
-  extensionsToTreatAsEsm: [".ts"], // only TypeScript files
+  extensionsToTreatAsEsm: [".ts"],
   transform: {
-    "^.+\\.ts$": ["ts-jest", { useESM: true }], // transform TS files
+    "^.+\\.ts$": ["ts-jest", { useESM: true }],
   },
-  moduleFileExtensions: ["ts", "js", "json"], // standard extensions
+  moduleFileExtensions: ["ts", "js", "json"],
+  ci: true,
 };

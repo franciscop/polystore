@@ -34,7 +34,7 @@
     "src/integrations/hono-sessions.d.ts"
   ],
   "scripts": {
-    "analyze": "npm run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",
+    "analyze": "bun run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",
     "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/integrations/express.ts src/integrations/hono-sessions.ts --format esm --dts --out-dir src/integrations --target node24 --external polystore --external express-session --external hono-sessions",
     "lint": "tsc",
     "start": "bun test --watch",
@@ -43,7 +43,7 @@
     "service:postgres": "brew services start postgresql",
     "service:server": "bun ./src/server.ts",
     "services": "concurrently \"npm run service:db\" \"npm run service:redis\" \"npm run service:postgres\" \"npm run service:server\"",
-    "test": "npm run test:bun && npm run test:jest",
+    "test": "bun run test:bun && bun run test:jest",
     "test:bun": "bun test ./test/index.test.ts ./src/integrations/",
     "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
   },
@@ -67,9 +67,7 @@
     "@types/pg": "^8.11.10",
     "@types/supertest": "^7.2.0",
     "better-sqlite3": "^12.6.0",
-    "check-dts": "^0.8.0",
     "concurrently": "^9.2.1",
-    "cross-fetch": "^4.1.0",
     "dotenv": "^16.3.1",
     "edge-mock": "^0.0.15",
     "esbuild": "^0.27.0",
@@ -87,7 +85,6 @@
     "redis": "^4.6.10",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
