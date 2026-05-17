@@ -1,4 +1,4 @@
-# Polystore [![npm install polystore](https://img.shields.io/badge/npm%20install-polystore-blue.svg)](https://www.npmjs.com/package/polystore) [![test badge](https://github.com/franciscop/polystore/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/polystore/actions) [![gzip size](https://badgen.net/bundlephobia/minzip/polystore?label=gzip&color=green)](https://bundlephobia.com/package/polystore) [![dependencies](https://img.shields.io/badge/dependencies-0-limegreen.svg)](https://github.com/franciscop/polystore/blob/master/package.json)
+# Polystore [![polystore](https://img.shields.io/npm/v/polystore?label=polystore&color=greenlime)](https://www.npmjs.com/package/polystore) [![tests](https://github.com/franciscop/polystore/workflows/tests/badge.svg)](https://github.com/franciscop/polystore/actions) [![gzip size](https://img.badgesize.io/franciscop/polystore/master/index.js.svg?label=gzip&logo=&compression=gzip)](https://github.com/franciscop/polystore/blob/master/index.js) [![dependencies](https://img.shields.io/badge/dependencies-0-limegreen.svg)](https://github.com/franciscop/polystore/blob/master/package.json)
 
 A key-value library to unify the API of [many clients](#clients): localStorage, Redis, FileSystem, SQLite, etc.
 
@@ -42,7 +42,7 @@ Available clients for the KV store:
 - [**File** `"file:///[...].json"`](#file) (be): store the data in a single JSON file in your FS.
 - [**Folder** `"file:///[...]/"`](#folder) (be): store each key in a folder as json files.
 - [**Cloudflare KV** `env.KV_NAMESPACE`](#cloudflare-kv) (be): use Cloudflare's KV store.
-- [**Postgres** `pool`](#postgres) (be): use PostgreSQL with the pg library.
+- [**Postgres** `pg`](#postgres) (be): use PostgreSQL with the pg library.
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem.
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
 - [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 3 methods!
@@ -103,9 +103,6 @@ const store = kv(MyClientInstance, { expires: null, prefix: "" });
 
 // use the store
 ```
-
-> [!IMPORTANT]
-> The library delivers excellent performance for item-level operations (GET, SET, ADD, HAS, DEL). For other methods or detailed guidance, check the performance considerations and consult your specific client’s documentation.
 
 You can enforce **types** for the values either at store creation or at the method level:
 
