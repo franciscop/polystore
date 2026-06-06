@@ -1,23 +1,23 @@
-// src/adapters/Client.ts
-var Client = class {
+// src/adapters/Adapter.ts
+var Adapter = class {
   TYPE;
   HAS_EXPIRATION = false;
-  client;
+  lib;
   encode = (val) => JSON.stringify(val, null, 2);
   decode = (val) => val ? JSON.parse(val) : null;
-  constructor(client) {
-    this.client = client;
+  constructor(lib) {
+    this.lib = lib;
   }
 };
 
 // src/adapters/api.ts
-var Api = class extends Client {
+var Api = class extends Adapter {
   TYPE = "API";
   // Indicate that the file handler DOES handle expirations
   HAS_EXPIRATION = true;
-  static test = (client) => typeof client === "string" && /^https?:\/\//.test(client);
+  static test = (raw) => typeof raw === "string" && /^https?:\/\//.test(raw);
   #api = async (key, opts = "", method = "GET", body) => {
-    const url = `${this.client.replace(/\/$/, "")}/${encodeURIComponent(key)}${opts}`;
+    const url = `${this.lib.replace(/\/$/, "")}/${encodeURIComponent(key)}${opts}`;
     const headers = {
       accept: "application/json",
       "content-type": "application/json"
@@ -46,13 +46,13 @@ var Api = class extends Client {
 };
 
 // src/adapters/cloudflare.ts
-var Cloudflare = class extends Client {
+var Cloudflare = class extends Adapter {
   TYPE = "CLOUDFLARE";
   // It handles expirations natively
   HAS_EXPIRATION = true;
   static testKeys = ["getWithMetadata", "get", "list", "delete"];
   get = async (key) => {
-    const value = await this.client.get(key);
+    const value = await this.lib.get(key);
     return this.decode(value);
   };
   set = async (key, data, expires) => {
@@ -60,15 +60,15 @@ var Cloudflare = class extends Client {
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }
-    await this.client.put(key, this.encode(data), { expirationTtl });
+    await this.lib.put(key, this.encode(data), { expirationTtl });
   };
-  del = (key) => this.client.delete(key);
+  del = (key) => this.lib.delete(key);
   // Since we have pagination, we don't want to get all of the
   // keys at once if we can avoid it
   async *iterate(prefix = "") {
     let cursor;
     do {
-      const raw = await this.client.list({ prefix, cursor });
+      const raw = await this.lib.list({ prefix, cursor });
       const keys = raw.keys.map((k) => k.name);
       for (let key of keys) {
         const value = await this.get(key);
@@ -81,7 +81,7 @@ var Cloudflare = class extends Client {
     const keys = [];
     let cursor;
     do {
-      const raw = await this.client.list({ prefix, cursor });
+      const raw = await this.lib.list({ prefix, cursor });
       keys.push(...raw.keys.map((k) => k.name));
       cursor = raw.list_complete ? void 0 : raw.cursor;
     } while (cursor);
@@ -95,13 +95,13 @@ var Cloudflare = class extends Client {
 };
 
 // src/adapters/cookie.ts
-var Cookie = class extends Client {
+var Cookie = class extends Adapter {
   TYPE = "COOKIE";
   // It handles expirations natively
   HAS_EXPIRATION = true;
   // Check if this is the right class for the given client
-  static test = (client) => {
-    return client === "cookie" || client === "cookies";
+  static test = (raw) => {
+    return raw === "cookie" || raw === "cookies";
   };
   // Group methods
   #read = () => {
@@ -142,34 +142,34 @@ var Cookie = class extends Client {
 };
 
 // src/adapters/etcd.ts
-var Etcd = class extends Client {
+var Etcd = class extends Adapter {
   TYPE = "ETCD3";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
   // Check if this is the right class for the given client
   static testKeys = ["leaseClient", "watchClient", "watchManager"];
   get = async (key) => {
-    const data = await this.client.get(key).json();
+    const data = await this.lib.get(key).json();
     return data;
   };
   set = async (key, value) => {
-    await this.client.put(key).value(this.encode(value));
+    await this.lib.put(key).value(this.encode(value));
   };
-  del = (key) => this.client.delete().key(key).exec();
+  del = (key) => this.lib.delete().key(key).exec();
   async *iterate(prefix = "") {
-    const keys = await this.client.getAll().prefix(prefix).keys();
+    const keys = await this.lib.getAll().prefix(prefix).keys();
     for (const key of keys) {
       yield [key, await this.get(key)];
     }
   }
   clear = async (prefix = "") => {
-    if (!prefix) return this.client.delete().all();
-    return this.client.delete().prefix(prefix);
+    if (!prefix) return this.lib.delete().all();
+    return this.lib.delete().prefix(prefix);
   };
 };
 
 // src/adapters/file.ts
-var File = class extends Client {
+var File = class extends Adapter {
   TYPE = "FILE";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
@@ -177,16 +177,16 @@ var File = class extends Client {
   file = "";
   #lock = Promise.resolve();
   // Check if this is the right class for the given client
-  static test = (client) => {
-    if (client instanceof URL) client = client.href;
-    return typeof client === "string" && client.startsWith("file://") && client.endsWith(".json");
+  static test = (raw) => {
+    if (raw instanceof URL) raw = raw.href;
+    return typeof raw === "string" && raw.startsWith("file://") && raw.endsWith(".json");
   };
   // We want to make sure the file already exists, so attempt to
   // create the folders and the file (but not OVERWRITE it, that's why the x flag)
   // It fails if it already exists, hence the catch case
   promise = (async () => {
     this.fsp = await import("fs/promises");
-    this.file = (this.client?.href || this.client).replace(/^file:\/\//, "");
+    this.file = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     const folder = this.file.split("/").slice(0, -1).join("/");
     await this.fsp.mkdir(folder, { recursive: true }).catch(() => {
     });
@@ -265,22 +265,22 @@ var noFileOk = (error) => {
   if (error.code === "ENOENT") return null;
   throw error;
 };
-var Folder = class extends Client {
+var Folder = class extends Adapter {
   TYPE = "FOLDER";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
   fsp;
   folder;
   // Check if this is the right class for the given client
-  static test = (client) => {
-    if (client instanceof URL) client = client.href;
-    return typeof client === "string" && client.startsWith("file://") && client.endsWith("/");
+  static test = (raw) => {
+    if (raw instanceof URL) raw = raw.href;
+    return typeof raw === "string" && raw.startsWith("file://") && raw.endsWith("/");
   };
   // Make sure the folder already exists, so attempt to create it
   // It fails if it already exists, hence the catch case
   promise = (async () => {
     this.fsp = await import("fs/promises");
-    this.folder = (this.client?.href || this.client).replace(/^file:\/\//, "");
+    this.folder = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {
     });
   })();
@@ -311,17 +311,17 @@ var Folder = class extends Client {
 };
 
 // src/adapters/forage.ts
-var Forage = class extends Client {
+var Forage = class extends Adapter {
   TYPE = "FORAGE";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
   // Check if this is the right class for the given client
-  static test = (client) => client?.defineDriver && client?.dropInstance && client?.INDEXEDDB;
-  get = (key) => this.client.getItem(key);
-  set = (key, value) => this.client.setItem(key, value);
-  del = (key) => this.client.removeItem(key);
+  static test = (raw) => raw?.defineDriver && raw?.dropInstance && raw?.INDEXEDDB;
+  get = (key) => this.lib.getItem(key);
+  set = (key, value) => this.lib.setItem(key, value);
+  del = (key) => this.lib.removeItem(key);
   async *iterate(prefix = "") {
-    const keys = await this.client.keys();
+    const keys = await this.lib.keys();
     const list = keys.filter((k) => k.startsWith(prefix));
     for (const key of list) {
       const value = await this.get(key);
@@ -331,12 +331,12 @@ var Forage = class extends Client {
     }
   }
   entries = async (prefix = "") => {
-    const all = await this.client.keys();
+    const all = await this.lib.keys();
     const keys = all.filter((k) => k.startsWith(prefix));
     const values = await Promise.all(keys.map((key) => this.get(key)));
     return keys.map((key, i) => [key, values[i]]);
   };
-  clearAll = () => this.client.clear();
+  clearAll = () => this.lib.clear();
 };
 
 // src/adapters/level.ts
@@ -345,24 +345,24 @@ var notFound = (error) => {
   if (error?.code === "LEVEL_NOT_FOUND") return null;
   throw error;
 };
-var Level = class extends Client {
+var Level = class extends Adapter {
   TYPE = "LEVEL";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
   // Check if this is the right class for the given client
   static testKeys = ["attachResource", "detachResource", "prependOnceListener"];
-  get = (key) => this.client.get(key, { valueEncoding }).catch(notFound);
-  set = (key, value) => this.client.put(key, value, { valueEncoding });
-  del = (key) => this.client.del(key);
+  get = (key) => this.lib.get(key, { valueEncoding }).catch(notFound);
+  set = (key, value) => this.lib.put(key, value, { valueEncoding });
+  del = (key) => this.lib.del(key);
   async *iterate(prefix = "") {
-    const keys = await this.client.keys().all();
+    const keys = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
     for (const key of list) {
       yield [key, await this.get(key)];
     }
   }
   entries = async (prefix = "") => {
-    const keys = await this.client.keys().all();
+    const keys = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
     return Promise.all(
       list.map(async (k) => [k, await this.get(k)])
@@ -370,37 +370,37 @@ var Level = class extends Client {
   };
   clear = async (prefix = "") => {
     if (!prefix) {
-      return await this.client.clear();
+      return await this.lib.clear();
     }
-    const keys = await this.client.keys().all();
+    const keys = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
-    return this.client.batch(
+    return this.lib.batch(
       list.map((key) => ({ type: "del", key }))
     );
   };
-  close = () => this.client.close();
+  close = () => this.lib.close();
 };
 
 // src/adapters/memory.ts
-var Memory = class extends Client {
+var Memory = class extends Adapter {
   TYPE = "MEMORY";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
   // Check if this is the right class for the given client
-  static test = (client) => client instanceof Map;
-  get = (key) => this.client.get(key) ?? null;
-  set = (key, data) => this.client.set(key, data);
-  del = (key) => this.client.delete(key);
+  static test = (raw) => raw instanceof Map;
+  get = (key) => this.lib.get(key) ?? null;
+  set = (key, data) => this.lib.set(key, data);
+  del = (key) => this.lib.delete(key);
   *iterate(prefix = "") {
-    for (const entry of this.client.entries()) {
+    for (const entry of this.lib.entries()) {
       if (entry[0].startsWith(prefix)) yield entry;
     }
   }
-  clearAll = () => this.client.clear();
+  clearAll = () => this.lib.clear();
 };
 
 // src/adapters/postgres.ts
-var Postgres = class extends Client {
+var Postgres = class extends Adapter {
   TYPE = "POSTGRES";
   // This one is doing manual time management internally even though
   // sqlite does not natively support expirations. This is because it does
@@ -414,22 +414,22 @@ var Postgres = class extends Client {
     if (!/^[a-zA-Z_]+$/.test(this.table)) {
       throw new Error(`Invalid table name ${this.table}`);
     }
-    await this.client.query(`
+    await this.lib.query(`
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         expires_at TIMESTAMPTZ
       )
     `);
-    await this.client.query(
+    await this.lib.query(
       `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`
     );
   })();
-  static test = (client) => {
-    return client && client.query && !client.filename;
+  static test = (raw) => {
+    return raw && raw.query && !raw.filename;
   };
   get = async (id) => {
-    const result = await this.client.query(
+    const result = await this.lib.query(
       `SELECT value
        FROM ${this.table}
        WHERE id = $1 AND (expires_at IS NULL OR expires_at > NOW())`,
@@ -441,7 +441,7 @@ var Postgres = class extends Client {
   set = async (id, data, expires) => {
     const value = this.encode(data);
     const expires_at = expires ? new Date(Date.now() + expires * 1e3) : null;
-    await this.client.query(
+    await this.lib.query(
       `INSERT INTO ${this.table} (id, value, expires_at)
        VALUES ($1, $2, $3)
        ON CONFLICT (id) DO UPDATE
@@ -450,10 +450,10 @@ var Postgres = class extends Client {
     );
   };
   del = async (id) => {
-    await this.client.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
+    await this.lib.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
   };
   async *iterate(prefix = "") {
-    const result = await this.client.query(
+    const result = await this.lib.query(
       `SELECT id, value FROM ${this.table}
         WHERE (expires_at IS NULL OR expires_at > NOW()) ${prefix ? `AND id LIKE $1` : ""}`,
       prefix ? [`${prefix}%`] : []
@@ -463,7 +463,7 @@ var Postgres = class extends Client {
     }
   }
   async keys(prefix = "") {
-    const result = await this.client.query(
+    const result = await this.lib.query(
       `SELECT id FROM ${this.table}
        WHERE (expires_at IS NULL OR expires_at > NOW())
        ${prefix ? `AND id LIKE $1` : ""}`,
@@ -472,42 +472,42 @@ var Postgres = class extends Client {
     return result.rows.map((r) => r.id);
   }
   prune = async () => {
-    await this.client.query(
+    await this.lib.query(
       `DELETE FROM ${this.table}
        WHERE expires_at IS NOT NULL AND expires_at <= NOW()`
     );
   };
   clear = async (prefix = "") => {
-    await this.client.query(
+    await this.lib.query(
       `DELETE FROM ${this.table} ${prefix ? `WHERE id LIKE $1` : ""}`,
       prefix ? [`${prefix}%`] : []
     );
   };
   close = async () => {
-    if (this.client.end) {
-      await this.client.end();
+    if (this.lib.end) {
+      await this.lib.end();
     }
   };
 };
 
 // src/adapters/redis.ts
-var Redis = class extends Client {
+var Redis = class extends Adapter {
   TYPE = "REDIS";
   // Indicate if this client handles expirations (true = it does)
   HAS_EXPIRATION = true;
   // Check if this is the right class for the given client
-  static test = (client) => client && client.pSubscribe && client.sSubscribe;
-  get = async (key) => this.decode(await this.client.get(key));
+  static test = (raw) => raw && raw.pSubscribe && raw.sSubscribe;
+  get = async (key) => this.decode(await this.lib.get(key));
   set = async (key, value, expires) => {
     const EX = expires ? Math.round(expires) : void 0;
-    return this.client.set(key, this.encode(value), { EX });
+    return this.lib.set(key, this.encode(value), { EX });
   };
-  del = (key) => this.client.del(key);
-  has = async (key) => Boolean(await this.client.exists(key));
+  del = (key) => this.lib.del(key);
+  has = async (key) => Boolean(await this.lib.exists(key));
   // Go through each of the [key, value] in the set
   async *iterate(prefix = "") {
     const MATCH = prefix + "*";
-    for await (const key of this.client.scanIterator({ MATCH })) {
+    for await (const key of this.lib.scanIterator({ MATCH })) {
       const keys = typeof key === "string" ? [key] : key;
       for (const key2 of keys) {
         const value = await this.get(key2);
@@ -521,7 +521,7 @@ var Redis = class extends Client {
   keys = async (prefix = "") => {
     const MATCH = prefix + "*";
     const keys = [];
-    for await (const key of this.client.scanIterator({ MATCH })) {
+    for await (const key of this.lib.scanIterator({ MATCH })) {
       keys.push(...typeof key === "string" ? [key] : key);
     }
     return keys;
@@ -533,12 +533,12 @@ var Redis = class extends Client {
     const values = await Promise.all(keys.map((k) => this.get(k)));
     return keys.map((k, i) => [k, values[i]]);
   };
-  clearAll = () => this.client.flushAll();
-  close = () => this.client.quit();
+  clearAll = () => this.lib.flushAll();
+  close = () => this.lib.quit();
 };
 
 // src/adapters/sqlite.ts
-var SQLite = class extends Client {
+var SQLite = class extends Adapter {
   TYPE = "SQLITE";
   // This one is doing manual time management internally even though
   // sqlite does not natively support expirations. This is because it does
@@ -553,22 +553,22 @@ var SQLite = class extends Client {
     if (!/^[a-zA-Z_]+$/.test(this.table)) {
       throw new Error(`Invalid table name ${this.table}`);
     }
-    this.client.exec(`
+    this.lib.exec(`
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         expires_at INTEGER
       )
     `);
-    this.client.exec(
+    this.lib.exec(
       `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`
     );
   })();
-  static test = (client) => {
-    return typeof client?.prepare === "function" && typeof client?.exec === "function";
+  static test = (raw) => {
+    return typeof raw?.prepare === "function" && typeof raw?.exec === "function";
   };
   get = (id) => {
-    const value = this.client.prepare(
+    const value = this.lib.prepare(
       `SELECT value, expires_at FROM kv WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)`
     ).get(id, Date.now())?.value;
     if (!value) return null;
@@ -577,15 +577,15 @@ var SQLite = class extends Client {
   set = (id, data, expires) => {
     const value = this.encode(data);
     const expires_at = expires ? Date.now() + expires * 1e3 : null;
-    this.client.prepare(
+    this.lib.prepare(
       `INSERT INTO kv (id, value, expires_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`
     ).run(id, value, expires_at);
   };
   del = (id) => {
-    this.client.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
+    this.lib.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
   };
   has = (id) => {
-    const row = this.client.prepare(`SELECT expires_at FROM kv WHERE id = ?`).get(id);
+    const row = this.lib.prepare(`SELECT expires_at FROM kv WHERE id = ?`).get(id);
     if (!row) return false;
     if (row.expires_at && row.expires_at < Date.now()) {
       this.del(id);
@@ -597,7 +597,7 @@ var SQLite = class extends Client {
     const sql = `SELECT id, value FROM kv WHERE (expires_at IS NULL OR expires_at > ?) ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
-    for (const row of this.client.prepare(sql).all(...params)) {
+    for (const row of this.lib.prepare(sql).all(...params)) {
       yield [row.id, this.decode(row.value)];
     }
   }
@@ -606,41 +606,41 @@ var SQLite = class extends Client {
 ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
-    const rows = this.client.prepare(sql).all(...params);
+    const rows = this.lib.prepare(sql).all(...params);
     return rows.map((r) => r.id);
   };
   prune = () => {
-    this.client.prepare(`DELETE FROM kv WHERE expires_at <= ?`).run(Date.now());
+    this.lib.prepare(`DELETE FROM kv WHERE expires_at <= ?`).run(Date.now());
   };
   clear = (prefix = "") => {
     if (!prefix) {
-      this.client.prepare(`DELETE FROM ${this.table}`).run();
+      this.lib.prepare(`DELETE FROM ${this.table}`).run();
       return;
     }
-    this.client.prepare(`DELETE FROM ${this.table} WHERE id LIKE ?`).run(`${prefix}%`);
+    this.lib.prepare(`DELETE FROM ${this.table} WHERE id LIKE ?`).run(`${prefix}%`);
   };
   close = () => {
-    this.client.close?.();
+    this.lib.close?.();
   };
 };
 
 // src/adapters/storage.ts
-var WebStorage = class extends Client {
+var WebStorage = class extends Adapter {
   TYPE = "STORAGE";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false;
   // Check if this is the right class for the given client
-  static test(client) {
+  static test(raw) {
     if (typeof Storage === "undefined") return false;
-    return client instanceof Storage;
+    return raw instanceof Storage;
   }
   // Item methods
-  get = (key) => this.decode(this.client.getItem(key));
-  set = (key, data) => this.client.setItem(key, this.encode(data));
-  del = (key) => this.client.removeItem(key);
+  get = (key) => this.decode(this.lib.getItem(key));
+  set = (key, data) => this.lib.setItem(key, this.encode(data));
+  del = (key) => this.lib.removeItem(key);
   *iterate(prefix = "") {
-    for (let i = 0; i < this.client.length; i++) {
-      const key = this.client.key(i);
+    for (let i = 0; i < this.lib.length; i++) {
+      const key = this.lib.key(i);
       if (!key || !key.startsWith(prefix)) continue;
       const value = this.get(key);
       if (value !== null && value !== void 0) {
@@ -648,11 +648,11 @@ var WebStorage = class extends Client {
       }
     }
   }
-  clearAll = () => this.client.clear();
+  clearAll = () => this.lib.clear();
 };
 
 // src/adapters/index.ts
-var clients_default = {
+var adapters_default = {
   api: Api,
   cloudflare: Cloudflare,
   cookie: Cookie,
@@ -709,32 +709,32 @@ var Store = class _Store {
   PREFIX = "";
   EXPIRES = null;
   promise;
-  client;
+  adapter;
   type = "UNKNOWN";
-  constructor(clientPromise = /* @__PURE__ */ new Map(), options = {
+  constructor(adapterInput = /* @__PURE__ */ new Map(), options = {
     prefix: "",
     expires: null
   }) {
     this.PREFIX = options.prefix || "";
     this.EXPIRES = parse(options.expires || null);
-    this.promise = Promise.resolve(clientPromise).then(async (client) => {
-      this.client = this.#find(client);
-      this.#validate(this.client);
+    this.promise = Promise.resolve(adapterInput).then(async (raw) => {
+      this.adapter = this.#find(raw);
+      this.#validate(this.adapter);
       this.promise = null;
-      await this.client.promise;
-      this.type = this.client?.TYPE || this.type;
-      return client;
+      await this.adapter.promise;
+      this.type = this.adapter?.TYPE || this.type;
+      return raw;
     });
   }
   #find(store) {
-    if (store instanceof _Store) return store.client;
-    for (let client of Object.values(clients_default)) {
-      if ("test" in client && client.test(store)) {
-        return new client(store);
+    if (store instanceof _Store) return store.adapter;
+    for (let A of Object.values(adapters_default)) {
+      if ("test" in A && A.test(store)) {
+        return new A(store);
       }
-      if ("testKeys" in client && typeof store === "object") {
-        if (client.testKeys.every((key) => store[key])) {
-          return new client(store);
+      if ("testKeys" in A && typeof store === "object") {
+        if (A.testKeys.every((key) => store[key])) {
+          return new A(store);
         }
       }
     }
@@ -743,15 +743,15 @@ var Store = class _Store {
     }
     return store;
   }
-  #validate(client) {
-    if (!client) throw new Error("No client received");
-    if (!client.set || !client.get || !client.iterate) {
-      throw new Error("Client should have .get(), .set() and .iterate()");
+  #validate(adapter) {
+    if (!adapter) throw new Error("No adapter received");
+    if (!adapter.set || !adapter.get || !adapter.iterate) {
+      throw new Error("Adapter should have .get(), .set() and .iterate()");
     }
-    if (client.HAS_EXPIRATION) return;
+    if (adapter.HAS_EXPIRATION) return;
     for (let method of ["has", "keys", "values"]) {
-      if (client[method]) {
-        const msg = `You can only define client.${method}() when the client manages the expiration.`;
+      if (adapter[method]) {
+        const msg = `You can only define adapter.${method}() when the adapter manages the expiration.`;
         throw new Error(msg);
       }
     }
@@ -771,11 +771,11 @@ var Store = class _Store {
     await this.promise;
     const expires = this.#expiration(options?.expires);
     const prefix = options?.prefix || this.PREFIX;
-    if (this.client.add) {
-      if (this.client.HAS_EXPIRATION) {
-        return this.client.add(prefix, value, expires);
+    if (this.adapter.add) {
+      if (this.adapter.HAS_EXPIRATION) {
+        return this.adapter.add(prefix, value, expires);
       }
-      return this.client.add(prefix, { expires: unix(expires), value });
+      return this.adapter.add(prefix, { expires: unix(expires), value });
     }
     return this.set(createId(), value, { prefix, expires });
   }
@@ -787,22 +787,22 @@ var Store = class _Store {
     if (value === null || typeof expires === "number" && expires <= 0) {
       return this.del(key);
     }
-    if (this.client.HAS_EXPIRATION) {
-      await this.client.set(id, value, expires);
+    if (this.adapter.HAS_EXPIRATION) {
+      await this.adapter.set(id, value, expires);
       return key;
     }
-    await this.client.set(id, { expires: unix(expires), value });
+    await this.adapter.set(id, { expires: unix(expires), value });
     return key;
   }
   async get(key) {
     await this.promise;
     const id = this.PREFIX + key;
-    if (this.client.HAS_EXPIRATION) {
-      const data = await this.client.get(id) ?? null;
+    if (this.adapter.HAS_EXPIRATION) {
+      const data = await this.adapter.get(id) ?? null;
       if (data === null) return null;
       return data;
     } else {
-      const data = await this.client.get(id) ?? null;
+      const data = await this.adapter.get(id) ?? null;
       if (data === null) return null;
       if (!this.#isFresh(data, key)) return null;
       return data.value;
@@ -827,8 +827,8 @@ var Store = class _Store {
   async has(key) {
     await this.promise;
     const id = this.PREFIX + key;
-    if (this.client.has) {
-      return this.client.has(id);
+    if (this.adapter.has) {
+      return this.adapter.has(id);
     }
     return await this.get(key) !== null;
   }
@@ -844,14 +844,14 @@ var Store = class _Store {
   async del(key) {
     await this.promise;
     const id = this.PREFIX + key;
-    if (this.client.del) {
-      await this.client.del(id);
+    if (this.adapter.del) {
+      await this.adapter.del(id);
       return key;
     }
-    if (this.client.HAS_EXPIRATION) {
-      await this.client.set(id, null, 0);
+    if (this.adapter.HAS_EXPIRATION) {
+      await this.adapter.set(id, null, 0);
     } else {
-      await this.client.set(id, null);
+      await this.adapter.set(id, null);
     }
     return key;
   }
@@ -870,14 +870,14 @@ var Store = class _Store {
   }
   async *[Symbol.asyncIterator]() {
     await this.promise;
-    if (this.client.HAS_EXPIRATION) {
-      for await (const [name, data] of this.client.iterate(this.PREFIX)) {
+    if (this.adapter.HAS_EXPIRATION) {
+      for await (const [name, data] of this.adapter.iterate(this.PREFIX)) {
         const key = name.slice(this.PREFIX.length);
         yield [key, data];
       }
       return;
     }
-    for await (const [name, data] of this.client.iterate(this.PREFIX)) {
+    for await (const [name, data] of this.adapter.iterate(this.PREFIX)) {
       const key = name.slice(this.PREFIX.length);
       if (this.#isFresh(data, key)) {
         yield [key, data.value];
@@ -887,24 +887,24 @@ var Store = class _Store {
   async entries() {
     await this.promise;
     const trim = (key) => key.slice(this.PREFIX.length);
-    if (this.client.entries) {
-      if (this.client.HAS_EXPIRATION) {
-        const entries = await this.client.entries(this.PREFIX);
+    if (this.adapter.entries) {
+      if (this.adapter.HAS_EXPIRATION) {
+        const entries = await this.adapter.entries(this.PREFIX);
         return entries.map(([k, v]) => [trim(k), v]);
       } else {
-        const entries = await this.client.entries(this.PREFIX);
+        const entries = await this.adapter.entries(this.PREFIX);
         return entries.map(([k, v]) => [trim(k), v]).filter(([key, data]) => this.#isFresh(data, key)).map(([key, data]) => [key, data.value]);
       }
     }
-    if (this.client.HAS_EXPIRATION) {
+    if (this.adapter.HAS_EXPIRATION) {
       const list = [];
-      for await (const [k, v] of this.client.iterate(this.PREFIX)) {
+      for await (const [k, v] of this.adapter.iterate(this.PREFIX)) {
         list.push([trim(k), v]);
       }
       return list;
     } else {
       const list = [];
-      for await (const [k, data] of this.client.iterate(this.PREFIX)) {
+      for await (const [k, data] of this.adapter.iterate(this.PREFIX)) {
         if (this.#isFresh(data, trim(k))) {
           list.push([trim(k), data.value]);
         }
@@ -927,8 +927,8 @@ var Store = class _Store {
    */
   async keys() {
     await this.promise;
-    if (this.client.keys) {
-      const list = await this.client.keys(this.PREFIX);
+    if (this.adapter.keys) {
+      const list = await this.adapter.keys(this.PREFIX);
       if (!this.PREFIX) return list;
       return list.map((k) => k.slice(this.PREFIX.length));
     }
@@ -937,9 +937,9 @@ var Store = class _Store {
   }
   async values() {
     await this.promise;
-    if (this.client.values) {
-      if (this.client.HAS_EXPIRATION) return this.client.values(this.PREFIX);
-      const list = await this.client.values(this.PREFIX);
+    if (this.adapter.values) {
+      if (this.adapter.HAS_EXPIRATION) return this.adapter.values(this.PREFIX);
+      const list = await this.adapter.values(this.PREFIX);
       return list.filter((data) => this.#isFresh(data)).map((data) => data.value);
     }
     const entries = await this.entries();
@@ -966,7 +966,7 @@ var Store = class _Store {
    */
   prefix(prefix = "") {
     const store = new _Store(
-      Promise.resolve(this.promise).then(() => this.client)
+      Promise.resolve(this.promise).then(() => this.adapter)
     );
     store.PREFIX = this.PREFIX + prefix;
     store.EXPIRES = this.EXPIRES;
@@ -989,7 +989,7 @@ var Store = class _Store {
    */
   expires(expires = null) {
     const store = new _Store(
-      Promise.resolve(this.promise).then(() => this.client)
+      Promise.resolve(this.promise).then(() => this.adapter)
     );
     store.EXPIRES = parse(expires);
     store.PREFIX = this.PREFIX;
@@ -1008,11 +1008,11 @@ var Store = class _Store {
    */
   async clear() {
     await this.promise;
-    if (!this.PREFIX && this.client.clearAll) {
-      return this.client.clearAll();
+    if (!this.PREFIX && this.adapter.clearAll) {
+      return this.adapter.clearAll();
     }
-    if (this.client.clear) {
-      return this.client.clear(this.PREFIX);
+    if (this.adapter.clear) {
+      return this.adapter.clear(this.PREFIX);
     }
     const keys = await this.keys();
     await Promise.all(keys.map((key) => this.del(key)));
@@ -1028,9 +1028,9 @@ var Store = class _Store {
    */
   async prune() {
     await this.promise;
-    if (this.client.HAS_EXPIRATION) return;
-    if (this.client.prune) {
-      await this.client.prune();
+    if (this.adapter.HAS_EXPIRATION) return;
+    if (this.adapter.prune) {
+      await this.adapter.prune();
     }
   }
   /**
@@ -1046,13 +1046,13 @@ var Store = class _Store {
    */
   async close() {
     await this.promise;
-    if (this.client.close) {
-      return this.client.close();
+    if (this.adapter.close) {
+      return this.adapter.close();
     }
   }
 };
-function createStore(client, options) {
-  return new Store(client, options);
+function createStore(adapter, options) {
+  return new Store(adapter, options);
 }
 export {
   createStore as default
