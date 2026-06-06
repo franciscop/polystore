@@ -1,4 +1,4 @@
-// src/integrations/express.ts
+// src/plugins/express.ts
 import session from "express-session";
 import kv from "polystore";
 var ttlFromSession = (data) => {
@@ -33,8 +33,8 @@ var PolystoreSessionStore = class _PolystoreSessionStore extends session.Store {
     this.store.clear().then(() => cb?.()).catch((err) => cb?.(err));
   }
 };
-function expressStore(client = /* @__PURE__ */ new Map()) {
-  return new PolystoreSessionStore(kv(client));
+function expressStore(store = /* @__PURE__ */ new Map()) {
+  return new PolystoreSessionStore(kv(store));
 }
 export {
   PolystoreSessionStore,
