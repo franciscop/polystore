@@ -1,7 +1,7 @@
 import express from "express";
 import session from "express-session";
 import request from "supertest";
-import expressStore, { PolystoreSessionStore } from "./express.js";
+import expressStore, { PolystoreSessionStore } from "./index.js";
 
 const makeApp = (store: PolystoreSessionStore, maxAge?: number) => {
   const app = express();
