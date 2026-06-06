@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
-    "paths": { "polystore": ["./src/index.ts"] },
-    "ignoreDeprecations": "6.0",
+"ignoreDeprecations": "6.0",
     "noEmit": true,
     "allowImportingTsExtensions": true,
 

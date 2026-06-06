@@ -1,4 +1,4 @@
-// src/integrations/hono-sessions.ts
+// src/plugins/hono-sessions.ts
 import kv from "polystore";
 var ttlFromSession = (data) => {
   if (!data._expire) return void 0;
@@ -27,8 +27,8 @@ var PolystoreHonoStore = class _PolystoreHonoStore {
     await this.store.del(sessionId);
   }
 };
-function honoStore(client = /* @__PURE__ */ new Map()) {
-  return new PolystoreHonoStore(kv(client));
+function honoStore(store = /* @__PURE__ */ new Map()) {
+  return new PolystoreHonoStore(kv(store));
 }
 export {
   PolystoreHonoStore,
