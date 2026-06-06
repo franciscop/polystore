@@ -74,6 +74,7 @@
       "Github": "https://github.com/franciscop/polystore"
     }
   },
+  "dependencies": {},
   "devDependencies": {
     "@deno/kv": "^0.8.1",
     "@types/better-sqlite3": "^7.6.13",
