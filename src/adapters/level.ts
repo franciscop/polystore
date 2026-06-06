@@ -1,4 +1,4 @@
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 const valueEncoding = "json";
 const notFound = (error: any): null => {
@@ -7,7 +7,7 @@ const notFound = (error: any): null => {
 };
 
 // Level KV DB - https://github.com/Level/level
-export default class Level extends Client {
+export default class Level extends Adapter {
   TYPE = "LEVEL";
 
   // It desn't handle expirations natively
@@ -17,13 +17,13 @@ export default class Level extends Client {
   static testKeys = ["attachResource", "detachResource", "prependOnceListener"];
 
   get = (key: string): Promise<any> =>
-    this.client.get(key, { valueEncoding }).catch(notFound);
+    this.lib.get(key, { valueEncoding }).catch(notFound);
   set = (key: string, value: any): Promise<void> =>
-    this.client.put(key, value, { valueEncoding });
-  del = (key: string): Promise<void> => this.client.del(key);
+    this.lib.put(key, value, { valueEncoding });
+  del = (key: string): Promise<void> => this.lib.del(key);
 
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
-    const keys: string[] = await this.client.keys().all();
+    const keys: string[] = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
     for (const key of list) {
       yield [key, await this.get(key)];
@@ -31,7 +31,7 @@ export default class Level extends Client {
   }
 
   entries = async (prefix = ""): Promise<[string, any][]> => {
-    const keys: string[] = await this.client.keys().all();
+    const keys: string[] = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
     return Promise.all(
       list.map(async (k) => [k, await this.get(k)] as [string, any]),
@@ -40,14 +40,14 @@ export default class Level extends Client {
 
   clear = async (prefix = ""): Promise<void> => {
     if (!prefix) {
-      return await this.client.clear();
+      return await this.lib.clear();
     }
-    const keys: string[] = await this.client.keys().all();
+    const keys: string[] = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
-    return this.client.batch(
+    return this.lib.batch(
       list.map((key) => ({ type: "del" as const, key })),
     );
   };
 
-  close = (): Promise<void> => this.client.close();
+  close = (): Promise<void> => this.lib.close();
 }

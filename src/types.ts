@@ -16,11 +16,11 @@ export type Serializable =
   | (Serializable | null)[]
   | { [key: string]: Serializable | null };
 
-export interface ClientExpires {
+export interface AdapterExpires {
   TYPE: string;
   HAS_EXPIRATION: true;
   promise?: Promise<any>;
-  test?: (client: any) => boolean;
+  test?: (raw: any) => boolean;
   // testKeys?: string[];
   get<T extends Serializable>(key: string): Promise<T | null> | T | null;
   set<T extends Serializable>(
@@ -53,11 +53,11 @@ export interface ClientExpires {
   close?(): Promise<any> | any;
 }
 
-export interface ClientNonExpires {
+export interface AdapterNonExpires {
   TYPE: string;
   HAS_EXPIRATION: false;
   promise?: Promise<any>;
-  test?: (client: any) => boolean;
+  test?: (raw: any) => boolean;
   // testKeys?: string[];
   get<T extends Serializable>(
     key: string,
@@ -95,4 +95,4 @@ export interface ClientNonExpires {
   close?(): Promise<any> | any;
 }
 
-export type Client = ClientExpires | ClientNonExpires;
+export type Adapter = AdapterExpires | AdapterNonExpires;

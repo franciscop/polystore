@@ -1,27 +1,27 @@
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 // A client that uses a single file (JSON) as a store
-export default class WebStorage extends Client {
+export default class WebStorage extends Adapter {
   TYPE = "STORAGE";
 
   // It desn't handle expirations natively
   HAS_EXPIRATION = false as const;
 
   // Check if this is the right class for the given client
-  static test(client: any): boolean {
+  static test(raw: any): boolean {
     if (typeof Storage === "undefined") return false;
-    return client instanceof Storage;
+    return raw instanceof Storage;
   }
 
   // Item methods
-  get = (key: string): any => this.decode(this.client.getItem(key));
+  get = (key: string): any => this.decode(this.lib.getItem(key));
   set = (key: string, data: any): void =>
-    this.client.setItem(key, this.encode(data));
-  del = (key: string): void => this.client.removeItem(key);
+    this.lib.setItem(key, this.encode(data));
+  del = (key: string): void => this.lib.removeItem(key);
 
   *iterate(prefix = ""): Generator<[string, any], void, unknown> {
-    for (let i = 0; i < this.client.length; i++) {
-      const key = this.client.key(i);
+    for (let i = 0; i < this.lib.length; i++) {
+      const key = this.lib.key(i);
       if (!key || !key.startsWith(prefix)) continue;
       const value = this.get(key);
       if (value !== null && value !== undefined) {
@@ -30,5 +30,5 @@ export default class WebStorage extends Client {
     }
   }
 
-  clearAll = (): void => this.client.clear();
+  clearAll = (): void => this.lib.clear();
 }

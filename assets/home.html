@@ -71,7 +71,7 @@ console.log(await store.get("hi"));
       <p>
         <a href="/documentation#getting-started">Getting started</a>,
         <a href="/documentation#api">API</a>,
-        <a href="/documentation#clients">Clients</a> and
+        <a href="/documentation#adapters">Adapters</a> and
         <a href="/documentation#creating-a-store">custom stores</a> fully
         documented for you.
       </p>
@@ -201,15 +201,15 @@ console.log(await store.get("hi"));
 <section class="hero flex one two-900 center">
   <div>
     <div class="content">
-      <h2>🧩 Support for many clients</h2>
+      <h2>🧩 Support for many adapters</h2>
       <p>
-        We support 10+ clients with documentation for each of them. Adding your
-        own client is also easy, you only need to define 3 methods:
+        We support 10+ adapters with documentation for each of them. Adding your
+        own adapter is also easy, you only need to define 3 methods:
         <code>.get()</code>, <code>.set()</code> and <code>.entries()</code>.
       </p>
       <p>
-        <a class="pseudo button" href="/documentation#clients">
-          Clients Documentation
+        <a class="pseudo button" href="/documentation#adapters">
+          Adapters Documentation
         </a>
       </p>
     </div>
@@ -262,7 +262,7 @@ const key1 = await store.del("key1");</code></pre>
     <div class="content">
       <h2>⏰ Easy expiration time</h2>
       <p>
-        Simply write <code>"1day"</code> with ANY client and forget about
+        Simply write <code>"1day"</code> with ANY adapter and forget about
         calculating TTL, Unix time, seconds vs milliseconds bugs, etc.
       </p>
       <p>

@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": { "polystore": ["./src/index.ts"] },
+    "ignoreDeprecations": "6.0",
     "noEmit": true,
     "allowImportingTsExtensions": true,
 
     "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "declaration": true,
     "declarationMap": true,
