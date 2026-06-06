@@ -1272,12 +1272,13 @@ Use any Polystore-compatible store as a [hono-sessions](https://github.com/jcs22
 ```js
 import { Hono } from "hono";
 import { sessionMiddleware } from "hono-sessions";
-import honoStore from "polystore/hono-sessions";
+import kv from "polystore/hono-sessions";
+
+const store = kv();
 
 const app = new Hono();
-
 app.use("*", sessionMiddleware({
-  store: honoStore(),
+  store,
   encryptionKey: process.env.SESSION_KEY,
   expireAfterSeconds: 3600,
 }));
@@ -1287,10 +1288,12 @@ By default it uses an in-memory `Map`. For production, pass any Polystore adapte
 
 ```js
 import { createClient } from "redis";
-import honoStore from "polystore/hono-sessions";
+import kv from "polystore/hono-sessions";
+
+const store = kv(createClient().connect());
 
 app.use("*", sessionMiddleware({
-  store: honoStore(createClient().connect()),
+  store,
   encryptionKey: process.env.SESSION_KEY,
   expireAfterSeconds: 3600,
 }));
