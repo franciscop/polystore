@@ -1,0 +1,13 @@
+{
+  "name": "polystore-example-hono-sessions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx bun ."
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "hono-sessions": "^0.8.0",
+    "polystore": "*"
+  }
+}

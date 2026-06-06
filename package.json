@@ -29,6 +29,7 @@
     "test:bun": "bun test ./test/index.test.ts ./src/plugins/",
     "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
   },
+  "workspaces": ["examples/*"],
   "main": "index.js",
   "type": "module",
   "types": "index.d.ts",

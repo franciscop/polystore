@@ -126,14 +126,14 @@ store.set<number>("abc", "hello"); // FAILS
 
 Store values must be JSON-like data. The Serializable type represents values composed of `string`, `number`, `boolean`, `null`, and `arrays` and plain `objects` whose values are serializable. Class instances or non-plain objects will lose their prototypes and methods when stored.
 
-These are the exported types, `Client`, `Serializable`, `Store` and `Options`:
+These are the exported types, `Adapter`, `Serializable`, `Store` and `Options`:
 
 ```ts
 import kv from "polystore";
-import type { Client, Serializable, Store, Options } from "polystore";
+import type { Adapter, Serializable, Store, Options } from "polystore";
 
-const client: Client = ...;  // See #creating-a-store
-const store: Store = kv(client, opts as Options);
+const adapter: Adapter = ...;  // See #creating-a-store
+const store: Store = kv(adapter, opts as Options);
 const key = await store.set('hello', 'b', opts as Options)
 const value: Serializable = await store.get('hello');
 ```
@@ -305,9 +305,9 @@ const key3 = await store.add({ name: "Francisco" }, { expires: 60 * 60 });
 
 The value and options are similar to [`.set()`](#set), except for the lack of the first argument, since `.add()` automatically generates the key.
 
-The default key is 24 AlphaNumeric characters (upper+lower case), however this can change if you are using a `.prefix()` or some clients might generate it differently (only custom clients can do that right now).
+The default key is 24 AlphaNumeric characters (upper+lower case), however this can change if you are using a `.prefix()` or some adapters might generate it differently (only custom adapters can do that right now).
 
-Some clients will generate their own key, e.g. you can connect to a SQL client that does auto-incremental integers (always casted to `string` since a `key` is always a string in Polystore).
+Some adapters will generate their own key, e.g. you can connect to a SQL client that does auto-incremental integers (always casted to `string` since a `key` is always a string in Polystore).
 
 <details>
   <summary>Key Generation details</summary>
@@ -550,7 +550,7 @@ This operation is O(n) and should typically be run in a scheduled job or mainten
 
 ### .close()
 
-Close the connection (if any) from the client:
+Close the connection (if any) from the adapter:
 
 ```js
 await store.close();
@@ -558,7 +558,7 @@ await store.close();
 
 ### .prefix()
 
-Creates **a new instance** of the Store, _with the same client_ as you provided, but now any key you read, write, etc. will be passed with the given prefix to the client. You only write `.prefix()` once and then don't need to worry about any prefix for any method anymore, it's all automatic. You don't need to await for it:
+Creates **a new instance** of the Store, _with the same adapter_ as you provided, but now any key you read, write, etc. will be passed with the given prefix to the adapter. You only write `.prefix()` once and then don't need to worry about any prefix for any method anymore, it's all automatic. You don't need to await for it:
 
 ```js
 const store = kv(new Map());
@@ -630,7 +630,7 @@ Polystore provides a unified API you can use `Promises`, `expires` and `.prefix(
 
 Quick overview:
 
-| Client | Runtime | Persistence | Native expiration | Notes |
+| Adapter | Runtime | Persistence | Native expiration | Notes |
 |---|---|---|---|---|
 | [Memory](#memory) | Node.js + Browser | ❌ | ❌ | Great for tests and ephemeral caches |
 | [Local Storage](#local-storage) | Browser | ✅ | ❌ | Persistent browser storage |
@@ -647,7 +647,7 @@ Quick overview:
 | [Etcd](#etcd) | Node.js | ✅ | ✅ | Distributed KV |
 | [Postgres](#postgres) | Node.js | ✅ | ❌ | Table-backed KV |
 
-While you can keep a reference to the client and access it directly, we strongly recommend to only access it through `polystore`, since we might add custom serialization and extra properties for e.g. expiration time:
+While you can keep a reference to the underlying adapter and access it directly, we strongly recommend to only access it through `polystore`, since we might add custom serialization and extra properties for e.g. expiration time:
 
 ```js
 const map = new Map();
@@ -1224,9 +1224,11 @@ Please see the [creating a store](#creating-a-store) section for all the details
 
 ## Plugins
 
-Polystore has some easy plugins for you to use it as a simple connector.
+Polystore has easy plugins to drop into popular frameworks and auth libraries. Each one has a runnable example in the [`examples/`](https://github.com/franciscop/polystore/tree/master/examples) folder.
 
 ### Express
+
+> [Full example →](https://github.com/franciscop/polystore/tree/master/examples/express)
 
 Use any Polystore-compatible store as an [express-session](https://github.com/expressjs/session) store:
 
@@ -1266,6 +1268,8 @@ app.use((req, res, next) => {
 ```
 
 ### Hono Sessions
+
+> [Full example →](https://github.com/franciscop/polystore/tree/master/examples/hono-sessions)
 
 Use any Polystore-compatible store as a [hono-sessions](https://github.com/jcs224/hono_sessions) store:
 
@@ -1315,6 +1319,36 @@ app.use("*", (c, next) => {
 });
 ```
 
+
+### Better Auth
+
+> [Full example →](https://github.com/franciscop/polystore/tree/master/examples/better-auth)
+
+Use any Polystore-compatible store as the [`secondaryStorage`](https://www.better-auth.com/docs/concepts/database#secondary-storage) for [Better Auth](https://better-auth.com). No database required — Polystore handles session caching and token storage:
+
+```js
+import { betterAuth } from "better-auth";
+import betterAuthStorage from "polystore/better-auth";
+
+export const auth = betterAuth({
+  secondaryStorage: betterAuthStorage(),  // in-memory by default
+  emailAndPassword: { enabled: true },
+});
+```
+
+For production, swap in any Polystore adapter:
+
+```js
+import { createClient } from "redis";
+
+secondaryStorage: betterAuthStorage(createClient().connect())
+```
+
+Use `.prefix()` to namespace keys in a shared store:
+
+```js
+secondaryStorage: betterAuthStorage(createClient().connect()).prefix("auth:")
+```
 
 ### fch
 
@@ -1378,7 +1412,7 @@ export default server({ session }).get("/", (ctx) => {
 
 ### Performance
 
-> TL;DR: if you only use the item operations (add, set, get, has, del) and your client supports expiration natively, you have nothing to worry about! Otherwise, please read on.
+> TL;DR: if you only use the item operations (add, set, get, has, del) and your adapter supports expiration natively, you have nothing to worry about! Otherwise, please read on.
 
 While all of our stores support `expires`, `.prefix()` and group operations, the nature of those makes them to have different performance characteristics.
 
@@ -1390,9 +1424,9 @@ While all of our stores support `expires`, `.prefix()` and group operations, the
 
 ### Expirations
 
-> Warning: if a client doesn't support expiration natively, we will hide expired keys on the API calls for a nice DX, but _old data might not be evicted automatically_. See [the notes in Performance](#performance) for details on how to work around this.
+> Warning: if an adapter doesn't support expiration natively, we will hide expired keys on the API calls for a nice DX, but _old data might not be evicted automatically_. See [the notes in Performance](#performance) for details on how to work around this.
 
-We unify all of the clients diverse expiration methods into a single, easy one with `expires` (**seconds** | string):
+We unify all of the adapters' diverse expiration methods into a single, easy one with `expires` (**seconds** | string):
 
 ```js
 // in-memory store
@@ -1438,13 +1472,13 @@ However, in some stores this does come with some potential performance disadvant
 
 For other stores like Redis this is not a problem, because the low-level operations already do them natively, so we don't need to worry about this for performance at the user-level. Instead, Redis and cookies have the problem that they only have expiration resolution at the second level. Meaning that 800ms is not a valid Redis expiration time, it has to be 1s, 2s, etc.
 
-These details are explained in the respective client information.
+These details are explained in the respective adapter information.
 
 ### Substores
 
 > There's some [basic `.prefix()` API info](#prefix) for everyday usage, this section is the in-depth explanation.
 
-What `.prefix()` does is it creates **a new instance** of the Store, _with the same client_ as you provided, but now any key you read, write, etc. will be passed with the given prefix to the client. The issue is that support from the underlying clients is inconsistent.
+What `.prefix()` does is it creates **a new instance** of the Store, _with the same adapter_ as you provided, but now any key you read, write, etc. will be passed with the given prefix to the adapter. The issue is that support from the underlying adapters is inconsistent.
 
 When dealing with large or complex amounts of data in a KV store, sometimes it's useful to divide them by categories. Some examples might be:
 
@@ -1465,15 +1499,15 @@ Polystore methods return promises and surface errors from the underlying client.
    Invalid JSON payloads, invalid value encoding, or data that was written outside Polystore and cannot be decoded with its metadata expectations.
 
 3. **Usage/configuration errors**  
-   Invalid client setup, invalid URLs/paths, or unsupported operations in a specific runtime.
+   Invalid adapter setup, invalid URLs/paths, or unsupported operations in a specific runtime.
 
 Recommended patterns:
 
 - Use `try/catch` around all write/read operations in production paths.
 - Prefer returning safe fallbacks for cache-like usage (`null`, stale response, or refetch).
-- Log enough context (`client type`, `key`, operation name) without logging sensitive values.
-- For remote clients, consider retry/backoff only for transient failures.
-- Call `.close()` during shutdown when the client supports it.
+- Log enough context (`adapter type`, `key`, operation name) without logging sensitive values.
+- For remote adapters, consider retry/backoff only for transient failures.
+- Call `.close()` during shutdown when the adapter supports it.
 
 Example:
 
@@ -1524,35 +1558,35 @@ class MyClient {
 }
 ```
 
-Note that this is NOT the public API, it's the internal **client** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. for the client, the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's public API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
+Note that this is NOT the public API, it's the internal **adapter** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. for the adapter, the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's public API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
 
-**Expires**: if you set the `HAS_EXPIRATION = true`, then you are indicating that the client WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the **seconds** for the key/value to will expire.
+**Expires**: if you set the `HAS_EXPIRATION = true`, then you are indicating that the adapter WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the **seconds** for the key/value to will expire.
 
 **Prefix**: we manage the `prefix` as an invisible layer on top, you only need to be aware of it in the `.add()` method, as well as in the group methods:
 
 ```js
 // What the user of polystore does:
-const store = await kv(client).prefix("hello:").prefix("world:");
+const store = await kv(adapter).prefix("hello:").prefix("world:");
 
-// User calls this, then the client is called with that:
+// User calls this, then the adapter is called with that:
 const value = await store.get("a");
-// client.get("hello:world:a");
+// adapter.get("hello:world:a");
 
-// User calls this, then the client is called with that:
+// User calls this, then the adapter is called with that:
 for await (const [key, value] of store) {}
-// client.iterate("hello:world:");
+// adapter.iterate("hello:world:");
 ```
 
 > Note: all of the _group methods_ that return keys, should return them **with the prefix**:
 
 ```js
-client.keys = (prefix) => {
+adapter.keys = (prefix) => {
   // Filter the keys, and return them INCLUDING the prefix!
   return Object.keys(subStore).filter((key) => key.startsWith(prefix));
 };
 ```
 
-While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the client to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
+While the signatures are different, you can check each entries on the output of Polystore API to see what is expected for the methods of the adapter to do, e.g. `.clear()` will remove all of the items that match the prefix (or everything if there's no prefix).
 
 
 
@@ -1590,10 +1624,10 @@ We don't set `HAS_EXPIRATION` to true since plain objects do NOT support expirat
 
 ### Custom ID generation
 
-You might want to provide your custom key generation algorithm, which I'm going to call `customId()` for example purposes. The only place where `polystore` generates IDs is in `add`, so you can provide your client with a custom generator:
+You might want to provide your custom key generation algorithm, which I'm going to call `customId()` for example purposes. The only place where `polystore` generates IDs is in `add`, so you can provide your adapter with a custom generator:
 
 ```js
-class MyClient {
+class MyAdapter {
 
   // Add the opt method .add() to have more control over the ID generation
   async add (prefix, data, expires) {
@@ -1623,10 +1657,10 @@ const id2 = await store.prefix("hello:").add({ hello: "world" });
 
 ### Serializing the data
 
-If you need to serialize the data before storing it, you can do it within your custom client. Here's an example of how you can handle data serialization when setting values:
+If you need to serialize the data before storing it, you can do it within your custom adapter. Here's an example of how you can handle data serialization when setting values:
 
 ```js
-class MyClient {
+class MyAdapter {
   get(key) {
     const data = dataSource[key];
     return data ? JSON.parse(data) : null;
