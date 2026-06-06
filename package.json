@@ -1,6 +1,6 @@
 {
   "name": "polystore",
-  "version": "0.21.3",
+  "version": "0.22.0",
   "description": "A small compatibility layer for many popular KV stores like localStorage, Redis, FileSystem, etc.",
   "homepage": "https://polystore.dev",
   "repository": "github:franciscop/polystore",
@@ -29,7 +29,9 @@
     "test:bun": "bun test ./test/index.test.ts ./src/plugins/",
     "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
   },
-  "workspaces": ["examples/*"],
+  "workspaces": [
+    "examples/*"
+  ],
   "main": "index.js",
   "type": "module",
   "types": "index.d.ts",
