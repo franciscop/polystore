@@ -639,7 +639,7 @@ Quick overview:
 | [Local Forage](#local-forage) | Browser | ✅ | ❓ | Better capacity than localStorage |
 | [Redis](#redis) | Node.js | ✅ | ✅ | Good distributed cache backend |
 | [SQLite](#sqlite) | Node.js | ✅ | ❌ | Simple local persistence |
-| [Fetch API](#fetch-api) | Any with `fetch` | ❓ | ❓ | Bring your own KV HTTP API |
+| [Fetch API](#fetch-api) | Node.js + Browser | ❓ | ❓ | Bring your own API |
 | [File](#file) | Node.js | ✅ | ❌ | Single JSON file store |
 | [Folder](#folder) | Node.js | ✅ | ❌ | One-file-per-key store |
 | [Cloudflare KV](#cloudflare-kv) | Cloudflare | ✅ | ✅ | Edge-native KV |
