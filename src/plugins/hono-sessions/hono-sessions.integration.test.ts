@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { sessionMiddleware } from "hono-sessions";
-import honoStore, { PolystoreHonoStore } from "./hono-sessions.js";
+import honoStore, { PolystoreHonoStore } from "./index.js";
 
 const ENCRYPTION_KEY = "polystore-test-key-32-chars-long!";
 

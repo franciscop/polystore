@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import expressStore, { PolystoreSessionStore } from "./express.js";
+import expressStore, { PolystoreSessionStore } from "./index.js";
 
 const makeSession = (maxAge: number | null = null) => ({
   cookie: { originalMaxAge: maxAge },

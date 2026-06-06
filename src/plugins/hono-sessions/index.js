@@ -1,4 +1,4 @@
-// src/plugins/hono-sessions.ts
+// src/plugins/hono-sessions/index.ts
 import kv from "polystore";
 var ttlFromSession = (data) => {
   if (!data._expire) return void 0;
