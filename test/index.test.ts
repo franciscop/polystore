@@ -1,7 +1,7 @@
 import "dotenv/config";
 
-import File from "../src/clients/file";
-import Folder from "../src/clients/folder";
+import File from "../src/adapters/file";
+import Folder from "../src/adapters/folder";
 import kv from "../src/index";
 import stores, { cannotTestExpiration, doNotSupportMs } from "./stores.ts";
 
@@ -12,7 +12,7 @@ console.log(
   `\x1b[1m${typeof Bun === "undefined" ? "Jest" : "Bun"}\x1b[0m Testing\n`,
 );
 
-describe("File client detection", () => {
+describe("File adapter detection", () => {
   it("matches a file:// URL with an extension", () => {
     expect(File.test("file:///path/to/store.json")).toBe(true);
   });
@@ -24,7 +24,7 @@ describe("File client detection", () => {
   });
 });
 
-describe("Folder client detection", () => {
+describe("Folder adapter detection", () => {
   it("matches a file:// URL ending with /", () => {
     expect(Folder.test("file:///path/to/folder/")).toBe(true);
   });
@@ -43,7 +43,7 @@ describe("base API", () => {
 
   it("an empty object is not a valid store", async () => {
     expect(kv({}).get("any")).rejects.toThrow(
-      "Client should have .get(), .set() and .iterate()",
+      "Adapter should have .get(), .set() and .iterate()",
     );
   });
 
@@ -61,7 +61,7 @@ describe("base API", () => {
         },
       ).get("any"),
     ).rejects.toThrow(
-      "You can only define client.has() when the client manages the expiration.",
+      "You can only define adapter.has() when the adapter manages the expiration.",
     );
   });
 
@@ -73,7 +73,7 @@ describe("base API", () => {
         },
       ).get("any"),
     ).rejects.toThrow(
-      "You can only define client.keys() when the client manages the expiration.",
+      "You can only define adapter.keys() when the adapter manages the expiration.",
     );
   });
 
@@ -85,11 +85,11 @@ describe("base API", () => {
         },
       ).get("any"),
     ).rejects.toThrow(
-      "You can only define client.values() when the client manages the expiration.",
+      "You can only define adapter.values() when the adapter manages the expiration.",
     );
   });
 
-  it("ClientNonExpires: expired entries are treated as non-existent", async () => {
+  it("AdapterNonExpires: expired entries are treated as non-existent", async () => {
     const s = kv({
       HAS_EXPIRATION: false as const,
       get: (key: string) =>

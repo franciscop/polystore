@@ -1,15 +1,15 @@
 import type { Serializable } from "../types";
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 // Handle an API endpoint with fetch()
-export default class Api extends Client {
+export default class Api extends Adapter {
   TYPE = "API";
 
   // Indicate that the file handler DOES handle expirations
   HAS_EXPIRATION = true as const;
 
-  static test = (client: string | unknown) =>
-    typeof client === "string" && /^https?:\/\//.test(client);
+  static test = (raw: string | unknown) =>
+    typeof raw === "string" && /^https?:\/\//.test(raw);
 
   #api = async <T>(
     key: string,
@@ -17,7 +17,7 @@ export default class Api extends Client {
     method = "GET",
     body?: string,
   ): Promise<T | null> => {
-    const url = `${this.client.replace(/\/$/, "")}/${encodeURIComponent(key)}${opts}`;
+    const url = `${this.lib.replace(/\/$/, "")}/${encodeURIComponent(key)}${opts}`;
     const headers: Record<string, string> = {
       accept: "application/json",
       "content-type": "application/json",

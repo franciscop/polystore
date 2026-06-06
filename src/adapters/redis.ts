@@ -1,35 +1,35 @@
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 // Use a redis client to back up the store
-export default class Redis extends Client {
+export default class Redis extends Adapter {
   TYPE = "REDIS";
 
   // Indicate if this client handles expirations (true = it does)
   HAS_EXPIRATION = true as const;
 
   // Check if this is the right class for the given client
-  static test = (client: any): boolean =>
-    client && client.pSubscribe && client.sSubscribe;
+  static test = (raw: any): boolean =>
+    raw && raw.pSubscribe && raw.sSubscribe;
 
   get = async (key: string): Promise<any> =>
-    this.decode(await this.client.get(key));
+    this.decode(await this.lib.get(key));
   set = async (
     key: string,
     value: any,
     expires: number | null,
   ): Promise<any> => {
     const EX = expires ? Math.round(expires) : undefined;
-    return this.client.set(key, this.encode(value), { EX });
+    return this.lib.set(key, this.encode(value), { EX });
   };
-  del = (key: string): Promise<number> => this.client.del(key);
+  del = (key: string): Promise<number> => this.lib.del(key);
 
   has = async (key: string): Promise<boolean> =>
-    Boolean(await this.client.exists(key));
+    Boolean(await this.lib.exists(key));
 
   // Go through each of the [key, value] in the set
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
     const MATCH = prefix + "*";
-    for await (const key of this.client.scanIterator({ MATCH })) {
+    for await (const key of this.lib.scanIterator({ MATCH })) {
       const keys = typeof key === "string" ? [key] : key;
       for (const key of keys) {
         const value = await this.get(key);
@@ -45,7 +45,7 @@ export default class Redis extends Client {
   keys = async (prefix = ""): Promise<string[]> => {
     const MATCH = prefix + "*";
     const keys: string[] = [];
-    for await (const key of this.client.scanIterator({ MATCH })) {
+    for await (const key of this.lib.scanIterator({ MATCH })) {
       keys.push(...(typeof key === "string" ? [key] : key));
     }
     return keys;
@@ -59,6 +59,6 @@ export default class Redis extends Client {
     return keys.map((k, i) => [k, values[i]]);
   };
 
-  clearAll = (): Promise<string> => this.client.flushAll();
-  close = (): Promise<string> => this.client.quit();
+  clearAll = (): Promise<string> => this.lib.flushAll();
+  close = (): Promise<string> => this.lib.quit();
 }

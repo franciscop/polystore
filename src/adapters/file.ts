@@ -1,9 +1,9 @@
 import type { promises as FsPromises } from "node:fs";
 import { StoreData } from "../types";
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 // A client that uses a single file (JSON) as a store
-export default class File extends Client {
+export default class File extends Adapter {
   TYPE = "FILE";
 
   // It desn't handle expirations natively
@@ -14,13 +14,13 @@ export default class File extends Client {
   #lock: Promise<void> = Promise.resolve();
 
   // Check if this is the right class for the given client
-  static test = (client: string | unknown): boolean => {
-    if (client instanceof URL) client = client.href;
+  static test = (raw: string | unknown): boolean => {
+    if (raw instanceof URL) raw = raw.href;
     // Ends with an extension like `.json`
     return (
-      typeof client === "string" &&
-      client.startsWith("file://") &&
-      client.endsWith(".json")
+      typeof raw === "string" &&
+      raw.startsWith("file://") &&
+      raw.endsWith(".json")
     );
   };
 
@@ -29,7 +29,7 @@ export default class File extends Client {
   // It fails if it already exists, hence the catch case
   promise = (async () => {
     this.fsp = (await import("node:fs/promises")) as typeof FsPromises;
-    this.file = (this.client?.href || this.client).replace(/^file:\/\//, "");
+    this.file = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     const folder = this.file.split("/").slice(0, -1).join("/");
     await this.fsp.mkdir(folder, { recursive: true }).catch(() => {});
     await this.fsp.writeFile(this.file, "{}", { flag: "wx" }).catch(() => {});

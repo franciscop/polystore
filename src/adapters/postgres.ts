@@ -1,8 +1,8 @@
 // Postgres client - uses a sqlite instance with a table
 // called `kv` containing 'id', 'value', and 'expires_at' columns
-import Client from "./Client";
+import Adapter from "./Adapter";
 
-export default class Postgres extends Client {
+export default class Postgres extends Adapter {
   TYPE = "POSTGRES";
 
   // This one is doing manual time management internally even though
@@ -20,25 +20,25 @@ export default class Postgres extends Client {
       throw new Error(`Invalid table name ${this.table}`);
     }
 
-    await this.client.query(`
+    await this.lib.query(`
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         expires_at TIMESTAMPTZ
       )
     `);
-    await this.client.query(
+    await this.lib.query(
       `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`,
     );
   })();
 
-  static test = (client: any): boolean => {
+  static test = (raw: any): boolean => {
     // .filename is for sqlite
-    return client && client.query && !client.filename;
+    return raw && raw.query && !raw.filename;
   };
 
   get = async <T>(id: string): Promise<T | null> => {
-    const result = await this.client.query(
+    const result = await this.lib.query(
       `SELECT value
        FROM ${this.table}
        WHERE id = $1 AND (expires_at IS NULL OR expires_at > NOW())`,
@@ -56,7 +56,7 @@ export default class Postgres extends Client {
     const value = this.encode(data);
     const expires_at = expires ? new Date(Date.now() + expires * 1000) : null;
 
-    await this.client.query(
+    await this.lib.query(
       `INSERT INTO ${this.table} (id, value, expires_at)
        VALUES ($1, $2, $3)
        ON CONFLICT (id) DO UPDATE
@@ -66,11 +66,11 @@ export default class Postgres extends Client {
   };
 
   del = async (id: string): Promise<void> => {
-    await this.client.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
+    await this.lib.query(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
   };
 
   async *iterate(prefix = ""): AsyncGenerator<[string, any]> {
-    const result = await this.client.query(
+    const result = await this.lib.query(
       `SELECT id, value FROM ${this.table}
         WHERE (expires_at IS NULL OR expires_at > NOW()) ${prefix ? `AND id LIKE $1` : ""}`,
       prefix ? [`${prefix}%`] : [],
@@ -82,7 +82,7 @@ export default class Postgres extends Client {
   }
 
   async keys(prefix = ""): Promise<string[]> {
-    const result = await this.client.query(
+    const result = await this.lib.query(
       `SELECT id FROM ${this.table}
        WHERE (expires_at IS NULL OR expires_at > NOW())
        ${prefix ? `AND id LIKE $1` : ""}`,
@@ -93,22 +93,22 @@ export default class Postgres extends Client {
   }
 
   prune = async (): Promise<void> => {
-    await this.client.query(
+    await this.lib.query(
       `DELETE FROM ${this.table}
        WHERE expires_at IS NOT NULL AND expires_at <= NOW()`,
     );
   };
 
   clear = async (prefix = ""): Promise<void> => {
-    await this.client.query(
+    await this.lib.query(
       `DELETE FROM ${this.table} ${prefix ? `WHERE id LIKE $1` : ""}`,
       prefix ? [`${prefix}%`] : [],
     );
   };
 
   close = async (): Promise<void> => {
-    if (this.client.end) {
-      await this.client.end();
+    if (this.lib.end) {
+      await this.lib.end();
     }
   };
 }

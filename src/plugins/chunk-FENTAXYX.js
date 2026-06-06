@@ -1,4 +1,4 @@
-// src/adapters/Client.ts
+// src/clients/Client.ts
 var Client = class {
   TYPE;
   HAS_EXPIRATION = false;
@@ -10,7 +10,7 @@ var Client = class {
   }
 };
 
-// src/adapters/api.ts
+// src/clients/api.ts
 var Api = class extends Client {
   TYPE = "API";
   // Indicate that the file handler DOES handle expirations
@@ -45,7 +45,7 @@ var Api = class extends Client {
   }
 };
 
-// src/adapters/cloudflare.ts
+// src/clients/cloudflare.ts
 var Cloudflare = class extends Client {
   TYPE = "CLOUDFLARE";
   // It handles expirations natively
@@ -94,7 +94,7 @@ var Cloudflare = class extends Client {
   };
 };
 
-// src/adapters/cookie.ts
+// src/clients/cookie.ts
 var Cookie = class extends Client {
   TYPE = "COOKIE";
   // It handles expirations natively
@@ -141,7 +141,7 @@ var Cookie = class extends Client {
   }
 };
 
-// src/adapters/etcd.ts
+// src/clients/etcd.ts
 var Etcd = class extends Client {
   TYPE = "ETCD3";
   // It desn't handle expirations natively
@@ -168,7 +168,7 @@ var Etcd = class extends Client {
   };
 };
 
-// src/adapters/file.ts
+// src/clients/file.ts
 var File = class extends Client {
   TYPE = "FILE";
   // It desn't handle expirations natively
@@ -260,7 +260,7 @@ var File = class extends Client {
   };
 };
 
-// src/adapters/folder.ts
+// src/clients/folder.ts
 var noFileOk = (error) => {
   if (error.code === "ENOENT") return null;
   throw error;
@@ -310,7 +310,7 @@ var Folder = class extends Client {
   }
 };
 
-// src/adapters/forage.ts
+// src/clients/forage.ts
 var Forage = class extends Client {
   TYPE = "FORAGE";
   // It desn't handle expirations natively
@@ -339,7 +339,7 @@ var Forage = class extends Client {
   clearAll = () => this.client.clear();
 };
 
-// src/adapters/level.ts
+// src/clients/level.ts
 var valueEncoding = "json";
 var notFound = (error) => {
   if (error?.code === "LEVEL_NOT_FOUND") return null;
@@ -381,7 +381,7 @@ var Level = class extends Client {
   close = () => this.client.close();
 };
 
-// src/adapters/memory.ts
+// src/clients/memory.ts
 var Memory = class extends Client {
   TYPE = "MEMORY";
   // It desn't handle expirations natively
@@ -399,7 +399,7 @@ var Memory = class extends Client {
   clearAll = () => this.client.clear();
 };
 
-// src/adapters/postgres.ts
+// src/clients/postgres.ts
 var Postgres = class extends Client {
   TYPE = "POSTGRES";
   // This one is doing manual time management internally even though
@@ -490,7 +490,7 @@ var Postgres = class extends Client {
   };
 };
 
-// src/adapters/redis.ts
+// src/clients/redis.ts
 var Redis = class extends Client {
   TYPE = "REDIS";
   // Indicate if this client handles expirations (true = it does)
@@ -537,7 +537,7 @@ var Redis = class extends Client {
   close = () => this.client.quit();
 };
 
-// src/adapters/sqlite.ts
+// src/clients/sqlite.ts
 var SQLite = class extends Client {
   TYPE = "SQLITE";
   // This one is doing manual time management internally even though
@@ -624,7 +624,7 @@ ${prefix ? "AND id LIKE ?" : ""}
   };
 };
 
-// src/adapters/storage.ts
+// src/clients/storage.ts
 var WebStorage = class extends Client {
   TYPE = "STORAGE";
   // It desn't handle expirations natively
@@ -651,7 +651,7 @@ var WebStorage = class extends Client {
   clearAll = () => this.client.clear();
 };
 
-// src/adapters/index.ts
+// src/clients/index.ts
 var clients_default = {
   api: Api,
   cloudflare: Cloudflare,
@@ -1054,6 +1054,7 @@ var Store = class _Store {
 function createStore(client, options) {
   return new Store(client, options);
 }
+
 export {
-  createStore as default
+  createStore
 };

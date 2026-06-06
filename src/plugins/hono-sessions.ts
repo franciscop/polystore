@@ -37,6 +37,6 @@ export class PolystoreHonoStore implements Store {
   }
 }
 
-export default function honoStore(client = new Map()): PolystoreHonoStore {
-  return new PolystoreHonoStore(kv(client));
+export default function honoStore(store = new Map()): PolystoreHonoStore {
+  return new PolystoreHonoStore(kv(store));
 }

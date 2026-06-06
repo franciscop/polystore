@@ -20,7 +20,7 @@ describe("expressStore factory", () => {
     expect(expressStore()).toBeInstanceOf(EventEmitter);
   });
 
-  it("accepts a custom client", () => {
+  it("accepts a custom adapter", () => {
     expect(expressStore(new Map())).toBeInstanceOf(PolystoreSessionStore);
   });
 });

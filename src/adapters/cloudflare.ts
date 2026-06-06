@@ -1,5 +1,5 @@
 import { Serializable } from "../types";
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 type CFReply = {
   keys: { name: string }[];
@@ -8,7 +8,7 @@ type CFReply = {
 };
 
 // Use Cloudflare's KV store
-export default class Cloudflare extends Client {
+export default class Cloudflare extends Adapter {
   TYPE = "CLOUDFLARE";
 
   // It handles expirations natively
@@ -17,7 +17,7 @@ export default class Cloudflare extends Client {
   static testKeys = ["getWithMetadata", "get", "list", "delete"];
 
   get = async <T extends Serializable>(key: string): Promise<T | null> => {
-    const value = await this.client.get(key);
+    const value = await this.lib.get(key);
     return this.decode<T>(value);
   };
 
@@ -30,10 +30,10 @@ export default class Cloudflare extends Client {
     if (expirationTtl && expirationTtl < 60) {
       throw new Error("Cloudflare's min expiration is '60s'");
     }
-    await this.client.put(key, this.encode(data), { expirationTtl });
+    await this.lib.put(key, this.encode(data), { expirationTtl });
   };
 
-  del = (key: string): Promise<void> => this.client.delete(key);
+  del = (key: string): Promise<void> => this.lib.delete(key);
 
   // Since we have pagination, we don't want to get all of the
   // keys at once if we can avoid it
@@ -42,7 +42,7 @@ export default class Cloudflare extends Client {
   ): AsyncGenerator<[string, T]> {
     let cursor: string | undefined;
     do {
-      const raw = (await this.client.list({ prefix, cursor })) as CFReply;
+      const raw = (await this.lib.list({ prefix, cursor })) as CFReply;
       const keys = raw.keys.map((k) => k.name);
       for (let key of keys) {
         const value = await this.get<T>(key);
@@ -57,7 +57,7 @@ export default class Cloudflare extends Client {
     const keys: string[] = [];
     let cursor: string | undefined;
     do {
-      const raw = (await this.client.list({ prefix, cursor })) as CFReply;
+      const raw = (await this.lib.list({ prefix, cursor })) as CFReply;
       keys.push(...raw.keys.map((k) => k.name));
       cursor = raw.list_complete ? undefined : raw.cursor;
     } while (cursor);

@@ -15,7 +15,7 @@ describe("honoStore factory", () => {
     expect(honoStore()).toBeInstanceOf(PolystoreHonoStore);
   });
 
-  it("accepts a custom client", () => {
+  it("accepts a custom adapter", () => {
     expect(honoStore(new Map())).toBeInstanceOf(PolystoreHonoStore);
   });
 });

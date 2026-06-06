@@ -1,6 +1,6 @@
 import type { promises as FsPromises } from "node:fs";
 import { Serializable, StoreData } from "../types";
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 const noFileOk = (error: any): null => {
   if (error.code === "ENOENT") return null;
@@ -8,7 +8,7 @@ const noFileOk = (error: any): null => {
 };
 
 // A client that uses a single file (JSON) as a store
-export default class Folder extends Client {
+export default class Folder extends Adapter {
   TYPE = "FOLDER";
   // It desn't handle expirations natively
   HAS_EXPIRATION = false as const;
@@ -17,12 +17,12 @@ export default class Folder extends Client {
   folder!: string;
 
   // Check if this is the right class for the given client
-  static test = (client: any): boolean => {
-    if (client instanceof URL) client = client.href;
+  static test = (raw: any): boolean => {
+    if (raw instanceof URL) raw = raw.href;
     return (
-      typeof client === "string" &&
-      client.startsWith("file://") &&
-      client.endsWith("/")
+      typeof raw === "string" &&
+      raw.startsWith("file://") &&
+      raw.endsWith("/")
     );
   };
 
@@ -32,7 +32,7 @@ export default class Folder extends Client {
     this.fsp = (await import(
       "node:fs/promises"
     )) as unknown as typeof FsPromises;
-    this.folder = (this.client?.href || this.client).replace(/^file:\/\//, "");
+    this.folder = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
   })();
 
