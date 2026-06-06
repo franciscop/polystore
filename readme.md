@@ -1,6 +1,6 @@
 # Polystore [![polystore](https://img.shields.io/npm/v/polystore?label=polystore&color=greenlime)](https://www.npmjs.com/package/polystore) [![tests](https://github.com/franciscop/polystore/workflows/tests/badge.svg)](https://github.com/franciscop/polystore/actions) [![gzip size](https://img.badgesize.io/franciscop/polystore/master/index.js.svg?label=gzip&logo=&compression=gzip)](https://github.com/franciscop/polystore/blob/master/index.js) [![dependencies](https://img.shields.io/badge/dependencies-0-limegreen.svg)](https://github.com/franciscop/polystore/blob/master/package.json)
 
-A key-value library to unify the API of [many clients](#clients): localStorage, Redis, FileSystem, SQLite, etc.
+A key-value library to unify the API of [many adapters](#adapters): localStorage, Redis, FileSystem, SQLite, etc.
 
 ```js
 import kv from "polystore";
@@ -8,7 +8,7 @@ const store1 = kv(new Map()); // in-memory
 const store2 = kv(localStorage); // Persist in the browser
 const store3 = kv(redisClient); // Use a Redis client for backend persistence
 const store4 = kv(yourOwnStore); // Create a store based on your code
-// Many more clients available
+// Many more adapters available
 ```
 
 These are all the methods of the [API](#api) (they are all `async`):
@@ -29,7 +29,7 @@ These are all the methods of the [API](#api) (they are all `async`):
 - [`.prune()`](#prune): delete only the **expired** data from the store.
 - [`.close()`](#close): (only _some_ stores) ends the connection to the store.
 
-Available clients for the KV store:
+Available adapters for the KV store:
 
 - [**Memory** `new Map()`](#memory) (fe+be): an in-memory API to keep your KV store.
 - [**Local Storage** `localStorage`](#local-storage) (fe): persist the data in the browser's localStorage.
@@ -61,7 +61,7 @@ MyApi({ cache: env.KV_NAMESPACE }); // OR
 
 ## Getting started
 
-First, install `polystore` and whatever [supported client](#clients) that you prefer. Let's see Redis as an example here:
+First, install `polystore` and whatever [supported adapter](#adapters) that you prefer. Let's see Redis as an example here:
 
 ```sh
 npm i polystore redis
@@ -93,7 +93,7 @@ await store.del(key);
 
 ## API
 
-The base `kv()` initialization is shared across clients ([see full clients list](#clients)); an argument that receives the client or a string representing the client and then the options:
+The base `kv()` initialization is shared across adapters ([see full adapters list](#adapters)); an argument that receives the adapter or a string representing the adapter and then the options:
 
 ```js
 import kv from "polystore";
@@ -583,7 +583,7 @@ for await (const [key, value] of session) {
 }
 ```
 
-Different clients have better/worse support for substores, and in some cases some operations might be slower. This should be documented on each client's documentation (see below). As an alternative, you can always create two different stores instead of a substore:
+Different adapters have better/worse support for substores, and in some cases some operations might be slower. This should be documented on each adapter's documentation (see below). As an alternative, you can always create two different stores instead of a substore:
 
 ```js
 // Two in-memory stores
@@ -622,9 +622,9 @@ You can combine it with .prefix():
 const sessions = store.prefix("session:").expires("1day");
 ```
 
-## Clients
+## Adapters
 
-A client is the library that manages the low-level store operations. For example, the Redis Client, or the browser's `localStorage` API. In some exceptions it's just a string and we do a bit more work on Polystore, like with `"cookie"` or `"file:///users/me/data.json"`.
+An adapter is the library that manages the low-level store operations. For example, the Redis adapter, or the browser's `localStorage` API. In some exceptions it's just a string and we do a bit more work on Polystore, like with `"cookie"` or `"file:///users/me/data.json"`.
 
 Polystore provides a unified API you can use `Promises`, `expires` and `.prefix()` even with those stores that do not support these operations natively.
 
@@ -1222,9 +1222,9 @@ This keeps a single table while preserving namespace-style grouping through pref
 
 Please see the [creating a store](#creating-a-store) section for all the details!
 
-## Integrations
+## Plugins
 
-Polystore has some easy integrations for you to use it as a simple connector.
+Polystore has some easy plugins for you to use it as a simple connector.
 
 ### Express
 
@@ -1240,7 +1240,7 @@ app.use(session({
 }));
 ```
 
-By default it uses an in-memory `Map`, which is fine for development. For production, pass any Polystore client:
+By default it uses an in-memory `Map`, which is fine for development. For production, pass any Polystore adapter:
 
 ```js
 import { createClient } from "redis";
@@ -1252,7 +1252,7 @@ const store = expressStore(createClient().connect());
 app.use(session({ secret: "my-secret", store }));
 ```
 
-Any client works — Redis, Postgres, SQLite, file-based, etc. Session TTL is read automatically from `cookie.originalMaxAge` so you don't need to configure it separately.
+Any adapter works — Redis, Postgres, SQLite, file-based, etc. Session TTL is read automatically from `cookie.originalMaxAge` so you don't need to configure it separately.
 
 Use `.prefix()` to namespace sessions, for example in a multi-tenant app:
 
@@ -1283,7 +1283,7 @@ app.use("*", sessionMiddleware({
 }));
 ```
 
-By default it uses an in-memory `Map`. For production, pass any Polystore client:
+By default it uses an in-memory `Map`. For production, pass any Polystore adapter:
 
 ```js
 import { createClient } from "redis";
@@ -1555,9 +1555,9 @@ While the signatures are different, you can check each entries on the output of 
 
 ## Examples
 
-### Plain Object client
+### Plain Object adapter
 
-This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own clients:
+This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own adapters:
 
 ```js
 const dataSource = {};
@@ -1738,7 +1738,7 @@ You can store either the raw data, or the processed data. Depending on whether t
 
 ### Dev vs Prod
 
-With Polystore it's easy to configure your KV solution to use a different client in dev vs production. We've found particularly useful to use an easy-to-debug client in dev like [Folder](#folder) and a high-performance client in production like [Redis](#redis):
+With Polystore it's easy to configure your KV solution to use a different adapter in dev vs production. We've found particularly useful to use an easy-to-debug adapter in dev like [Folder](#folder) and a high-performance adapter in production like [Redis](#redis):
 
 ```ts
 // store.ts

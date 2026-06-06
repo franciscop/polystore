@@ -67,6 +67,6 @@ export class PolystoreSessionStore extends session.Store {
   }
 }
 
-export default function expressStore(client = new Map()): PolystoreSessionStore {
-  return new PolystoreSessionStore(kv(client));
+export default function expressStore(store = new Map()): PolystoreSessionStore {
+  return new PolystoreSessionStore(kv(store));
 }

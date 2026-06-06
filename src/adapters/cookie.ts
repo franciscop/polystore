@@ -1,15 +1,15 @@
-import Client from "./Client";
+import Adapter from "./Adapter";
 
 // A client that uses a single file (JSON) as a store
-export default class Cookie extends Client {
+export default class Cookie extends Adapter {
   TYPE = "COOKIE";
 
   // It handles expirations natively
   HAS_EXPIRATION = true as const;
 
   // Check if this is the right class for the given client
-  static test = (client: string | unknown) => {
-    return client === "cookie" || client === "cookies";
+  static test = (raw: string | unknown) => {
+    return raw === "cookie" || raw === "cookies";
   };
 
   // Group methods

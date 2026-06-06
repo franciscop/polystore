@@ -3,50 +3,10 @@
   "version": "0.21.3",
   "description": "A small compatibility layer for many popular KV stores like localStorage, Redis, FileSystem, etc.",
   "homepage": "https://polystore.dev",
-  "repository": "https://github.com/franciscop/polystore.git",
-  "bugs": "https://github.com/franciscop/polystore/issues",
-  "funding": "https://www.paypal.me/franciscopresencia/19",
+  "repository": "github:franciscop/polystore",
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
-  "type": "module",
-  "sideEffects": false,
-  "main": "index.js",
-  "types": "index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./index.d.ts",
-      "import": "./index.js"
-    },
-    "./express": {
-      "types": "./src/integrations/express.d.ts",
-      "import": "./src/integrations/express.js"
-    },
-    "./hono-sessions": {
-      "types": "./src/integrations/hono-sessions.d.ts",
-      "import": "./src/integrations/hono-sessions.js"
-    }
-  },
-  "files": [
-    "index.js",
-    "index.d.ts",
-    "src/integrations/express.js",
-    "src/integrations/express.d.ts",
-    "src/integrations/hono-sessions.js",
-    "src/integrations/hono-sessions.d.ts"
-  ],
-  "scripts": {
-    "analyze": "bun run build && esbuild src/index.ts --bundle --packages=external --format=esm --minify --outfile=index.min.js && echo 'Final size:' && gzip-size index.min.js && rm index.min.js",
-    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/integrations/express.ts src/integrations/hono-sessions.ts --format esm --dts --out-dir src/integrations --target node24 --external polystore --external express-session --external hono-sessions",
-    "lint": "tsc",
-    "start": "bun test --watch",
-    "service:db": "etcd",
-    "service:redis": "brew services start redis",
-    "service:postgres": "brew services start postgresql",
-    "service:server": "bun ./src/server.ts",
-    "services": "concurrently \"npm run service:db\" \"npm run service:redis\" \"npm run service:postgres\" \"npm run service:server\"",
-    "test": "bun run test:bun && bun run test:jest",
-    "test:bun": "bun test ./test/index.test.ts ./src/integrations/",
-    "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
-  },
+  "funding": "https://www.paypal.me/franciscopresencia/19",
+  "license": "MIT",
   "keywords": [
     "kv",
     "store",
@@ -55,7 +15,56 @@
     "key",
     "value"
   ],
-  "license": "MIT",
+  "scripts": {
+    "size": "echo $(gzip -c index.js | wc -c) bytes",
+    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/plugins/express.ts src/plugins/hono-sessions.ts --format esm --dts --out-dir src/plugins --target node24 --external polystore --external express-session --external hono-sessions",
+    "lint": "tsc",
+    "start": "bun test --watch",
+    "service:db": "etcd",
+    "service:redis": "brew services start redis",
+    "service:postgres": "brew services start postgresql",
+    "service:server": "bun ./src/server.ts",
+    "services": "concurrently \"npm run service:db\" \"npm run service:redis\" \"npm run service:postgres\" \"npm run service:server\"",
+    "test": "bun run test:bun && bun run test:jest",
+    "test:bun": "bun test ./test/index.test.ts ./src/plugins/",
+    "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
+  },
+  "main": "index.js",
+  "type": "module",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/plugins/express.js",
+    "src/plugins/express.d.ts",
+    "src/plugins/hono-sessions.js",
+    "src/plugins/hono-sessions.d.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./express": {
+      "types": "./src/plugins/express.d.ts",
+      "import": "./src/plugins/express.js"
+    },
+    "./hono-sessions": {
+      "types": "./src/plugins/hono-sessions.d.ts",
+      "import": "./src/plugins/hono-sessions.js"
+    }
+  },
+  "documentation.page": {
+    "title": "🏬 Polystore - A universal library for standardizing any KV-store",
+    "home": "assets/home.html",
+    "homepage": "https://polystore.dev/",
+    "menu": {
+      "Documentation": "/documentation",
+      "Issues": "https://github.com/franciscop/polystore/issues",
+      "Get help": "https://superpeer.com/francisco/-/javascript-and-react-help",
+      "Github": "https://github.com/franciscop/polystore"
+    }
+  },
   "devDependencies": {
     "@deno/kv": "^0.8.1",
     "@types/better-sqlite3": "^7.6.13",
@@ -88,15 +97,5 @@
     "tsup": "^8.5.1",
     "typescript": "^6.0.2"
   },
-  "documentation": {
-    "title": "🏬 Polystore - A universal library for standardizing any KV-store",
-    "home": "assets/home.html",
-    "homepage": "https://polystore.dev/",
-    "menu": {
-      "Documentation": "/documentation",
-      "Issues": "https://github.com/franciscop/polystore/issues",
-      "Get help": "https://superpeer.com/francisco/-/javascript-and-react-help",
-      "Github": "https://github.com/franciscop/polystore"
-    }
-  }
+  "sideEffects": false
 }
