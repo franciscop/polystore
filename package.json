@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "size": "echo $(gzip -c index.js | wc -c) bytes",
-    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/plugins/express.ts src/plugins/hono-sessions.ts --format esm --dts --out-dir src/plugins --target node24 --external polystore --external express-session --external hono-sessions",
+    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/plugins/express/index.ts --format esm --dts --out-dir src/plugins/express --target node24 --external polystore --external express-session && bunx tsup src/plugins/hono-sessions/index.ts --format esm --dts --out-dir src/plugins/hono-sessions --target node24 --external polystore --external hono-sessions && bunx tsup src/plugins/better-auth/index.ts --format esm --dts --out-dir src/plugins/better-auth --target node24 --external polystore",
     "lint": "tsc",
     "start": "bun test --watch",
     "service:db": "etcd",
@@ -35,10 +35,12 @@
   "files": [
     "index.js",
     "index.d.ts",
-    "src/plugins/express.js",
-    "src/plugins/express.d.ts",
-    "src/plugins/hono-sessions.js",
-    "src/plugins/hono-sessions.d.ts"
+    "src/plugins/express/index.js",
+    "src/plugins/express/index.d.ts",
+    "src/plugins/hono-sessions/index.js",
+    "src/plugins/hono-sessions/index.d.ts",
+    "src/plugins/better-auth/index.js",
+    "src/plugins/better-auth/index.d.ts"
   ],
   "exports": {
     ".": {
@@ -46,12 +48,16 @@
       "import": "./index.js"
     },
     "./express": {
-      "types": "./src/plugins/express.d.ts",
-      "import": "./src/plugins/express.js"
+      "types": "./src/plugins/express/index.d.ts",
+      "import": "./src/plugins/express/index.js"
     },
     "./hono-sessions": {
-      "types": "./src/plugins/hono-sessions.d.ts",
-      "import": "./src/plugins/hono-sessions.js"
+      "types": "./src/plugins/hono-sessions/index.d.ts",
+      "import": "./src/plugins/hono-sessions/index.js"
+    },
+    "./better-auth": {
+      "types": "./src/plugins/better-auth/index.d.ts",
+      "import": "./src/plugins/better-auth/index.js"
     }
   },
   "documentation.page": {

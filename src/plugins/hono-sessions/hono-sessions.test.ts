@@ -1,4 +1,4 @@
-import honoStore, { PolystoreHonoStore } from "./hono-sessions.js";
+import honoStore, { PolystoreHonoStore } from "./index.js";
 import type { SessionData } from "hono-sessions";
 
 const makeSession = (expireInSecs?: number): SessionData => ({
