@@ -1,0 +1,13 @@
+{
+  "name": "polystore-example-axios-cache-interceptor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.0.0",
+    "axios-cache-interceptor": "^1.0.0",
+    "polystore": "*"
+  }
+}
