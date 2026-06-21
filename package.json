@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "size": "echo $(gzip -c index.js | wc -c) bytes",
-    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/plugins/express/index.ts --format esm --dts --out-dir src/plugins/express --target node24 --external polystore --external express-session && bunx tsup src/plugins/hono-sessions/index.ts --format esm --dts --out-dir src/plugins/hono-sessions --target node24 --external polystore --external hono-sessions && bunx tsup src/plugins/better-auth/index.ts --format esm --dts --out-dir src/plugins/better-auth --target node24 --external polystore",
+    "build": "bunx tsup src/index.ts --format esm --dts --out-dir . --target node24 && bunx tsup src/plugins/express/index.ts --format esm --dts --out-dir src/plugins/express --target node24 --external polystore --external express-session && bunx tsup src/plugins/hono-sessions/index.ts --format esm --dts --out-dir src/plugins/hono-sessions --target node24 --external polystore --external hono-sessions && bunx tsup src/plugins/better-auth/index.ts --format esm --dts --out-dir src/plugins/better-auth --target node24 --external polystore && bunx tsup src/plugins/axios-cache-interceptor/index.ts --format esm --dts --out-dir src/plugins/axios-cache-interceptor --target node24 --external polystore --external axios-cache-interceptor",
     "lint": "tsc",
     "start": "bun test --watch",
     "service:db": "etcd",
@@ -43,7 +43,9 @@
     "src/plugins/hono-sessions/index.js",
     "src/plugins/hono-sessions/index.d.ts",
     "src/plugins/better-auth/index.js",
-    "src/plugins/better-auth/index.d.ts"
+    "src/plugins/better-auth/index.d.ts",
+    "src/plugins/axios-cache-interceptor/index.js",
+    "src/plugins/axios-cache-interceptor/index.d.ts"
   ],
   "exports": {
     ".": {
@@ -61,6 +63,10 @@
     "./better-auth": {
       "types": "./src/plugins/better-auth/index.d.ts",
       "import": "./src/plugins/better-auth/index.js"
+    },
+    "./axios-cache-interceptor": {
+      "types": "./src/plugins/axios-cache-interceptor/index.d.ts",
+      "import": "./src/plugins/axios-cache-interceptor/index.js"
     }
   },
   "documentation.page": {
@@ -85,6 +91,8 @@
     "@types/jsdom": "^27.0.0",
     "@types/pg": "^8.11.10",
     "@types/supertest": "^7.2.0",
+    "axios": "^1.9.0",
+    "axios-cache-interceptor": "^1.12.0",
     "better-sqlite3": "^12.6.0",
     "concurrently": "^9.2.1",
     "dotenv": "^16.3.1",

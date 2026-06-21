@@ -1350,6 +1350,47 @@ Use `.prefix()` to namespace keys in a shared store:
 secondaryStorage: betterAuthStorage(createClient().connect()).prefix("auth:")
 ```
 
+### Axios Cache Interceptor
+
+> [Full example →](https://github.com/franciscop/polystore/tree/master/examples/axios-cache-interceptor)
+
+Use any Polystore-compatible store as the cache storage for [axios-cache-interceptor](https://axios-cache-interceptor.js.org/):
+
+```js
+import axios from "axios";
+import { setupCache } from "axios-cache-interceptor";
+import axiosCacheStorage from "polystore/axios-cache-interceptor";
+
+const http = setupCache(axios, {
+  storage: axiosCacheStorage(),  // in-memory by default
+});
+
+// First request hits the network, second is served from cache
+const { data } = await http.get("https://api.example.com/users");
+await http.get("https://api.example.com/users"); // cached
+```
+
+For production, swap in any Polystore adapter:
+
+```js
+import { createClient } from "redis";
+import axiosCacheStorage from "polystore/axios-cache-interceptor";
+
+const http = setupCache(axios, {
+  storage: axiosCacheStorage(createClient().connect()),
+});
+```
+
+Use `.prefix()` to namespace cache keys in a shared store:
+
+```js
+const http = setupCache(axios, {
+  storage: axiosCacheStorage(createClient().connect()).prefix("api-cache:"),
+});
+```
+
+Cache TTL is derived automatically from each response's cache headers (via `Cache-Control: max-age`, `Expires`, etc.) so you don't need to configure it separately. The cache entry is stored with a matching expiration so backends like Redis will evict it automatically.
+
 ### fch
 
 [Fch](https://www.npmjs.com/package/fch) is a lightweight fetch wrapper that uses Polystore natively for caching. Pass any Polystore store as the `cache` option and GET responses are cached automatically:
