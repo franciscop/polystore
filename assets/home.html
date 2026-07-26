@@ -1,6 +1,215 @@
-<br />
+<style>
+  .hero,
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 30px;
+    margin: 40px 0;
+  }
+  .hero > *,
+  .row > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  @media (min-width: 700px) {
+    .hero > *,
+    .row > * {
+      flex-basis: calc(50% - 15px);
+    }
+  }
+  .content {
+    max-width: 520px;
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  p {
+    margin: 0 0 6px;
+    color: var(--text-soft);
+    font-size: 16px;
+  }
+  a {
+    color: var(--primary);
+  }
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .button {
+    display: inline-block;
+    padding: 6px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    background: var(--primary);
+    color: #fff;
+    border: 1px solid transparent;
+    transition: box-shadow 0.2s;
+  }
+  .button:hover {
+    box-shadow: inset 0 0 0 99em rgba(0, 0, 0, 0.12);
+  }
+  .button.ghost {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text);
+  }
+  .button.ghost:hover {
+    box-shadow: inset 0 0 0 99em rgba(0, 0, 0, 0.05);
+  }
+  pre {
+    margin: 0;
+    background: var(--code-bg);
+    border-radius: 10px;
+    padding: 9px 11px;
+    overflow-x: auto;
+    font: 13px/1.7 var(--font-mono);
+    color: var(--text);
+  }
+  pre.install {
+    display: inline-block;
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+  @media (min-width: 600px) {
+    pre {
+      padding: 16px 18px;
+    }
+  }
+  p code {
+    background: var(--code-bg);
+    padding: 0 5px;
+    border-radius: 5px;
+    font: 0.9em/1 var(--font-mono);
+  }
+  pre code .comment {
+    color: #8a94a6;
+  }
+  pre code .keyword {
+    color: var(--primary-dark);
+  }
+  pre code .string {
+    color: var(--color-tip);
+  }
+  pre code .number {
+    color: #905;
+  }
+  pre code .type {
+    color: var(--color-note);
+  }
+  pre code .function {
+    color: #ca0029;
+  }
+  pre code .operator {
+    color: #a67f59;
+  }
+  .features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .features > .feature {
+    flex: 1 1 100%;
+  }
+  @media (min-width: 500px) {
+    .features {
+      gap: 30px;
+    }
+    .features > .feature {
+      flex-basis: calc(50% - 15px);
+    }
+  }
+  @media (min-width: 900px) {
+    .features > .feature {
+      flex-basis: calc(33.333% - 20px);
+    }
+  }
+  .feature {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 15px 17px;
+    box-shadow: 0 1px 3px rgba(20, 20, 45, 0.05);
+  }
+  .feature header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .feature header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text);
+  }
+  .feature header svg,
+  .feature header img {
+    width: 22px;
+    height: 22px;
+    flex: none;
+  }
+  .feature header svg {
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .feature header svg.filled {
+    fill: var(--text);
+    stroke: none;
+  }
+  .feature p {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 14.5px;
+  }
+  .separator {
+    margin: 52px 0;
+  }
+  .separator svg {
+    display: block;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .separator circle {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+  }
+  .separator line {
+    stroke: var(--line);
+    stroke-width: 2;
+  }
+  .splash img {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(20, 20, 45, 0.05);
+  }
+  footer {
+    margin-top: 8px;
+    text-align: center;
+  }
+</style>
 
-<section class="hero flex center nowrap">
+<section class="hero">
   <div>
     <h1>Polystore</h1>
     <p>
@@ -8,13 +217,13 @@
       KV store, both front-end and backend. Supports substores and intuitive
       expiration times:
     </p>
-    <pre class="small">npm install polystore</pre>
+    <pre class="install">npm install polystore</pre>
     <div class="buttons">
       <a class="button" href="/documentation">Documentation</a>
-      <a class="pseudo button" href="https://francisco.io/">Get JS help</a>
+      <a class="button ghost" href="https://francisco.io/">Get JS help</a>
     </div>
   </div>
-  <div style="width: 590px; max-width: 100%">
+  <div>
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
 import { createClient } from "redis";
 
@@ -26,193 +235,152 @@ console.log(await store.get("hi"));
   </div>
 </section>
 
-<div class="separator">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 20">
-    <circle cx="10" cy="10" r="3" />
-    <line x1="20" y1="10" x2="260" y2="10" />
-    <circle cx="270" cy="10" r="3" />
-    <circle class="empty" cx="283" cy="10" r="3" />
-    <circle class="empty" cx="300" cy="10" r="5" />
-    <circle class="empty" cx="317" cy="10" r="3" />
-    <circle cx="330" cy="10" r="3" />
-    <line x1="340" y1="10" x2="580" y2="10" />
-    <circle cx="590" cy="10" r="3" />
-  </svg>
-</div>
-
-<section class="features flex one two-500 three-900">
-  <div>
-    <div class="feature">
-      <header>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path
-            d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"
-          />
-        </svg>
-        <h3>Easy peasy</h3>
-      </header>
-      <p>
-        It's a KV store. It has <code>set()</code>, <code>get()</code>,
-        <code>has()</code>, <code>add()</code>, <code>del()</code>
-        <a href="/documentation#api" target="_blank">and more</a>.
-      </p>
-    </div>
+<section class="features">
+  <div class="feature">
+    <header>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path
+          d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"
+        />
+      </svg>
+      <h3>Easy peasy</h3>
+    </header>
+    <p>
+      It's a KV store. It has <code>set()</code>, <code>get()</code>,
+      <code>has()</code>, <code>add()</code>, <code>del()</code>
+      <a href="/documentation#api" target="_blank">and more</a>.
+    </p>
   </div>
 
-  <div>
-    <div class="feature">
-      <header>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-        </svg>
-        <h3>Documented</h3>
-      </header>
-      <p>
-        <a href="/documentation#getting-started">Getting started</a>,
-        <a href="/documentation#api">API</a>,
-        <a href="/documentation#adapters">Adapters</a> and
-        <a href="/documentation#creating-a-store">custom stores</a> fully
-        documented for you.
-      </p>
-    </div>
-  </div>
-  <div>
-    <div class="feature">
-      <header>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-        <h3>Tested and Typed</h3>
-      </header>
-      <p>
-        <a
-          href="https://github.com/franciscop/polystore/actions"
-          target="_blank"
-          >1600+ tests</a
-        >, Typescript and JSDocs for the best experience using the library.
-      </p>
-    </div>
+  <div class="feature">
+    <header>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+      </svg>
+      <h3>Documented</h3>
+    </header>
+    <p>
+      <a href="/documentation#getting-started">Getting started</a>,
+      <a href="/documentation#api">API</a>,
+      <a href="/documentation#adapters">Adapters</a> and
+      <a href="/documentation#creating-a-store">custom stores</a> fully
+      documented for you.
+    </p>
   </div>
 
-  <div>
-    <div class="feature">
-      <header>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="feather feather-clock"
-        >
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        <h3>Intuitive expirations</h3>
-      </header>
-      <p>
-        Write the TTL as <code>"100s"</code>, <code>"1week"</code>,
-        <code>"1h"</code> and forget time-related bugs.
-      </p>
-    </div>
+  <div class="feature">
+    <header>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <h3>Tested and Typed</h3>
+    </header>
+    <p>
+      <a
+        href="https://github.com/franciscop/polystore/actions"
+        target="_blank"
+        >1600+ tests</a
+      >, Typescript and JSDocs for the best experience using the library.
+    </p>
   </div>
 
-  <div>
-    <div class="feature">
-      <header>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M20.24 12.24a6 6 0 00-8.49-8.49L5 10.5V19h8.5zM16 8L2 22M17.5 15H9"
-          />
-        </svg>
-        <h3>Tiny Footprint</h3>
-      </header>
-      <p>
-        At
-        <a href="https://bundlephobia.com/package/polystore" target="_blank"
-          >just <strong>4kb</strong></a
-        >
-        (min+gzip), the impact on your app loading time is minimal.
-      </p>
-    </div>
+  <div class="feature">
+    <header>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="feather feather-clock"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <h3>Intuitive expirations</h3>
+    </header>
+    <p>
+      Write the TTL as <code>"100s"</code>, <code>"1week"</code>,
+      <code>"1h"</code> and forget time-related bugs.
+    </p>
   </div>
 
-  <div>
-    <div class="feature">
-      <header>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="feather feather-globe"
-        >
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path
-            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-          ></path>
-        </svg>
-        <h3>Universal Javascript</h3>
-      </header>
-      <p>
-        Use it with React, Angular, Plain JS, Node.js, Bun, Tauri, Electron,
-        etc.
-      </p>
-    </div>
+  <div class="feature">
+    <header>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path
+          d="M20.24 12.24a6 6 0 00-8.49-8.49L5 10.5V19h8.5zM16 8L2 22M17.5 15H9"
+        />
+      </svg>
+      <h3>Tiny Footprint</h3>
+    </header>
+    <p>
+      At
+      <a href="https://bundlephobia.com/package/polystore" target="_blank"
+        >just <strong>4kb</strong></a
+      >
+      (min+gzip), the impact on your app loading time is minimal.
+    </p>
+  </div>
+
+  <div class="feature">
+    <header>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="feather feather-globe"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path
+          d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+        ></path>
+      </svg>
+      <h3>Universal Javascript</h3>
+    </header>
+    <p>
+      Use it with React, Angular, Plain JS, Node.js, Bun, Tauri, Electron,
+      etc.
+    </p>
   </div>
 </section>
 
-<div class="separator">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 20">
-    <circle cx="10" cy="10" r="3" />
-    <line x1="20" y1="10" x2="260" y2="10" />
-    <circle cx="270" cy="10" r="3" />
-    <circle class="empty" cx="283" cy="10" r="3" />
-    <circle class="empty" cx="300" cy="10" r="5" />
-    <circle class="empty" cx="317" cy="10" r="3" />
-    <circle cx="330" cy="10" r="3" />
-    <line x1="340" y1="10" x2="580" y2="10" />
-    <circle cx="590" cy="10" r="3" />
-  </svg>
-</div>
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>🧩 Support for many adapters</h2>
-      <p>
-        We support 10+ adapters with documentation for each of them. Adding your
-        own adapter is also easy, you only need to define 3 methods:
-        <code>.get()</code>, <code>.set()</code> and <code>.entries()</code>.
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#adapters">
-          Adapters Documentation
-        </a>
-      </p>
-    </div>
+<section class="row">
+  <div class="content">
+    <h2>🧩 Support for many adapters</h2>
+    <p>
+      We support 10+ adapters with documentation for each of them. Adding your
+      own adapter is also easy, you only need to define 3 methods:
+      <code>.get()</code>, <code>.set()</code> and <code>.entries()</code>.
+    </p>
+    <p>
+      <a class="button ghost" href="/documentation#adapters">
+        Adapters Documentation
+      </a>
+    </p>
   </div>
   <div>
     <pre><code class="language-js">import kv from &quot;polystore&quot;;
@@ -226,22 +394,18 @@ const store6 = kv(yourOwnStore);</code></pre>
   </div>
 </section>
 
-<br />
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>🏖️ Clean and intuitive API</h2>
-      <p>
-        A set of high-performance item operations with
-        <code>.add()</code>, <code>.set()</code>, <code>.get()</code>,
-        <code>.has()</code> or <code>.del()</code>. We also provide group
-        operations to manage your data easily.
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#api">API Documentation</a>
-      </p>
-    </div>
+<section class="row">
+  <div class="content">
+    <h2>🏖️ Clean and intuitive API</h2>
+    <p>
+      A set of high-performance item operations with
+      <code>.add()</code>, <code>.set()</code>, <code>.get()</code>,
+      <code>.has()</code> or <code>.del()</code>. We also provide group
+      operations to manage your data easily.
+    </p>
+    <p>
+      <a class="button ghost" href="/documentation#api">API Documentation</a>
+    </p>
   </div>
   <div>
     <pre><code class="language-js">import kv from "polystore";
@@ -255,22 +419,18 @@ const key1 = await store.del("key1");</code></pre>
   </div>
 </section>
 
-<br />
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>⏰ Easy expiration time</h2>
-      <p>
-        Simply write <code>"1day"</code> with ANY adapter and forget about
-        calculating TTL, Unix time, seconds vs milliseconds bugs, etc.
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#expiration-explained">
-          Expiration Documentation
-        </a>
-      </p>
-    </div>
+<section class="row">
+  <div class="content">
+    <h2>⏰ Easy expiration time</h2>
+    <p>
+      Simply write <code>"1day"</code> with ANY adapter and forget about
+      calculating TTL, Unix time, seconds vs milliseconds bugs, etc.
+    </p>
+    <p>
+      <a class="button ghost" href="/documentation#expiration-explained">
+        Expiration Documentation
+      </a>
+    </p>
   </div>
   <div>
     <pre><code class="language-js">await store.get("key");  // null
@@ -284,23 +444,19 @@ await store.get("key");  // null</code></pre>
   </div>
 </section>
 
-<br />
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>🛗 Create substores</h2>
-      <p>
-        Create a new substore with <code>.prefix()</code>, then you can ignore
-        anything related to the prefix and treat it as if it was a brand new
-        store.
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#substores"
-          >Substore Documentation
-        </a>
-      </p>
-    </div>
+<section class="row">
+  <div class="content">
+    <h2>🛗 Create substores</h2>
+    <p>
+      Create a new substore with <code>.prefix()</code>, then you can ignore
+      anything related to the prefix and treat it as if it was a brand new
+      store.
+    </p>
+    <p>
+      <a class="button ghost" href="/documentation#substores"
+        >Substore Documentation
+      </a>
+    </p>
   </div>
   <div>
     <pre><code class="language-js">const session = store.prefix("session:");
@@ -314,23 +470,19 @@ console.log(await store.all());
   </div>
 </section>
 
-<br />
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>🏃‍♂️‍➡️ Iterate over the data</h2>
-      <p>
-        Iterate asynchronously straight on the store! It will return a pair of
-        <code>[key, value]</code> for each of the entries. You can also use it
-        on a substore as well.
-      </p>
-      <p>
-        <a class="pseudo button" href="/documentation#iterator">
-          Iterator Documentation
-        </a>
-      </p>
-    </div>
+<section class="row">
+  <div class="content">
+    <h2>🏃‍♂️‍➡️ Iterate over the data</h2>
+    <p>
+      Iterate asynchronously straight on the store! It will return a pair of
+      <code>[key, value]</code> for each of the entries. You can also use it
+      on a substore as well.
+    </p>
+    <p>
+      <a class="button ghost" href="/documentation#iterator">
+        Iterator Documentation
+      </a>
+    </p>
   </div>
   <div>
     <pre><code class="language-js">for await (const [key, value] of store) {
@@ -344,23 +496,19 @@ for await (const [key, value] of session) {
   </div>
 </section>
 
-<br />
-
-<section class="hero flex one two-900 center">
-  <div>
-    <div class="content">
-      <h2>✨ Magic Autocomplete</h2>
-      <p>
-        Added jsdocs so the expected parameters and return value will be clearly
-        defined in your IDE/Code Editor.
-      </p>
-      <p>
-        We added the <em>description</em>, a representative <em>example</em> and
-        even a <em>link</em> for more information for
-        <strong>every one</strong> of the methods available! We want you to have
-        the best development experience possible with Polystore!
-      </p>
-    </div>
+<section class="row">
+  <div class="content">
+    <h2>✨ Magic Autocomplete</h2>
+    <p>
+      Added jsdocs so the expected parameters and return value will be clearly
+      defined in your IDE/Code Editor.
+    </p>
+    <p>
+      We added the <em>description</em>, a representative <em>example</em> and
+      even a <em>link</em> for more information for
+      <strong>every one</strong> of the methods available! We want you to have
+      the best development experience possible with Polystore!
+    </p>
   </div>
   <div>
     <div class="splash">
@@ -372,21 +520,7 @@ for await (const [key, value] of session) {
   </div>
 </section>
 
-<div class="separator">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 20">
-    <circle cx="10" cy="10" r="3" />
-    <line x1="20" y1="10" x2="260" y2="10" />
-    <circle cx="270" cy="10" r="3" />
-    <circle class="empty" cx="283" cy="10" r="3" />
-    <circle class="empty" cx="300" cy="10" r="5" />
-    <circle class="empty" cx="317" cy="10" r="3" />
-    <circle cx="330" cy="10" r="3" />
-    <line x1="340" y1="10" x2="580" y2="10" />
-    <circle cx="590" cy="10" r="3" />
-  </svg>
-</div>
-
-<div style="text-align: center">
+<footer>
   <p>
     Created by
     <a href="https://francisco.io/" target="_blank">Francisco</a> and
@@ -404,4 +538,4 @@ for await (const [key, value] of session) {
       >Book a call</a
     >.
   </p>
-</div>
+</footer>
