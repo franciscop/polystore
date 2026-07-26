@@ -720,9 +720,9 @@ var Store = class _Store {
     this.promise = Promise.resolve(adapterInput).then(async (raw) => {
       this.adapter = this.#find(raw);
       this.#validate(this.adapter);
-      this.promise = null;
       await this.adapter.promise;
       this.type = this.adapter?.TYPE || this.type;
+      this.promise = null;
       return raw;
     });
   }
@@ -757,7 +757,7 @@ var Store = class _Store {
     }
   }
   // Check if the given data is fresh or not
-  #isFresh(data, key) {
+  #isFresh(data) {
     if (!data || typeof data !== "object" || !("value" in data)) {
       return false;
     }
@@ -804,7 +804,7 @@ var Store = class _Store {
     } else {
       const data = await this.adapter.get(id) ?? null;
       if (data === null) return null;
-      if (!this.#isFresh(data, key)) return null;
+      if (!this.#isFresh(data)) return null;
       return data.value;
     }
   }
@@ -879,7 +879,7 @@ var Store = class _Store {
     }
     for await (const [name, data] of this.adapter.iterate(this.PREFIX)) {
       const key = name.slice(this.PREFIX.length);
-      if (this.#isFresh(data, key)) {
+      if (this.#isFresh(data)) {
         yield [key, data.value];
       }
     }
@@ -893,7 +893,7 @@ var Store = class _Store {
         return entries.map(([k, v]) => [trim(k), v]);
       } else {
         const entries = await this.adapter.entries(this.PREFIX);
-        return entries.map(([k, v]) => [trim(k), v]).filter(([key, data]) => this.#isFresh(data, key)).map(([key, data]) => [key, data.value]);
+        return entries.map(([k, v]) => [trim(k), v]).filter(([, data]) => this.#isFresh(data)).map(([key, data]) => [key, data.value]);
       }
     }
     if (this.adapter.HAS_EXPIRATION) {
@@ -905,7 +905,7 @@ var Store = class _Store {
     } else {
       const list = [];
       for await (const [k, data] of this.adapter.iterate(this.PREFIX)) {
-        if (this.#isFresh(data, trim(k))) {
+        if (this.#isFresh(data)) {
           list.push([trim(k), data.value]);
         }
       }

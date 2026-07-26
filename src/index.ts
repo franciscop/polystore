@@ -29,9 +29,11 @@ class Store<TD extends Serializable = Serializable> {
     this.promise = Promise.resolve(adapterInput).then(async (raw) => {
       this.adapter = this.#find(raw);
       this.#validate(this.adapter);
-      this.promise = null;
+      // Adapters like File and Folder finish setting themselves up
+      // asynchronously, so only mark the store as ready once they are
       await this.adapter.promise;
       this.type = this.adapter?.TYPE || this.type;
+      this.promise = null;
       return raw;
     });
   }
@@ -84,9 +86,8 @@ class Store<TD extends Serializable = Serializable> {
   }
 
   // Check if the given data is fresh or not
-  #isFresh(data: any, key?: string): data is StoreData {
-    // Should never happen, but COULD happen; schedule it for
-    // removal and mark it as stale
+  #isFresh(data: any): data is StoreData {
+    // Should never happen, but COULD happen; treat it as stale
     if (!data || typeof data !== "object" || !("value" in data)) {
       return false;
     }
@@ -206,7 +207,7 @@ class Store<TD extends Serializable = Serializable> {
       // No value; nothing to do/check
       if (data === null) return null;
 
-      if (!this.#isFresh(data, key)) return null;
+      if (!this.#isFresh(data)) return null;
       return data.value;
     }
   }
@@ -313,7 +314,7 @@ class Store<TD extends Serializable = Serializable> {
 
     for await (const [name, data] of this.adapter.iterate<T>(this.PREFIX)) {
       const key = name.slice(this.PREFIX.length);
-      if (this.#isFresh(data, key)) {
+      if (this.#isFresh(data)) {
         yield [key, data.value];
       }
     }
@@ -347,7 +348,7 @@ class Store<TD extends Serializable = Serializable> {
         const entries = await this.adapter.entries<T>(this.PREFIX);
         return entries
           .map(([k, v]) => [trim(k), v] as const)
-          .filter(([key, data]) => this.#isFresh(data, key))
+          .filter(([, data]) => this.#isFresh(data))
           .map(([key, data]) => [key, data.value]);
       }
     }
@@ -362,7 +363,7 @@ class Store<TD extends Serializable = Serializable> {
     } else {
       const list: [string, T][] = [];
       for await (const [k, data] of this.adapter.iterate<T>(this.PREFIX)) {
-        if (this.#isFresh(data, trim(k))) {
+        if (this.#isFresh(data)) {
           list.push([trim(k), data.value]);
         }
       }

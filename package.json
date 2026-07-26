@@ -26,8 +26,8 @@
     "service:server": "bun ./src/server.ts",
     "services": "concurrently \"npm run service:db\" \"npm run service:redis\" \"npm run service:postgres\" \"npm run service:server\"",
     "test": "bun run test:bun && bun run test:jest",
-    "test:bun": "bun test ./test/index.test.ts ./src/plugins/",
-    "test:jest": "jest ./test/index.test.ts --detectOpenHandles --forceExit"
+    "test:bun": "bun test ./test/index.test.ts ./test/init.test.ts ./src/plugins/",
+    "test:jest": "jest ./test/index.test.ts ./test/init.test.ts --detectOpenHandles --forceExit"
   },
   "workspaces": [
     "examples/*"
