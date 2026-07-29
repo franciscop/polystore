@@ -126,7 +126,7 @@ store.set<number>("abc", "hello"); // FAILS
 
 Store values must be JSON-like data. The Serializable type represents values composed of `string`, `number`, `boolean`, `null`, and `arrays` and plain `objects` whose values are serializable. Class instances or non-plain objects will lose their prototypes and methods when stored.
 
-These are the exported types, `Adapter`, `Serializable`, `Store` and `Options`:
+These are the exported **types**, `Adapter`, `Serializable`, `Store` and `Options`:
 
 ```ts
 import kv from "polystore";
@@ -138,7 +138,7 @@ const key = await store.set('hello', 'b', opts as Options)
 const value: Serializable = await store.get('hello');
 ```
 
-These are type-only exports, so they can be used in annotations but not as values: stores are created with `kv()`, and `new Store()` or `value instanceof Store` are compile errors. If a value may or may not already be a store, pass it to `kv()`: it returns an equivalent store either way, keeping any prefix and expiration.
+If you need to normalize a value that may or may not already be a store, pass it back through `kv()`, which is idempotent.
 
 ### .get()
 
