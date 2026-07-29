@@ -284,5 +284,6 @@ declare class Store<TD extends Serializable = Serializable> {
 }
 declare function createStore(): Store<Serializable>;
 declare function createStore<T extends Serializable = Serializable>(adapter?: any, options?: Options): Store<T>;
+type StoreInstance<TD extends Serializable = Serializable> = Store<TD>;
 
-export { type Adapter, type Serializable, Store, createStore as default };
+export { type Adapter, type Options, type Serializable, type StoreInstance as Store, createStore as default };

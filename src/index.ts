@@ -582,4 +582,8 @@ export default function createStore<T extends Serializable = Serializable>(
 export default function createStore(adapter?: any, options?: Options): Store {
   return new Store(adapter, options);
 }
-export type { Adapter, Serializable, Store };
+// Export the store as a type alias rather than as the class itself, so
+// that it can be used in annotations but `new Store()` and
+// `instanceof Store` are compile errors; stores are created with kv()
+type StoreInstance<TD extends Serializable = Serializable> = Store<TD>;
+export type { Adapter, Options, Serializable, StoreInstance as Store };

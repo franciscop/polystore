@@ -5,7 +5,7 @@ import localForage from "localforage";
 import { Client } from "pg";
 import { createClient } from "redis";
 
-import kv, { Store } from "../src/index.ts";
+import kv, { type Store } from "../src/index.ts";
 // import customCloudflare from "./customCloudflare.ts";
 import customFull from "./customFull.ts";
 import customSimple from "./customSimple.ts";
