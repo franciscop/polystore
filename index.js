@@ -717,7 +717,12 @@ var Store = class _Store {
   }) {
     this.PREFIX = options.prefix || "";
     this.EXPIRES = parse(options.expires || null);
+    if (adapterInput instanceof _Store) {
+      this.PREFIX = adapterInput.PREFIX + this.PREFIX;
+      this.EXPIRES = this.EXPIRES ?? adapterInput.EXPIRES;
+    }
     this.promise = Promise.resolve(adapterInput).then(async (raw) => {
+      if (raw instanceof _Store) await raw.promise;
       this.adapter = this.#find(raw);
       this.#validate(this.adapter);
       await this.adapter.promise;

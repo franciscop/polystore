@@ -26,7 +26,16 @@ class Store<TD extends Serializable = Serializable> {
     this.PREFIX = options.prefix || "";
     this.EXPIRES = parse(options.expires || null);
 
+    // Re-wrapping an existing store keeps its config, stacking the
+    // prefixes the same way that chained .prefix() calls do
+    if (adapterInput instanceof Store) {
+      this.PREFIX = adapterInput.PREFIX + this.PREFIX;
+      this.EXPIRES = this.EXPIRES ?? adapterInput.EXPIRES;
+    }
+
     this.promise = Promise.resolve(adapterInput).then(async (raw) => {
+      // An inner store might still be resolving its own adapter
+      if (raw instanceof Store) await raw.promise;
       this.adapter = this.#find(raw);
       this.#validate(this.adapter);
       // Adapters like File and Folder finish setting themselves up
