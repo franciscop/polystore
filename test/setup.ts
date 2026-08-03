@@ -6,7 +6,6 @@ import {
   describe,
   expect,
   it,
-  jest,
 } from "bun:test";
 import { JSDOM } from "jsdom";
 
@@ -39,4 +38,3 @@ const window = dom.window;
 (globalThis as any).afterAll = afterAll;
 (globalThis as any).beforeAll = beforeAll;
 (globalThis as any).afterEach = afterEach;
-(globalThis as any).jest = jest;

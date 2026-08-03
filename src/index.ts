@@ -79,8 +79,8 @@ class Store<TD extends Serializable = Serializable> {
 
   #validate(adapter: Adapter): void {
     if (!adapter) throw new Error("No adapter received");
-    if (!adapter.set || !adapter.get || !adapter.iterate) {
-      throw new Error("Adapter should have .get(), .set() and .iterate()");
+    if (!adapter.set || !adapter.get) {
+      throw new Error("Adapter should have .get() and .set()");
     }
 
     // No need to validate the methods
@@ -103,6 +103,13 @@ class Store<TD extends Serializable = Serializable> {
 
     // It never expires, or it's fresh
     return data.expires === null || data.expires > Date.now();
+  }
+
+  // Adapters can skip .iterate() (some backends cannot list their keys),
+  // giving up the group methods but keeping all of the single-key ones
+  #assertIterate(): void {
+    if (this.adapter.iterate) return;
+    throw new Error(`${this.type} does not support .iterate()`);
   }
 
   // Normalize returns the instance's `prefix` and `expires`
@@ -312,16 +319,17 @@ class Store<TD extends Serializable = Serializable> {
     unknown
   > {
     await this.promise;
+    this.#assertIterate();
 
     if (this.adapter.HAS_EXPIRATION) {
-      for await (const [name, data] of this.adapter.iterate<T>(this.PREFIX)) {
+      for await (const [name, data] of this.adapter.iterate!<T>(this.PREFIX)) {
         const key = name.slice(this.PREFIX.length);
         yield [key, data];
       }
       return;
     }
 
-    for await (const [name, data] of this.adapter.iterate<T>(this.PREFIX)) {
+    for await (const [name, data] of this.adapter.iterate!<T>(this.PREFIX)) {
       const key = name.slice(this.PREFIX.length);
       if (this.#isFresh(data)) {
         yield [key, data.value];
@@ -363,15 +371,16 @@ class Store<TD extends Serializable = Serializable> {
     }
 
     // No native method, iterate then
+    this.#assertIterate();
     if (this.adapter.HAS_EXPIRATION) {
       const list: [string, T][] = [];
-      for await (const [k, v] of this.adapter.iterate<T>(this.PREFIX)) {
+      for await (const [k, v] of this.adapter.iterate!<T>(this.PREFIX)) {
         list.push([trim(k), v]);
       }
       return list;
     } else {
       const list: [string, T][] = [];
-      for await (const [k, data] of this.adapter.iterate<T>(this.PREFIX)) {
+      for await (const [k, data] of this.adapter.iterate!<T>(this.PREFIX)) {
         if (this.#isFresh(data)) {
           list.push([trim(k), data.value]);
         }

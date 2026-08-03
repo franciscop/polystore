@@ -28,7 +28,7 @@ export interface AdapterExpires {
     value: T,
     expires?: Expires,
   ): Promise<any> | any;
-  iterate<T extends Serializable>(
+  iterate?<T extends Serializable>(
     prefix: string,
   ):
     | AsyncGenerator<[string, T], void, unknown>
@@ -67,7 +67,7 @@ export interface AdapterNonExpires {
     value: StoreData<T> | null,
     ttl?: Expires,
   ): Promise<any> | any;
-  iterate<T extends Serializable>(
+  iterate?<T extends Serializable>(
     prefix: string,
   ):
     | AsyncGenerator<[string, StoreData<T>], void, unknown>

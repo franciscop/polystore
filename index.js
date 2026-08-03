@@ -284,7 +284,9 @@ var Folder = class extends Adapter {
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {
     });
   })();
-  file = (key) => this.folder + key + ".json";
+  // Encode the key so it's always a valid filename (e.g. a "cache:" prefix
+  // would otherwise produce a colon, which Windows rejects in filenames)
+  file = (key) => this.folder + encodeURIComponent(key).replace(/\*/g, "%2A") + ".json";
   get = async (key) => {
     const file = await this.fsp.readFile(this.file(key), "utf8").catch(noFileOk);
     return this.decode(file);
@@ -297,9 +299,10 @@ var Folder = class extends Adapter {
   };
   async *iterate(prefix = "") {
     const all = await this.fsp.readdir(this.folder);
-    const keys = all.filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
-    for (const name of keys) {
-      const key = name.slice(0, -".json".length);
+    for (const name of all) {
+      if (!name.endsWith(".json")) continue;
+      const key = decodeURIComponent(name.slice(0, -".json".length));
+      if (!key.startsWith(prefix)) continue;
       try {
         const data = await this.get(key);
         if (data !== null && data !== void 0) yield [key, data];
@@ -750,8 +753,8 @@ var Store = class _Store {
   }
   #validate(adapter) {
     if (!adapter) throw new Error("No adapter received");
-    if (!adapter.set || !adapter.get || !adapter.iterate) {
-      throw new Error("Adapter should have .get(), .set() and .iterate()");
+    if (!adapter.set || !adapter.get) {
+      throw new Error("Adapter should have .get() and .set()");
     }
     if (adapter.HAS_EXPIRATION) return;
     for (let method of ["has", "keys", "values"]) {
@@ -767,6 +770,12 @@ var Store = class _Store {
       return false;
     }
     return data.expires === null || data.expires > Date.now();
+  }
+  // Adapters can skip .iterate() (some backends cannot list their keys),
+  // giving up the group methods but keeping all of the single-key ones
+  #assertIterate() {
+    if (this.adapter.iterate) return;
+    throw new Error(`${this.type} does not support .iterate()`);
   }
   // Normalize returns the instance's `prefix` and `expires`
   #expiration(expires) {
@@ -875,6 +884,7 @@ var Store = class _Store {
   }
   async *[Symbol.asyncIterator]() {
     await this.promise;
+    this.#assertIterate();
     if (this.adapter.HAS_EXPIRATION) {
       for await (const [name, data] of this.adapter.iterate(this.PREFIX)) {
         const key = name.slice(this.PREFIX.length);
@@ -901,6 +911,7 @@ var Store = class _Store {
         return entries.map(([k, v]) => [trim(k), v]).filter(([, data]) => this.#isFresh(data)).map(([key, data]) => [key, data.value]);
       }
     }
+    this.#assertIterate();
     if (this.adapter.HAS_EXPIRATION) {
       const list = [];
       for await (const [k, v] of this.adapter.iterate(this.PREFIX)) {

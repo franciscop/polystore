@@ -18,7 +18,7 @@ interface AdapterExpires {
     test?: (raw: any) => boolean;
     get<T extends Serializable>(key: string): Promise<T | null> | T | null;
     set<T extends Serializable>(key: string, value: T, expires?: Expires): Promise<any> | any;
-    iterate<T extends Serializable>(prefix: string): AsyncGenerator<[string, T], void, unknown> | Generator<[string, T], void, unknown>;
+    iterate?<T extends Serializable>(prefix: string): AsyncGenerator<[string, T], void, unknown> | Generator<[string, T], void, unknown>;
     add?<T extends Serializable>(prefix: string, value: T, expires?: Expires): Promise<string>;
     has?(key: string): Promise<boolean> | boolean;
     del?(key: string): Promise<any> | any;
@@ -37,7 +37,7 @@ interface AdapterNonExpires {
     test?: (raw: any) => boolean;
     get<T extends Serializable>(key: string): Promise<StoreData<T> | null> | StoreData<T> | null;
     set<T extends Serializable>(key: string, value: StoreData<T> | null, ttl?: Expires): Promise<any> | any;
-    iterate<T extends Serializable>(prefix: string): AsyncGenerator<[string, StoreData<T>], void, unknown> | Generator<[string, StoreData<T>], void, unknown>;
+    iterate?<T extends Serializable>(prefix: string): AsyncGenerator<[string, StoreData<T>], void, unknown> | Generator<[string, StoreData<T>], void, unknown>;
     add?<T extends Serializable>(prefix: string, value: StoreData<T>, ttl?: Expires): Promise<string>;
     has?(key: string): Promise<boolean> | boolean;
     del?(key: string): Promise<any> | any;

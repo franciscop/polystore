@@ -8,10 +8,6 @@ import stores, { cannotTestExpiration, doNotSupportMs } from "./stores.ts";
 const delay = (t: number): Promise<void> =>
   new Promise((done) => setTimeout(done, t));
 
-console.log(
-  `\x1b[1m${typeof Bun === "undefined" ? "Jest" : "Bun"}\x1b[0m Testing\n`,
-);
-
 describe("File adapter detection", () => {
   it("matches a file:// URL with an extension", () => {
     expect(File.test("file:///path/to/store.json")).toBe(true);
@@ -43,7 +39,7 @@ describe("base API", () => {
 
   it("an empty object is not a valid store", async () => {
     expect(kv({}).get("any")).rejects.toThrow(
-      "Adapter should have .get(), .set() and .iterate()",
+      "Adapter should have .get() and .set()",
     );
   });
 
@@ -423,7 +419,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         await store.set("b", false);
         await store.set("c", "");
 
-        const items = [];
+        const items: [string, unknown][] = [];
         for await (const entry of store) items.push(entry);
 
         // They MUST appear exactly as stored
@@ -1055,7 +1051,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         await auth.set("a", "1");
         await auth.set("b", "2");
 
-        const items = [];
+        const items: [string, unknown][] = [];
         for await (const entry of auth) items.push(entry);
 
         expect(items.sort()).toEqual([

@@ -45,7 +45,7 @@ Available adapters for the KV store:
 - [**Postgres** `pg`](#postgres) (be): use PostgreSQL with the pg library.
 - [**Level** `new Level('example', { valueEncoding: 'json' })`](#level) (fe+be): support the whole Level ecosystem.
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
-- [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 3 methods!
+- [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 2 methods!
 
 I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser), idempotent (`kv(kv(A))` ~= `kv(A)`) and tiny (~4KB). For example, let's say you create an API library, then you can accept the stores from your client:
 
@@ -1583,6 +1583,8 @@ class MyClient {
   // Mandatory methods
   get (key): Promise<any>;
   set (key, value, null|number): Promise<null>;
+
+  // Optional; without it, the group methods of the store throw when called
   iterate(prefix): AsyncIterator<[string, any]>
 
   // Optional item methods (for optimization or customization)
@@ -1602,6 +1604,8 @@ class MyClient {
 ```
 
 Note that this is NOT the public API, it's the internal **adapter** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. for the adapter, the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's public API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
+
+Only `.get()` and `.set()` are mandatory, so backends that cannot list their keys (like memcached) can still be adapters. Without `.iterate()`, all of the single-key methods work normally (including expiration and prefixes), while the group methods (`.keys()`, `.values()`, `.entries()`, `.all()`, `.clear()` and the iterator) throw when called, unless you define their native counterparts.
 
 **Expires**: if you set the `HAS_EXPIRATION = true`, then you are indicating that the adapter WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the **seconds** for the key/value to will expire.
 

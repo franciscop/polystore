@@ -36,7 +36,10 @@ export default class Folder extends Adapter {
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
   })();
 
-  file = (key: string): string => this.folder + key + ".json";
+  // Encode the key so it's always a valid filename (e.g. a "cache:" prefix
+  // would otherwise produce a colon, which Windows rejects in filenames)
+  file = (key: string): string =>
+    this.folder + encodeURIComponent(key).replace(/\*/g, "%2A") + ".json";
 
   get = async <T extends Serializable>(
     key: string,
@@ -62,9 +65,10 @@ export default class Folder extends Adapter {
     prefix = "",
   ): AsyncGenerator<[string, StoreData<T>], void, unknown> {
     const all = await this.fsp.readdir(this.folder);
-    const keys = all.filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
-    for (const name of keys) {
-      const key = name.slice(0, -".json".length);
+    for (const name of all) {
+      if (!name.endsWith(".json")) continue;
+      const key = decodeURIComponent(name.slice(0, -".json".length));
+      if (!key.startsWith(prefix)) continue;
       try {
         const data = await this.get<T>(key);
         if (data !== null && data !== undefined) yield [key, data];
