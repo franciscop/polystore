@@ -3,6 +3,25 @@ export type Expires = number | null | string;
 
 export type Options = { prefix?: Prefix; expires?: Expires };
 
+// The built-in adapter types; open so that custom adapters can use
+// their own (the `string & {}` keeps autocomplete on the known ones)
+export type StoreType =
+  | "API"
+  | "CLOUDFLARE"
+  | "COOKIE"
+  | "ETCD3"
+  | "FILE"
+  | "FOLDER"
+  | "FORAGE"
+  | "LEVEL"
+  | "MEMORY"
+  | "POSTGRES"
+  | "REDIS"
+  | "SQLITE"
+  | "STORAGE"
+  | "UNKNOWN"
+  | (string & {});
+
 export type StoreData<T extends Serializable = Serializable> = {
   value: T;
   expires: number | null;
@@ -17,7 +36,7 @@ export type Serializable =
   | { [key: string]: Serializable | null };
 
 export interface AdapterExpires {
-  TYPE: string;
+  TYPE: StoreType;
   HAS_EXPIRATION: true;
   promise?: Promise<any>;
   test?: (raw: any) => boolean;
@@ -54,7 +73,7 @@ export interface AdapterExpires {
 }
 
 export interface AdapterNonExpires {
-  TYPE: string;
+  TYPE: StoreType;
   HAS_EXPIRATION: false;
   promise?: Promise<any>;
   test?: (raw: any) => boolean;

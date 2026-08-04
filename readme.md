@@ -76,8 +76,8 @@ import { createClient } from "redis";
 // Import the Redis configuration
 const REDIS = process.env.REDIS_URL;
 
-// Wrap the redis creation with Polystore (kv())
-const store = kv(createClient({ url: REDIS }).connect());
+// Wrap the redis client with Polystore (kv()); it connects automatically
+const store = kv(createClient({ url: REDIS }));
 ```
 
 This follows the recommended naming, the default exported `kv()` for the base function, then `store` for the store instance. Now your store is ready to use! Add, set, get, del different keys. [See full API](#api).
@@ -104,6 +104,13 @@ const store = kv(MyClientInstance, { expires: null, prefix: "" });
 // use the store
 ```
 
+Pass the client itself, not a promise of it; clients with a connection (Redis, Postgres) are connected automatically. This way the store knows its adapter immediately:
+
+```js
+const store = kv(createClient());
+store.type; // "REDIS"
+```
+
 You can enforce **types** for the values either at store creation or at the method level:
 
 ```ts
@@ -126,16 +133,17 @@ store.set<number>("abc", "hello"); // FAILS
 
 Store values must be JSON-like data. The Serializable type represents values composed of `string`, `number`, `boolean`, `null`, and `arrays` and plain `objects` whose values are serializable. Class instances or non-plain objects will lose their prototypes and methods when stored.
 
-These are the exported **types**, `Adapter`, `Serializable`, `Store` and `Options`:
+These are the exported **types**, `Adapter`, `Serializable`, `Store`, `StoreType` and `Options`:
 
 ```ts
 import kv from "polystore";
-import type { Adapter, Serializable, Store, Options } from "polystore";
+import type { Adapter, Serializable, Store, StoreType, Options } from "polystore";
 
 const adapter: Adapter = ...;  // See #creating-a-store
 const store: Store = kv(adapter, opts as Options);
 const key = await store.set('hello', 'b', opts as Options)
 const value: Serializable = await store.get('hello');
+const type: StoreType = store.type;  // "MEMORY", "REDIS", "FILE", ...
 ```
 
 If you need to normalize a value that may or may not already be a store, pass it back through `kv()`, which is idempotent.
@@ -823,20 +831,20 @@ console.log(await store.get("key1"));
 
 ### Redis
 
-Supports the official Node Redis Client. You can pass either the client or the promise:
+Supports the official Node Redis Client. Pass the client and Polystore connects it automatically:
 
 ```js
 import kv from "polystore";
 import { createClient } from "redis";
 
-const store = kv(createClient().connect());
+const store = kv(createClient());
 
 await store.set("key1", "Hello world", { expires: "1h" });
 console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-You don't need to `await` for the connect or similar, this will process it properly.
+You don't need to call `.connect()`, but a client you already connected (or are connecting) works too.
 
 > Note: the Redis client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
@@ -1173,8 +1181,6 @@ import kv from "polystore";
 import { Client } from "pg";
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
-await client.connect();
-
 const store = kv(client);
 
 await store.set("key1", "Hello world", { expires: "1h" });
@@ -1182,7 +1188,7 @@ console.log(await store.get("key1"));
 // "Hello world"
 ```
 
-Polystore will initialize the schema automatically: it creates the `kv` table and expiration index if they do not exist yet, and does not fail if they already exist.
+Polystore connects the client automatically (a client you already connected works too) and initializes the schema: it creates the `kv` table and expiration index if they do not exist yet, and does not fail if they already exist.
 
 Required schema (auto-created by Polystore):
 
@@ -1251,17 +1257,17 @@ import { createClient } from "redis";
 // `npm install polystore`
 import expressStore from "polystore/express";
 
-const store = expressStore(createClient().connect());
+const store = expressStore(createClient());
 
 app.use(session({ secret: "my-secret", store }));
 ```
 
-Any adapter works — Redis, Postgres, SQLite, file-based, etc. Session TTL is read automatically from `cookie.originalMaxAge` so you don't need to configure it separately.
+Any adapter works: Redis, Postgres, SQLite, file-based, etc. Session TTL is read automatically from `cookie.originalMaxAge` so you don't need to configure it separately.
 
 Use `.prefix()` to namespace sessions, for example in a multi-tenant app:
 
 ```js
-const store = expressStore(createClient().connect());
+const store = expressStore(createClient());
 
 app.use((req, res, next) => {
   req.sessionStore = store.prefix(`tenant:${req.params.tenant}:`);
@@ -1296,7 +1302,7 @@ By default it uses an in-memory `Map`. For production, pass any Polystore adapte
 import { createClient } from "redis";
 import kv from "polystore/hono-sessions";
 
-const store = kv(createClient().connect());
+const store = kv(createClient());
 
 app.use("*", sessionMiddleware({
   store,
@@ -1305,12 +1311,12 @@ app.use("*", sessionMiddleware({
 }));
 ```
 
-Session TTL is derived automatically from `expireAfterSeconds` — hono-sessions writes it to `_expire` on the session data, and Polystore uses it to set the underlying store TTL for automatic cleanup.
+Session TTL is derived automatically from `expireAfterSeconds`: hono-sessions writes it to `_expire` on the session data, and Polystore uses it to set the underlying store TTL for automatic cleanup.
 
 Use `.prefix()` to namespace sessions per tenant:
 
 ```js
-const store = honoStore(createClient().connect());
+const store = honoStore(createClient());
 
 app.use("*", (c, next) => {
   const tenant = c.req.param("tenant");
@@ -1326,7 +1332,7 @@ app.use("*", (c, next) => {
 
 > [Full example →](https://github.com/franciscop/polystore/tree/master/examples/better-auth)
 
-Use any Polystore-compatible store as the [`secondaryStorage`](https://www.better-auth.com/docs/concepts/database#secondary-storage) for [Better Auth](https://better-auth.com). No database required — Polystore handles session caching and token storage:
+Use any Polystore-compatible store as the [`secondaryStorage`](https://www.better-auth.com/docs/concepts/database#secondary-storage) for [Better Auth](https://better-auth.com). No database required, Polystore handles session caching and token storage:
 
 ```js
 import { betterAuth } from "better-auth";
@@ -1343,13 +1349,13 @@ For production, swap in any Polystore adapter:
 ```js
 import { createClient } from "redis";
 
-secondaryStorage: betterAuthStorage(createClient().connect())
+secondaryStorage: betterAuthStorage(createClient())
 ```
 
 Use `.prefix()` to namespace keys in a shared store:
 
 ```js
-secondaryStorage: betterAuthStorage(createClient().connect()).prefix("auth:")
+secondaryStorage: betterAuthStorage(createClient()).prefix("auth:")
 ```
 
 ### Axios Cache Interceptor
@@ -1379,7 +1385,7 @@ import { createClient } from "redis";
 import axiosCacheStorage from "polystore/axios-cache-interceptor";
 
 const http = setupCache(axios, {
-  storage: axiosCacheStorage(createClient().connect()),
+  storage: axiosCacheStorage(createClient()),
 });
 ```
 
@@ -1387,7 +1393,7 @@ Use `.prefix()` to namespace cache keys in a shared store:
 
 ```js
 const http = setupCache(axios, {
-  storage: axiosCacheStorage(createClient().connect()).prefix("api-cache:"),
+  storage: axiosCacheStorage(createClient()).prefix("api-cache:"),
 });
 ```
 
@@ -1416,7 +1422,7 @@ Swap the backend without changing anything else:
 import { createClient } from "redis";
 
 const api = fch.create({
-  cache: kv(createClient().connect(), { expires: "10min" }),
+  cache: kv(createClient(), { expires: "10min" }),
 });
 ```
 
@@ -1576,6 +1582,10 @@ To create a store, you define a class with these properties and methods:
 
 ```js
 class MyClient {
+  // The store's `.type`; declare it `as const` in TS and `store.type`
+  // is narrowed to this exact literal
+  TYPE = "MYSTORE";
+
   // If this is set to `true`, the CLIENT (you) handle the expiration, so
   // the `.set()` and `.add()` receive a `expires` that is a `null` or `number`:
   HAS_EXPIRATION = false;
@@ -1832,7 +1842,7 @@ import { createClient } from "redis";
 let store;
 if (process.env.REDIS_URL) {
   console.log('kv:redis using Redis for cache data');
-  store = kv(createClient(process.env.REDIS_URL).connect());
+  store = kv(createClient(process.env.REDIS_URL));
 } else {
   console.log('kv:folder using a folder for cache data');
   store = kv(`file://${process.cwd()}/data/`);

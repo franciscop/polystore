@@ -1,3 +1,4 @@
+import AdapterBase from "./adapters/Adapter";
 import adapters from "./adapters/index";
 import type {
   Adapter,
@@ -6,6 +7,7 @@ import type {
   Prefix,
   Serializable,
   StoreData,
+  StoreType,
 } from "./types";
 import { createId, parse, unix } from "./utils";
 
@@ -14,7 +16,7 @@ class Store<TD extends Serializable = Serializable> {
   EXPIRES: Expires = null;
   promise: Promise<Adapter> | null;
   adapter!: Adapter;
-  type: string = "UNKNOWN";
+  type: StoreType = "UNKNOWN";
 
   constructor(
     adapterInput: any = new Map(),
@@ -26,6 +28,11 @@ class Store<TD extends Serializable = Serializable> {
     this.PREFIX = options.prefix || "";
     this.EXPIRES = parse(options.expires || null);
 
+    // With the raw client we can always know the type synchronously
+    if (adapterInput && typeof adapterInput.then === "function") {
+      throw new Error("kv() does not accept promises");
+    }
+
     // Re-wrapping an existing store keeps its config, stacking the
     // prefixes the same way that chained .prefix() calls do
     if (adapterInput instanceof Store) {
@@ -33,23 +40,28 @@ class Store<TD extends Serializable = Serializable> {
       this.EXPIRES = this.EXPIRES ?? adapterInput.EXPIRES;
     }
 
-    this.promise = Promise.resolve(adapterInput).then(async (raw) => {
-      // An inner store might still be resolving its own adapter
-      if (raw instanceof Store) await raw.promise;
-      this.adapter = this.#find(raw);
-      this.#validate(this.adapter);
-      // Adapters like File and Folder finish setting themselves up
-      // asynchronously, so only mark the store as ready once they are
-      await this.adapter.promise;
-      this.type = this.adapter?.TYPE || this.type;
+    this.adapter = this.#find(adapterInput);
+    this.#validate(this.adapter);
+    this.type = this.adapter.TYPE || this.type;
+
+    // Some adapters finish setting themselves up asynchronously (importing
+    // fs, creating a table, connecting a client); every method awaits this
+    if (this.adapter.promise) {
+      this.promise = this.adapter.promise.then(() => {
+        this.promise = null;
+        return this.adapter;
+      });
+    } else {
       this.promise = null;
-      return raw;
-    });
+    }
   }
 
   #find(store: any): Adapter {
     // Already a fully compliant KV store
     if (store instanceof Store) return store.adapter;
+
+    // Already a wrapped adapter (e.g. from a substore)
+    if (store instanceof AdapterBase) return store as unknown as Adapter;
 
     // One of the supported ones, so we receive an instance and
     // wrap it with the adapter wrapper
@@ -88,8 +100,7 @@ class Store<TD extends Serializable = Serializable> {
 
     for (let method of ["has", "keys", "values"]) {
       if ((adapter as any)[method]) {
-        const msg = `You can only define adapter.${method}() when the adapter manages the expiration.`;
-        throw new Error(msg);
+        throw new Error(`adapter.${method}() requires HAS_EXPIRATION`);
       }
     }
   }
@@ -481,9 +492,7 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
    */
   prefix(prefix: Prefix = ""): Store<TD> {
-    const store = new Store<TD>(
-      Promise.resolve(this.promise).then(() => this.adapter),
-    );
+    const store = new Store<TD>(this.adapter);
     store.PREFIX = this.PREFIX + prefix;
     store.EXPIRES = this.EXPIRES;
     return store;
@@ -505,9 +514,7 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
    */
   expires(expires: Expires = null): Store<TD> {
-    const store = new Store<TD>(
-      Promise.resolve(this.promise).then(() => this.adapter),
-    );
+    const store = new Store<TD>(this.adapter);
     store.EXPIRES = parse(expires);
     store.PREFIX = this.PREFIX;
     return store;
@@ -584,6 +591,12 @@ class Store<TD extends Serializable = Serializable> {
 }
 
 export default function createStore(): Store<Serializable>;
+// A custom adapter with a literal TYPE (e.g. `TYPE = "MYSTORE" as const`)
+// narrows `store.type` to that literal
+export default function createStore<A extends { TYPE: StoreType }>(
+  adapter: A,
+  options?: Options,
+): Store<Serializable> & { type: A["TYPE"] };
 export default function createStore<T extends Serializable = Serializable>(
   adapter?: any,
   options?: Options,
@@ -595,4 +608,4 @@ export default function createStore(adapter?: any, options?: Options): Store {
 // that it can be used in annotations but `new Store()` and
 // `instanceof Store` are compile errors; stores are created with kv()
 type StoreInstance<TD extends Serializable = Serializable> = Store<TD>;
-export type { Adapter, Options, Serializable, StoreInstance as Store };
+export type { Adapter, Options, Serializable, StoreType, StoreInstance as Store };

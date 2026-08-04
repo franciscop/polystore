@@ -105,3 +105,25 @@ for (const store of stores) {
   console.log(ent1, ent2, ent3, ent4, ent5, ent6);
   console.log(val1, val2, val3, val4, val5, val6);
 }
+
+// StoreType: known literals autocomplete, custom strings still allowed
+import type { StoreType } from "../src/";
+const t1: StoreType = "REDIS";
+const t2: StoreType = "MYSTORE";
+void t1;
+void t2;
+
+// A custom adapter with a literal TYPE narrows store.type
+class TypedAdapter {
+  TYPE = "MYSTORE" as const;
+  get(): null {
+    return null;
+  }
+  set(): void {}
+}
+const typed = kv(new TypedAdapter());
+const narrow: "MYSTORE" = typed.type;
+void narrow;
+// @ts-expect-error the literal is exact, not any string
+const wrong: "OTHER" = typed.type;
+void wrong;

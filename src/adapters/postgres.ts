@@ -14,10 +14,17 @@ export default class Postgres extends Adapter {
   // The table name to use
   table = "kv";
 
-  // Ensure schema exists before any operation
+  // Connect (unless the user already did) and ensure the schema exists
+  // before any operation. pg has no public "is connected" flag and
+  // connecting a connected Client throws, hence the private ones; the
+  // strict checks also skip Pool, where .connect() checks out a client
   promise = (async () => {
     if (!/^[a-zA-Z_]+$/.test(this.table)) {
       throw new Error(`Invalid table name ${this.table}`);
+    }
+
+    if (this.lib._connected === false && this.lib._connecting === false) {
+      await this.lib.connect();
     }
 
     await this.lib.query(`

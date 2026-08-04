@@ -33,14 +33,33 @@ describe("Folder adapter detection", () => {
 });
 
 describe("base API", () => {
-  it("a potato is not a valid store", async () => {
-    expect(kv("potato").get("any")).rejects.toThrow();
+  it("a potato is not a valid store", () => {
+    expect(() => kv("potato")).toThrow();
   });
 
-  it("an empty object is not a valid store", async () => {
-    expect(kv({}).get("any")).rejects.toThrow(
-      "Adapter should have .get() and .set()",
+  it("an empty object is not a valid store", () => {
+    expect(() => kv({})).toThrow("Adapter should have .get() and .set()");
+  });
+
+  it("does not accept promises", () => {
+    expect(() => kv(Promise.resolve(new Map()))).toThrow(
+      /does not accept promises/,
     );
+  });
+
+  it("knows the type synchronously", () => {
+    expect(kv(new Map()).type).toBe("MEMORY");
+    expect(kv("cookie").type).toBe("COOKIE");
+    expect(kv("https://example.com/").type).toBe("API");
+    expect(kv(`file:///tmp/polystore-type/`).type).toBe("FOLDER");
+    expect(kv(`file:///tmp/polystore-type.json`).type).toBe("FILE");
+  });
+
+  it("keeps the type on substores and re-wraps", () => {
+    const store = kv(new Map());
+    expect(store.prefix("a:").type).toBe("MEMORY");
+    expect(store.expires("1h").type).toBe("MEMORY");
+    expect(kv(store).type).toBe("MEMORY");
   });
 
   class Base {
@@ -49,39 +68,39 @@ describe("base API", () => {
     *iterate(): Generator<void, void, unknown> {}
   }
 
-  it("cannot handle no EXPIRES + has", async () => {
-    expect(
+  it("cannot handle no EXPIRES + has", () => {
+    expect(() =>
       kv(
         class extends Base {
           has(): void {}
         },
-      ).get("any"),
-    ).rejects.toThrow(
-      "You can only define adapter.has() when the adapter manages the expiration.",
+      ),
+    ).toThrow(
+      "adapter.has() requires HAS_EXPIRATION",
     );
   });
 
-  it("cannot handle no EXPIRES + keys", async () => {
-    expect(
+  it("cannot handle no EXPIRES + keys", () => {
+    expect(() =>
       kv(
         class extends Base {
           keys(): void {}
         },
-      ).get("any"),
-    ).rejects.toThrow(
-      "You can only define adapter.keys() when the adapter manages the expiration.",
+      ),
+    ).toThrow(
+      "adapter.keys() requires HAS_EXPIRATION",
     );
   });
 
-  it("cannot handle no EXPIRES + values", async () => {
-    expect(
+  it("cannot handle no EXPIRES + values", () => {
+    expect(() =>
       kv(
         class extends Base {
           values(): void {}
         },
-      ).get("any"),
-    ).rejects.toThrow(
-      "You can only define adapter.values() when the adapter manages the expiration.",
+      ),
+    ).toThrow(
+      "adapter.values() requires HAS_EXPIRATION",
     );
   });
 
@@ -391,7 +410,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         ]);
       });
 
-      it("BUG — set(key, null) calls del() with a double-prefixed key", async () => {
+      it("BUG: set(key, null) calls del() with a double-prefixed key", async () => {
         const pref = store.prefix("x:"); // introduce a prefix
 
         await pref.set("foo", "bar"); // creates key "x:foo"
@@ -414,7 +433,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         expect(await store.get("e")).toBe("");
       });
 
-      it("BUG — iterate() must include falsy values", async () => {
+      it("BUG: iterate() must include falsy values", async () => {
         await store.set("a", 0);
         await store.set("b", false);
         await store.set("c", "");
@@ -601,7 +620,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         expect(await store.get("a")).toBe("b");
       });
 
-      it("BUG — del() fails to delete an expired entry", async () => {
+      it("BUG: del() fails to delete an expired entry", async () => {
         await store.set("foo", "bar", { expires: -1 });
         const before = await store.get("foo");
         await store.del("foo");
@@ -764,7 +783,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         expect(await store.get("a")).toBe("b");
       });
 
-      it("BUG — del() fails to delete an expired entry", async () => {
+      it("BUG: del() fails to delete an expired entry", async () => {
         await store.expires(-1).set("foo", "bar");
         const before = await store.get("foo");
         await store.del("foo");

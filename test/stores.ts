@@ -82,27 +82,21 @@ if (apiAvailable) {
   stores[`${url}` as StoreType] = kv(url);
 }
 if (process.env.REDIS) {
-  stores["redis"] = kv(createClient().connect());
+  stores["redis"] = kv(createClient());
 }
 if (process.env.ETCD) {
   stores["new Etcd3()"] = kv(new Etcd3());
 }
 
 // SQL stores
-stores["sqlite"] = kv(
-  (async () => {
-    if (typeof globalThis.Bun !== "undefined") {
-      const { Database } = await import("bun:sqlite");
-      return new Database(":memory:");
-    } else {
-      const { default: Database } = (await import("better-sqlite3")) as any;
-      return new Database(":memory:");
-    }
-  })(),
-);
+const Database =
+  typeof globalThis.Bun !== "undefined"
+    ? (await import("bun:sqlite")).Database
+    : ((await import("better-sqlite3")) as any).default;
+stores["sqlite"] = kv(new Database(":memory:"));
 if (process.env.POSTGRES_URL) {
   stores["postgres"] = kv(
-    new Client({ connectionString: process.env.POSTGRES_URL }).connect(),
+    new Client({ connectionString: process.env.POSTGRES_URL }),
   );
 }
 

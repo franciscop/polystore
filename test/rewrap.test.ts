@@ -5,7 +5,7 @@ const delay = (t: number): Promise<void> =>
 
 // Passing an already-built store back into kv() should behave as the same
 // store: keeping its prefix and expires, and working even while the inner
-// store is still resolving its own adapter (e.g. a connecting Redis client).
+// store's adapter is still initialising (e.g. a folder store importing fs).
 describe("re-wrapping a store with kv()", () => {
   it("keeps the prefix", async () => {
     const map = new Map();
@@ -33,19 +33,22 @@ describe("re-wrapping a store with kv()", () => {
     expect([...map.keys()]).toEqual(["a:b:k"]);
   });
 
-  it("works while the inner store is still connecting", async () => {
-    const inner = kv(new Promise((r) => setTimeout(() => r(new Map()), 20)));
-    const outer = kv(inner);
+  it("works while the inner store is still initialising", async () => {
+    const inner = kv(`file://${process.cwd()}/data/rewrap-init/`);
+    const outer = kv(inner); // re-wrapped before the fs import settles
+    expect(outer.type).toBe("FOLDER");
     expect(await outer.get("missing")).toBe(null);
     await outer.set("a", "b");
     expect(await outer.get("a")).toBe("b");
+    await outer.clear();
   });
 
-  it("works on a substore of a store that is still connecting", async () => {
-    const inner = kv(new Promise((r) => setTimeout(() => r(new Map()), 20)));
+  it("works on a substore of a store that is still initialising", async () => {
+    const inner = kv(`file://${process.cwd()}/data/rewrap-init/`);
     const outer = kv(inner.prefix("app:"), { prefix: "sub:" });
     await outer.set("k", 1);
     expect(await outer.get("k")).toBe(1);
     expect(await inner.get("app:sub:k")).toBe(1);
+    await inner.clear();
   });
 });
