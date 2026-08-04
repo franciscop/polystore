@@ -57,7 +57,7 @@ declare class Store<TD extends Serializable = Serializable> {
     #private;
     PREFIX: Prefix;
     EXPIRES: Expires;
-    promise: Promise<Adapter> | null;
+    promise: Promise<void> | null;
     adapter: Adapter;
     type: StoreType;
     constructor(adapterInput?: any, options?: Options);

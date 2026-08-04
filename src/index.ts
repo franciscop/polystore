@@ -14,7 +14,7 @@ import { createId, parse, unix } from "./utils";
 class Store<TD extends Serializable = Serializable> {
   PREFIX: Prefix = "";
   EXPIRES: Expires = null;
-  promise: Promise<Adapter> | null;
+  promise: Promise<void> | null;
   adapter!: Adapter;
   type: StoreType = "UNKNOWN";
 
@@ -46,14 +46,14 @@ class Store<TD extends Serializable = Serializable> {
 
     // Some adapters finish setting themselves up asynchronously (importing
     // fs, creating a table, connecting a client); every method awaits this
-    if (this.adapter.promise) {
-      this.promise = this.adapter.promise.then(() => {
+    this.promise =
+      this.adapter.promise?.then(() => {
         this.promise = null;
-        return this.adapter;
-      });
-    } else {
-      this.promise = null;
-    }
+      }) ?? null;
+
+    // A failed init (e.g. an unreachable Redis) should reject on the first
+    // operation, not as an unhandled rejection for a store nobody used
+    this.promise?.catch(() => {});
   }
 
   #find(store: any): Adapter {

@@ -12,6 +12,19 @@ const drain = async (): Promise<void> => {
 };
 
 describe("adapter initialization", () => {
+  it("does not throw globally when the init fails but the store is unused", async () => {
+    const failing = {
+      TYPE: "FAILINIT",
+      promise: Promise.reject(new Error("cannot connect")),
+      get: () => null,
+      set: () => {},
+    };
+    const store = kv(failing);
+    expect(store.type).toBe("FAILINIT");
+    // The rejection surfaces on use, not as an unhandled rejection
+    await expect(store.get("a")).rejects.toThrow("cannot connect");
+  });
+
   it("does not use the folder adapter before it is ready", async () => {
     const store = kv(`file://${process.cwd()}/data/init-folder/`);
     await drain();
