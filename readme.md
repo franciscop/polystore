@@ -544,7 +544,7 @@ const sessions = store.prefix("session:");
 
 await sessions.clear();
 // removes only session:* keys
-````
+```
 
 ### .prune()
 
