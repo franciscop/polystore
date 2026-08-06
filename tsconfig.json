@@ -17,7 +17,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["bun", "bun-types/test-globals"],
+    "types": ["bun"],
 
     // Enable ESM-friendly module detection
     "moduleDetection": "force",
