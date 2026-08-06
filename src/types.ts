@@ -16,6 +16,7 @@ export type StoreType =
   | "LEVEL"
   | "MEMORY"
   | "POSTGRES"
+  | "PROMISE"
   | "REDIS"
   | "SQLITE"
   | "STORAGE"
@@ -38,6 +39,8 @@ export type Serializable =
 export interface AdapterExpires {
   TYPE: StoreType;
   HAS_EXPIRATION: true;
+  // Async setup; the store calls it once and caches it in `promise`
+  connect?(): Promise<any>;
   promise?: Promise<any>;
   test?: (raw: any) => boolean;
   // testKeys?: string[];
@@ -75,6 +78,8 @@ export interface AdapterExpires {
 export interface AdapterNonExpires {
   TYPE: StoreType;
   HAS_EXPIRATION: false;
+  // Async setup; the store calls it once and caches it in `promise`
+  connect?(): Promise<any>;
   promise?: Promise<any>;
   test?: (raw: any) => boolean;
   // testKeys?: string[];

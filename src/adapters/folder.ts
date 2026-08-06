@@ -28,13 +28,13 @@ export default class Folder extends Adapter {
 
   // Make sure the folder already exists, so attempt to create it
   // It fails if it already exists, hence the catch case
-  promise = (async () => {
+  connect = async () => {
     this.fsp = (await import(
       "node:fs/promises"
     )) as unknown as typeof FsPromises;
     this.folder = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
-  })();
+  };
 
   // Encode the key so it's always a valid filename (e.g. a "cache:" prefix
   // would otherwise produce a colon, which Windows rejects in filenames)

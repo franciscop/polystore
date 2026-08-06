@@ -18,7 +18,7 @@ export default class Postgres extends Adapter {
   // before any operation. pg has no public "is connected" flag and
   // connecting a connected Client throws, hence the private ones; the
   // strict checks also skip Pool, where .connect() checks out a client
-  promise = (async () => {
+  connect = async () => {
     if (!/^[a-zA-Z_]+$/.test(this.table)) {
       throw new Error(`Invalid table name ${this.table}`);
     }
@@ -37,7 +37,7 @@ export default class Postgres extends Adapter {
     await this.lib.query(
       `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`,
     );
-  })();
+  };
 
   static test = (raw: any): boolean => {
     // .filename is for sqlite

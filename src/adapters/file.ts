@@ -27,13 +27,13 @@ export default class File extends Adapter {
   // We want to make sure the file already exists, so attempt to
   // create the folders and the file (but not OVERWRITE it, that's why the x flag)
   // It fails if it already exists, hence the catch case
-  promise = (async () => {
+  connect = async () => {
     this.fsp = (await import("node:fs/promises")) as typeof FsPromises;
     this.file = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     const folder = this.file.split("/").slice(0, -1).join("/");
     await this.fsp.mkdir(folder, { recursive: true }).catch(() => {});
     await this.fsp.writeFile(this.file, "{}", { flag: "wx" }).catch(() => {});
-  })();
+  };
 
   // Internal - acquire lock before operations
   #withLock = async <T>(fn: () => Promise<T>): Promise<T> => {

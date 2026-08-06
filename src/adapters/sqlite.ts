@@ -16,7 +16,7 @@ export default class SQLite extends Adapter {
 
   // Make sure the folder already exists, so attempt to create it
   // It fails if it already exists, hence the catch case
-  promise = (async () => {
+  connect = async () => {
     // Light validation, including the table name
     if (!/^[a-zA-Z_]+$/.test(this.table)) {
       throw new Error(`Invalid table name ${this.table}`);
@@ -31,7 +31,7 @@ export default class SQLite extends Adapter {
     this.lib.exec(
       `CREATE INDEX IF NOT EXISTS idx_${this.table}_expires_at ON ${this.table} (expires_at)`,
     );
-  })();
+  };
 
   static test = (raw: any): boolean => {
     // Both Bun:sqlite and better-sqlite3 have both `.prepare()` and `.exec()`

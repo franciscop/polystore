@@ -29,5 +29,5 @@ Any Polystore adapter works:
 ```js
 import { createClient } from "redis";
 
-store: expressStore(createClient().connect())
+store: expressStore(createClient())
 ```

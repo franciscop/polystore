@@ -104,12 +104,17 @@ const store = kv(MyClientInstance, { expires: null, prefix: "" });
 // use the store
 ```
 
-Pass the client itself, not a promise of it; clients with a connection (Redis, Postgres) are connected automatically. This way the store knows its adapter immediately:
+Pass the client itself; those with a connection (Redis, Postgres) are connected for you.
 
-```js
-const store = kv(createClient());
-store.type; // "REDIS"
-```
+> [!NOTE]
+> `store.type` tells you which adapter is in use, and it is available right away since the client is inspected when you call `kv()`:
+>
+> ```js
+> kv(createClient()).type; // "REDIS"
+> kv(new Map()).type; // "MEMORY"
+> ```
+>
+> A promise of a client also works, for example `kv(createClient().connect())`, but it logs a warning and `store.type` reads `"PROMISE"` until the client arrives.
 
 You can enforce **types** for the values either at store creation or at the method level:
 
@@ -1608,7 +1613,8 @@ class MyClient {
   values (prefix): Promise<any[]>;
   clear (prefix): Promise<null>;
 
-  // Optional misc method
+  // Optional misc methods
+  connect (): Promise<null>;
   close (): Promise<null>;
 }
 ```
@@ -1616,6 +1622,18 @@ class MyClient {
 Note that this is NOT the public API, it's the internal **adapter** API. It's simpler than the public API since we do some of the heavy lifting as an intermediate layer (e.g. for the adapter, the `expires` will always be a `null` or `number`, never `undefined` or a `string`), but also it differs from polystore's public API, like `.add()` has a different signature, and the group methods all take a explicit prefix.
 
 Only `.get()` and `.set()` are mandatory, so backends that cannot list their keys (like memcached) can still be adapters. Without `.iterate()`, all of the single-key methods work normally (including expiration and prefixes), while the group methods (`.keys()`, `.values()`, `.entries()`, `.all()`, `.clear()` and the iterator) throw when called, unless you define their native counterparts.
+
+**Connect**: define `.connect()` for any setup that has to finish before the store can be used, like opening a connection or creating a table. Polystore calls it once per adapter and every method waits for it, so substores created with `.prefix()` share the same setup:
+
+```js
+class MyClient {
+  connect = async () => {
+    // Only connect if the user hasn't already, since kv() also
+    // accepts a client that is already connected or connecting
+    if (!this.lib.isOpen) await this.lib.connect();
+  };
+}
+```
 
 **Expires**: if you set the `HAS_EXPIRATION = true`, then you are indicating that the adapter WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the **seconds** for the key/value to will expire.
 

@@ -41,12 +41,6 @@ describe("base API", () => {
     expect(() => kv({})).toThrow("Adapter should have .get() and .set()");
   });
 
-  it("does not accept promises", () => {
-    expect(() => kv(Promise.resolve(new Map()))).toThrow(
-      /does not accept promises/,
-    );
-  });
-
   it("knows the type synchronously", () => {
     expect(kv(new Map()).type).toBe("MEMORY");
     expect(kv("cookie").type).toBe("COOKIE");
@@ -125,15 +119,8 @@ describe("base API", () => {
   });
 });
 
-type StoreEntries = [
-  keyof typeof stores,
-  (typeof stores)[keyof typeof stores],
-][];
-
-for (const [name, store] of Object.entries(stores) as StoreEntries) {
+for (const [name, store] of Object.entries(stores)) {
   describe(name, () => {
-    if (!store) throw new Error("No store available");
-
     beforeEach(async () => {
       await store.clear();
     });
@@ -226,7 +213,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
     });
 
     it("overwriting a key removes the previous expiration", async () => {
-      if (doNotSupportMs.includes(name)) return;
+      if (doNotSupportMs.includes(store.type)) return;
 
       await store.set("a", "b", { expires: "10ms" });
       await delay(20);
@@ -311,7 +298,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         expect(await store.get("hello:world:a")).toBe("b");
       });
 
-      if (!doNotSupportMs.includes(name) && !name.includes("http")) {
+      if (!doNotSupportMs.includes(store.type) && store.type !== "API") {
         it("supports expires (number)", async () => {
           const s = kv(store, { expires: 0.01 });
           await s.set("a", "b");
@@ -321,7 +308,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         });
 
         it("supports expires (string)", async () => {
-          if (cannotTestExpiration.includes(name)) return;
+          if (cannotTestExpiration.includes(store.type)) return;
           const s = kv(store, { expires: "10ms" });
           await s.set("a", "b");
           expect(await s.get("a")).toBe("b");
@@ -330,7 +317,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         });
 
         it("supports prefix + expires", async () => {
-          if (cannotTestExpiration.includes(name)) return;
+          if (cannotTestExpiration.includes(store.type)) return;
           const s = kv(store, { prefix: "hello:", expires: "10ms" });
           await s.set("a", "b");
           expect(await s.get("a")).toBe("b");
@@ -338,7 +325,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
           expect(await s.get("a")).toBe(null);
         });
       } else {
-        if (cannotTestExpiration.includes(name)) return;
+        if (cannotTestExpiration.includes(store.type)) return;
 
         it("constructor expires (number)", async () => {
           const s = kv(store, { expires: 1 });
@@ -581,7 +568,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
     });
 
     describe("{ expires }", () => {
-      if (cannotTestExpiration.includes(name)) return;
+      if (cannotTestExpiration.includes(store.type)) return;
 
       it("expires = 0 means immediately", async () => {
         await store.set("a", "b", { expires: 0 });
@@ -633,7 +620,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         expect(items).toEqual([]);
       });
 
-      if (!doNotSupportMs.includes(name) && !name.includes("http")) {
+      if (!doNotSupportMs.includes(store.type) && store.type !== "API") {
         it("can use 0.01 expire", async () => {
           await store.set("a", "b", { expires: 0.01 });
           expect(await store.keys()).toEqual(["a"]);
@@ -744,7 +731,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
     });
 
     describe(".expires()", () => {
-      if (cannotTestExpiration.includes(name)) return;
+      if (cannotTestExpiration.includes(store.type)) return;
 
       it("expires = 0 means immediately", async () => {
         await store.expires(0).set("a", "b");
@@ -796,7 +783,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
         expect(items).toEqual([]);
       });
 
-      if (!doNotSupportMs.includes(name) && !name.includes("http")) {
+      if (!doNotSupportMs.includes(store.type) && store.type !== "API") {
         it("can use 0.02 expire", async () => {
           await store.expires(0.02).set("a", "b");
           expect(await store.keys()).toEqual(["a"]);
@@ -1090,10 +1077,10 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
     });
 
     describe(".prune()", () => {
-      if (cannotTestExpiration.includes(name)) return;
+      if (cannotTestExpiration.includes(store.type)) return;
 
       it("removes expired records", async () => {
-        if (!doNotSupportMs.includes(name) && !name.includes("http")) {
+        if (!doNotSupportMs.includes(store.type) && store.type !== "API") {
           await store.set("a", "b", { expires: "10ms" });
           await delay(20);
         } else {
@@ -1117,7 +1104,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       });
 
       it("removes only expired records", async () => {
-        if (!doNotSupportMs.includes(name) && !name.includes("http")) {
+        if (!doNotSupportMs.includes(store.type) && store.type !== "API") {
           await store.set("a", "b", { expires: "10ms" });
           await store.set("c", "d");
           await delay(20);
@@ -1137,7 +1124,7 @@ for (const [name, store] of Object.entries(stores) as StoreEntries) {
       it("respects prefix scoping", async () => {
         const pref = store.prefix("p:");
 
-        if (!doNotSupportMs.includes(name) && !name.includes("http")) {
+        if (!doNotSupportMs.includes(store.type) && store.type !== "API") {
           await pref.set("a", "b", { expires: "10ms" });
           await store.set("x", "y");
           await delay(20);

@@ -30,5 +30,5 @@ Any Polystore adapter works:
 ```js
 import { createClient } from "redis";
 
-store: honoStore(createClient().connect())
+store: honoStore(createClient())
 ```

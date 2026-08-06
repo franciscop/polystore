@@ -4,7 +4,7 @@ type Options = {
     prefix?: Prefix;
     expires?: Expires;
 };
-type StoreType = "API" | "CLOUDFLARE" | "COOKIE" | "ETCD3" | "FILE" | "FOLDER" | "FORAGE" | "LEVEL" | "MEMORY" | "POSTGRES" | "REDIS" | "SQLITE" | "STORAGE" | "UNKNOWN" | (string & {});
+type StoreType = "API" | "CLOUDFLARE" | "COOKIE" | "ETCD3" | "FILE" | "FOLDER" | "FORAGE" | "LEVEL" | "MEMORY" | "POSTGRES" | "PROMISE" | "REDIS" | "SQLITE" | "STORAGE" | "UNKNOWN" | (string & {});
 type StoreData<T extends Serializable = Serializable> = {
     value: T;
     expires: number | null;
@@ -15,6 +15,7 @@ type Serializable = string | number | boolean | null | (Serializable | null)[] |
 interface AdapterExpires {
     TYPE: StoreType;
     HAS_EXPIRATION: true;
+    connect?(): Promise<any>;
     promise?: Promise<any>;
     test?: (raw: any) => boolean;
     get<T extends Serializable>(key: string): Promise<T | null> | T | null;
@@ -34,6 +35,7 @@ interface AdapterExpires {
 interface AdapterNonExpires {
     TYPE: StoreType;
     HAS_EXPIRATION: false;
+    connect?(): Promise<any>;
     promise?: Promise<any>;
     test?: (raw: any) => boolean;
     get<T extends Serializable>(key: string): Promise<StoreData<T> | null> | StoreData<T> | null;
@@ -57,8 +59,6 @@ declare class Store<TD extends Serializable = Serializable> {
     #private;
     PREFIX: Prefix;
     EXPIRES: Expires;
-    promise: Promise<void> | null;
-    adapter: Adapter;
     type: StoreType;
     constructor(adapterInput?: any, options?: Options);
     /**

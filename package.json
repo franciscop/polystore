@@ -25,7 +25,7 @@
     "service:postgres": "brew services start postgresql",
     "service:server": "bun ./src/server.ts",
     "services": "concurrently \"npm run service:db\" \"npm run service:redis\" \"npm run service:postgres\" \"npm run service:server\"",
-    "test": "bun test ./test/index.test.ts ./test/init.test.ts ./test/rewrap.test.ts ./test/minimal.test.ts ./src/plugins/"
+    "test": "bun test"
   },
   "workspaces": [
     "examples/*"

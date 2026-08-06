@@ -14,9 +14,9 @@ export default class Redis extends Adapter {
   // Connect the client unless the user already did; `isOpen` flips
   // synchronously inside connect(), so a client that is mid-connection
   // is never connected twice (that would throw "Socket already opened")
-  promise = (async () => {
+  connect = async () => {
     if (!this.lib.isOpen) await this.lib.connect();
-  })();
+  };
 
   get = async (key: string): Promise<any> =>
     this.decode(await this.lib.get(key));

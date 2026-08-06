@@ -11,11 +11,15 @@ import type {
 } from "./types";
 import { createId, parse, unix } from "./utils";
 
+// adapter.connect() runs once per adapter; kept here (instead of on the
+// adapter) so that a frozen or shared adapter is never written to
+const inits = new WeakMap<object, Promise<any>>();
+
 class Store<TD extends Serializable = Serializable> {
   PREFIX: Prefix = "";
   EXPIRES: Expires = null;
-  promise: Promise<void> | null;
-  adapter!: Adapter;
+  #promise: Promise<void> | null;
+  #adapter!: Adapter;
   type: StoreType = "UNKNOWN";
 
   constructor(
@@ -28,37 +32,60 @@ class Store<TD extends Serializable = Serializable> {
     this.PREFIX = options.prefix || "";
     this.EXPIRES = parse(options.expires || null);
 
-    // With the raw client we can always know the type synchronously
+    // Warn on what the user passed, before it gets unwrapped below
     if (adapterInput && typeof adapterInput.then === "function") {
-      throw new Error("kv() does not accept promises");
+      console.warn("kv(): pass the client, not a promise; it connects itself");
     }
 
-    // Re-wrapping an existing store keeps its config, stacking the
-    // prefixes the same way that chained .prefix() calls do
-    if (adapterInput instanceof Store) {
-      this.PREFIX = adapterInput.PREFIX + this.PREFIX;
-      this.EXPIRES = this.EXPIRES ?? adapterInput.EXPIRES;
-    }
+    const input = this.#unwrap(adapterInput);
 
-    this.adapter = this.#find(adapterInput);
-    this.#validate(this.adapter);
-    this.type = this.adapter.TYPE || this.type;
-
-    // Some adapters finish setting themselves up asynchronously (importing
-    // fs, creating a table, connecting a client); every method awaits this
-    this.promise =
-      this.adapter.promise?.then(() => {
-        this.promise = null;
+    // A promise hides the client until it resolves, so the type waits too
+    if (input && typeof input.then === "function") {
+      this.type = "PROMISE";
+      this.#promise = input.then(async (raw: any) => {
+        await this.#adopt(await this.#unwrap(raw));
+        this.#promise = null;
+      });
+    } else {
+      const init = this.#adopt(input);
+      this.#promise = init?.then(() => {
+        this.#promise = null;
       }) ?? null;
+    }
 
     // A failed init (e.g. an unreachable Redis) should reject on the first
     // operation, not as an unhandled rejection for a store nobody used
-    this.promise?.catch(() => {});
+    this.#promise?.catch(() => {});
+  }
+
+  // A store passed to kv() keeps its config (prefixes stack the same way
+  // chained .prefix() calls do) and hands over its adapter, or a promise of
+  // it when that store is itself still resolving
+  #unwrap(raw: any): any {
+    if (!(raw instanceof Store)) return raw;
+    this.PREFIX = raw.PREFIX + this.PREFIX;
+    this.EXPIRES = this.EXPIRES ?? raw.EXPIRES;
+    return raw.#adapter ?? raw.#promise!.then(() => raw.#adapter);
+  }
+
+  // Resolve the adapter and start its setup (importing fs, creating a table,
+  // connecting a client). It runs once per adapter, so substores share it
+  #adopt(raw: any): Promise<any> | undefined {
+    this.#adapter = this.#find(raw);
+    this.#validate(this.#adapter);
+    this.type = this.#adapter.TYPE || "UNKNOWN";
+
+    let init = this.#adapter.promise;
+    if (!init && this.#adapter.connect) {
+      init = inits.get(this.#adapter);
+      if (!init) inits.set(this.#adapter, (init = this.#adapter.connect()));
+    }
+    return init;
   }
 
   #find(store: any): Adapter {
     // Already a fully compliant KV store
-    if (store instanceof Store) return store.adapter;
+    if (store instanceof Store) return store.#adapter;
 
     // Already a wrapped adapter (e.g. from a substore)
     if (store instanceof AdapterBase) return store as unknown as Adapter;
@@ -119,7 +146,7 @@ class Store<TD extends Serializable = Serializable> {
   // Adapters can skip .iterate() (some backends cannot list their keys),
   // giving up the group methods but keeping all of the single-key ones
   #assertIterate(): void {
-    if (this.adapter.iterate) return;
+    if (this.#adapter.iterate) return;
     throw new Error(`${this.type} does not support .iterate()`);
   }
 
@@ -143,18 +170,18 @@ class Store<TD extends Serializable = Serializable> {
   add(value: TD, options?: Options): Promise<string>;
   add<T extends TD>(value: T, options?: Options): Promise<string>;
   async add<T extends TD = TD>(value: T, options: Options): Promise<string> {
-    await this.promise;
+    await this.#promise;
     const expires = this.#expiration(options?.expires);
     const prefix = options?.prefix || this.PREFIX;
 
     // Use the underlying one from the adapter if found
-    if (this.adapter.add) {
-      if (this.adapter.HAS_EXPIRATION) {
-        return this.adapter.add(prefix, value, expires);
+    if (this.#adapter.add) {
+      if (this.#adapter.HAS_EXPIRATION) {
+        return this.#adapter.add(prefix, value, expires);
       }
 
       // In the data we need the timestamp since we need it "absolute":
-      return this.adapter.add(prefix, { expires: unix(expires), value });
+      return this.#adapter.add(prefix, { expires: unix(expires), value });
     }
 
     return this.set(createId(), value, { prefix, expires });
@@ -178,7 +205,7 @@ class Store<TD extends Serializable = Serializable> {
     value: T,
     options: Options,
   ): Promise<string> {
-    await this.promise;
+    await this.#promise;
     const expires = this.#expiration(options?.expires);
     const prefix = options?.prefix || this.PREFIX;
     const id = prefix + key;
@@ -189,13 +216,13 @@ class Store<TD extends Serializable = Serializable> {
     }
 
     // The adapter manages the expiration, so let it manage it
-    if (this.adapter.HAS_EXPIRATION) {
-      await this.adapter.set<T>(id, value, expires);
+    if (this.#adapter.HAS_EXPIRATION) {
+      await this.#adapter.set<T>(id, value, expires);
       return key;
     }
 
     // In the data we need the timestamp since we need it "absolute":
-    await this.adapter.set<T>(id, { expires: unix(expires), value });
+    await this.#adapter.set<T>(id, { expires: unix(expires), value });
     return key;
   }
 
@@ -216,20 +243,20 @@ class Store<TD extends Serializable = Serializable> {
   get(key: string): Promise<TD | null>;
   get<T extends TD>(key: string): Promise<T | null>;
   async get<T extends TD = TD>(key: string): Promise<T | null> {
-    await this.promise;
+    await this.#promise;
     const id = this.PREFIX + key;
 
     // The adapter already managed expiration and there's STILL some data,
     // so we can assume it's the raw user data
-    if (this.adapter.HAS_EXPIRATION) {
-      const data = (await this.adapter.get<T>(id)) ?? null;
+    if (this.#adapter.HAS_EXPIRATION) {
+      const data = (await this.#adapter.get<T>(id)) ?? null;
 
       // No value; nothing to do/check
       if (data === null) return null;
 
       return data;
     } else {
-      const data = (await this.adapter.get<T>(id)) ?? null;
+      const data = (await this.#adapter.get<T>(id)) ?? null;
 
       // No value; nothing to do/check
       if (data === null) return null;
@@ -256,11 +283,11 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .has() Docs](https://polystore.dev/documentation#has)**
    */
   async has(key: string): Promise<boolean> {
-    await this.promise;
+    await this.#promise;
     const id = this.PREFIX + key;
 
-    if (this.adapter.has) {
-      return this.adapter.has(id);
+    if (this.#adapter.has) {
+      return this.#adapter.has(id);
     }
 
     return (await this.get(key)) !== null;
@@ -276,18 +303,18 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
    */
   async del(key: string): Promise<string> {
-    await this.promise;
+    await this.#promise;
     const id = this.PREFIX + key;
 
-    if (this.adapter.del) {
-      await this.adapter.del(id);
+    if (this.#adapter.del) {
+      await this.#adapter.del(id);
       return key;
     }
 
-    if (this.adapter.HAS_EXPIRATION) {
-      await this.adapter.set(id, null, 0);
+    if (this.#adapter.HAS_EXPIRATION) {
+      await this.#adapter.set(id, null, 0);
     } else {
-      await this.adapter.set(id, null);
+      await this.#adapter.set(id, null);
     }
 
     return key;
@@ -329,18 +356,18 @@ class Store<TD extends Serializable = Serializable> {
     void,
     unknown
   > {
-    await this.promise;
+    await this.#promise;
     this.#assertIterate();
 
-    if (this.adapter.HAS_EXPIRATION) {
-      for await (const [name, data] of this.adapter.iterate!<T>(this.PREFIX)) {
+    if (this.#adapter.HAS_EXPIRATION) {
+      for await (const [name, data] of this.#adapter.iterate!<T>(this.PREFIX)) {
         const key = name.slice(this.PREFIX.length);
         yield [key, data];
       }
       return;
     }
 
-    for await (const [name, data] of this.adapter.iterate!<T>(this.PREFIX)) {
+    for await (const [name, data] of this.#adapter.iterate!<T>(this.PREFIX)) {
       const key = name.slice(this.PREFIX.length);
       if (this.#isFresh(data)) {
         yield [key, data.value];
@@ -364,16 +391,16 @@ class Store<TD extends Serializable = Serializable> {
   entries(): Promise<[string, TD][]>;
   entries<T extends TD>(): Promise<[string, T][]>;
   async entries<T extends TD = TD>(): Promise<[string, T][]> {
-    await this.promise;
+    await this.#promise;
     const trim = (key: string): string => key.slice(this.PREFIX.length);
 
     // With a native method
-    if (this.adapter.entries) {
-      if (this.adapter.HAS_EXPIRATION) {
-        const entries = await this.adapter.entries<T>(this.PREFIX);
+    if (this.#adapter.entries) {
+      if (this.#adapter.HAS_EXPIRATION) {
+        const entries = await this.#adapter.entries<T>(this.PREFIX);
         return entries.map(([k, v]) => [trim(k), v]);
       } else {
-        const entries = await this.adapter.entries<T>(this.PREFIX);
+        const entries = await this.#adapter.entries<T>(this.PREFIX);
         return entries
           .map(([k, v]) => [trim(k), v] as const)
           .filter(([, data]) => this.#isFresh(data))
@@ -383,15 +410,15 @@ class Store<TD extends Serializable = Serializable> {
 
     // No native method, iterate then
     this.#assertIterate();
-    if (this.adapter.HAS_EXPIRATION) {
+    if (this.#adapter.HAS_EXPIRATION) {
       const list: [string, T][] = [];
-      for await (const [k, v] of this.adapter.iterate!<T>(this.PREFIX)) {
+      for await (const [k, v] of this.#adapter.iterate!<T>(this.PREFIX)) {
         list.push([trim(k), v]);
       }
       return list;
     } else {
       const list: [string, T][] = [];
-      for await (const [k, data] of this.adapter.iterate!<T>(this.PREFIX)) {
+      for await (const [k, data] of this.#adapter.iterate!<T>(this.PREFIX)) {
         if (this.#isFresh(data)) {
           list.push([trim(k), data.value]);
         }
@@ -414,10 +441,10 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .keys() Docs](https://polystore.dev/documentation#keys)**
    */
   async keys(): Promise<string[]> {
-    await this.promise;
+    await this.#promise;
 
-    if (this.adapter.keys) {
-      const list = await this.adapter.keys(this.PREFIX);
+    if (this.#adapter.keys) {
+      const list = await this.#adapter.keys(this.PREFIX);
       if (!this.PREFIX) return list;
       return list.map((k) => k.slice(this.PREFIX.length));
     }
@@ -442,11 +469,11 @@ class Store<TD extends Serializable = Serializable> {
   values(): Promise<TD[]>;
   values<T extends TD>(): Promise<T[]>;
   async values<T extends TD = TD>(): Promise<T[]> {
-    await this.promise;
+    await this.#promise;
 
-    if (this.adapter.values) {
-      if (this.adapter.HAS_EXPIRATION) return this.adapter.values<T>(this.PREFIX);
-      const list = await this.adapter.values<T>(this.PREFIX);
+    if (this.#adapter.values) {
+      if (this.#adapter.HAS_EXPIRATION) return this.#adapter.values<T>(this.PREFIX);
+      const list = await this.#adapter.values<T>(this.PREFIX);
       return list
         .filter((data) => this.#isFresh(data))
         .map((data) => data.value);
@@ -492,7 +519,7 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
    */
   prefix(prefix: Prefix = ""): Store<TD> {
-    const store = new Store<TD>(this.adapter);
+    const store = new Store<TD>(this.#adapter ?? this);
     store.PREFIX = this.PREFIX + prefix;
     store.EXPIRES = this.EXPIRES;
     return store;
@@ -514,7 +541,7 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .prefix() Docs](https://polystore.dev/documentation#prefix)**
    */
   expires(expires: Expires = null): Store<TD> {
-    const store = new Store<TD>(this.adapter);
+    const store = new Store<TD>(this.#adapter ?? this);
     store.EXPIRES = parse(expires);
     store.PREFIX = this.PREFIX;
     return store;
@@ -532,17 +559,17 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .clear() Docs](https://polystore.dev/documentation#clear)**
    */
   async clear(): Promise<void> {
-    await this.promise;
+    await this.#promise;
 
     // Some times we want to trigger a clearAll for no prefix, but need
     // to do it manually for prefix, so by having a clearAll and NOT clear()
     // we can do this (e.g. forage)
-    if (!this.PREFIX && this.adapter.clearAll) {
-      return this.adapter.clearAll();
+    if (!this.PREFIX && this.#adapter.clearAll) {
+      return this.#adapter.clearAll();
     }
 
-    if (this.adapter.clear) {
-      return this.adapter.clear(this.PREFIX);
+    if (this.#adapter.clear) {
+      return this.#adapter.clear(this.PREFIX);
     }
 
     const keys = await this.keys();
@@ -560,13 +587,13 @@ class Store<TD extends Serializable = Serializable> {
    * Only affects stores where expiration is managed by this wrapper.
    */
   async prune(): Promise<void> {
-    await this.promise;
+    await this.#promise;
 
     // Adapters with native expiration do not need pruning
-    if (this.adapter.HAS_EXPIRATION) return;
+    if (this.#adapter.HAS_EXPIRATION) return;
 
-    if (this.adapter.prune) {
-      await this.adapter.prune();
+    if (this.#adapter.prune) {
+      await this.#adapter.prune();
     }
   }
 
@@ -582,10 +609,10 @@ class Store<TD extends Serializable = Serializable> {
    * **[→ Full .close() Docs](https://polystore.dev/documentation#close)**
    */
   async close(): Promise<void> {
-    await this.promise;
+    await this.#promise;
 
-    if (this.adapter.close) {
-      return this.adapter.close();
+    if (this.#adapter.close) {
+      return this.#adapter.close();
     }
   }
 }

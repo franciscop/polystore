@@ -5,44 +5,17 @@ import localForage from "localforage";
 import { Client } from "pg";
 import { createClient } from "redis";
 
-import kv, { type Store } from "../src/index.ts";
+import kv, { type Store, type StoreType } from "../src/index.ts";
 // import customCloudflare from "./customCloudflare.ts";
 import customFull from "./customFull.ts";
 import customSimple from "./customSimple.ts";
 
-// Only run some specific stores (empty = all)
-const only: StoreType[] = [];
+// Only run some specific stores, by their label below (empty = all)
+const only: string[] = [];
 
-type FileURL = `file://${string}`;
-
-type StoreType =
-  | "kv()"
-  | "kv(kv())"
-  | "new Map()"
-  | "localStorage"
-  | "sessionStorage"
-  | "localForage"
-  | "http://localhost:3000/"
-  | 'new URL("file://<cwd>/data/kv.json")'
-  | '"file://<cwd>/data/kv.json"'
-  | 'new URL("file://<cwd>/data/folder/")'
-  | '"file://<cwd>/data/folder/"'
-  | '"cookie"'
-  | "new KVNamespace()"
-  | 'new Level("data")'
-  | "redis"
-  | "sqlite"
-  | "postgres"
-  | "new Etcd3()"
-  | "customSimple"
-  | "customFull"
-  | "customCloudflare"
-  // dynamic patterns:
-  | `${FileURL}`
-  | `new URL("${FileURL}")`
-  | `"${FileURL}"`;
-
-const stores: Partial<Record<StoreType, Store>> = {};
+// The key is how the store is written, so that a failure names the way it
+// was created; what it *is* comes from `store.type`
+const stores: Record<string, Store> = {};
 
 // In-memory stores
 stores["kv()"] = kv();
@@ -64,14 +37,12 @@ if (typeof document !== "undefined" && document.cookie) {
 }
 
 // File stores
-const path = `file://${process.cwd()}/data/kv.json` as FileURL;
-stores[`new URL("${path}")` as StoreType] = kv(new URL(path));
-const path2 = `file://${process.cwd()}/data/kv.json` as FileURL;
-stores[`"${path2}"` as StoreType] = kv(path2);
-const path3 = `file://${process.cwd()}/data/folder/` as FileURL;
-stores[`new URL("${path3}")` as StoreType] = kv(new URL(path3));
-const path4 = `file://${process.cwd()}/data/folder/` as FileURL;
-stores[`"${path4}"` as StoreType] = kv(path4);
+const file = `file://${process.cwd()}/data/kv.json`;
+stores[`new URL("${file}")`] = kv(new URL(file));
+stores[`"${file}"`] = kv(file);
+const folder = `file://${process.cwd()}/data/folder/`;
+stores[`new URL("${folder}")`] = kv(new URL(folder));
+stores[`"${folder}"`] = kv(folder);
 
 // KV Wrappers
 stores["new KVNamespace()"] = kv(new KVNamespace());
@@ -79,7 +50,7 @@ stores[`new Level("data")`] = kv(new Level("data"));
 const url = "http://localhost:3000/";
 const apiAvailable = !process.env.CI;
 if (apiAvailable) {
-  stores[`${url}` as StoreType] = kv(url);
+  stores[url] = kv(url);
 }
 if (process.env.REDIS) {
   stores["redis"] = kv(createClient());
@@ -105,24 +76,25 @@ stores["customSimple"] = kv(customSimple);
 stores["customFull"] = kv(customFull);
 // stores["customCloudflare"] = kv(customCloudflare);
 
+// These adapters expire in whole seconds, so sub-second tests are meaningless
 export const doNotSupportMs: StoreType[] = [
-  `"cookie"`,
-  `redis`,
-  "postgres",
-  `new Etcd3()`,
-  "new KVNamespace()",
-  `customCloudflare`,
+  "CLOUDFLARE",
+  "COOKIE",
+  "ETCD3",
+  "POSTGRES",
+  "REDIS",
+  "CLOUDFLAREAPI",
 ];
 
 export const cannotTestExpiration: StoreType[] = [
-  "new KVNamespace()", // The mock implementation does NOT support expiration 😪
-  `customCloudflare`, // Some stores expect 60s+ expiration times, too long to test automatically 😪
+  "CLOUDFLARE", // The mock implementation does NOT support expiration 😪
+  "CLOUDFLAREAPI", // Some stores expect 60s+ expirations, too long to test 😪
 ];
 
 for (const key of Object.keys(stores).filter(
-  (p) => only.length && !only.includes(p as StoreType),
+  (p) => only.length && !only.includes(p),
 )) {
-  delete stores[key as keyof typeof stores];
+  delete stores[key];
 }
 
 export default stores;

@@ -29,5 +29,5 @@ Any Polystore adapter works:
 ```js
 import { createClient } from "redis";
 
-secondaryStorage: betterAuthStorage(createClient().connect())
+secondaryStorage: betterAuthStorage(createClient())
 ```
