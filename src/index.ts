@@ -321,20 +321,6 @@ class Store<TD extends Serializable = Serializable> {
   }
 
   /**
-   * @alias of .del(key: string)
-   * Remove a single key and its value from the store:
-   *
-   * ```js
-   * const key = await store.delete("key1");
-   * ```
-   *
-   * **[→ Full .del() Docs](https://polystore.dev/documentation#del)**
-   */
-  async delete(key: string): Promise<string> {
-    return this.del(key);
-  }
-
-  /**
    * An iterator that goes through all of the key:value pairs in the store
    *
    * ```js

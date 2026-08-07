@@ -47,7 +47,7 @@ Available adapters for the KV store:
 - [**Etcd** `new Etcd3()`](#etcd) (be): the Microsoft's high performance KV store.
 - [**_Custom_** `{}`](#creating-a-store) (fe+be): create your own store with just 2 methods!
 
-I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser), idempotent (`kv(kv(A))` ~= `kv(A)`) and tiny (~4KB). For example, let's say you create an API library, then you can accept the stores from your client:
+I made this library to be used as a "building block" of other libraries, so that _your library_ can accept many cache stores effortlessly! It's universal (Node.js, Bun and the Browser), idempotent (`kv(kv(A))` ~= `kv(A)`) and tiny (~5KB gzipped). For example, let's say you create an API library, then you can accept the stores from your client:
 
 ```js
 import MyApi from "my-api";
@@ -119,12 +119,15 @@ Pass the client itself; those with a connection (Redis, Postgres) are connected 
 You can enforce **types** for the values either at store creation or at the method level:
 
 ```ts
+// At the store level
 const store = kv<number>(new Map());
 store.get("abc"); // number | null
 store.set("abc", 10);
 
 store.set("abc", "hello"); // FAILS
+```
 
+```ts
 // At the method level
 const store = kv(new Map());
 store.get<number>("abc"); // number | null
@@ -174,7 +177,7 @@ console.log(await store.get<User>("key3"));  // { name: "Francisco" }
 ```
 
 <details>
-  <summary>The value and its types must be <b>Serializable</b></summary>
+  <summary>The value and its types must be **Serializable**</summary>
 
 The value returned by `.get()` must be **serializable**. Valid types include:
 
@@ -197,6 +200,7 @@ type ValueType = Infinity;  // Not serializable
 ```
 
 In short, only JSON-serializable data is safe to store.
+
 </details>
 
 When there's no value (either never set, deleted, or expired), `.get()` will return `null`:
@@ -253,7 +257,7 @@ await store.set<User>("key3", { name: "Francisco" });
 ```
 
 <details>
-  <summary>The value and its types must be <b>Serializable</b></summary>
+  <summary>The value and its types must be **Serializable**</summary>
 
 The value returned by `.get()` must be **serializable**. Valid types include:
 
@@ -276,7 +280,8 @@ type ValueType = Infinity;  // Not serializable
 ```
 
 In short, only JSON-serializable data is safe to store.
-</details>  
+
+</details>
 
 - By default the keys _don't expire_.
 - Setting the `value` to `null`, or the `expires` to `0` is the equivalent of deleting the key+value.
@@ -307,7 +312,7 @@ These are all the units available:
 
 Create a value in the store with an auto-generated key. Will return a promise that resolves with the key when the value has been saved. The value needs to be serializable:
 
-```js
+```ts
 const key:string = await store.add(
   value: any,
   options?: { expires?: number|string; prefix?: string }
@@ -326,9 +331,11 @@ Some adapters will generate their own key, e.g. you can connect to a SQL client 
 
 <details>
   <summary>Key Generation details</summary>
-  The default key will be 24 AlphaNumeric characters (including upper and lower case) generated with random cryptography to make sure it's unguessable, high entropy and safe to use in most contexts like URLs, queries, etc. We use [`nanoid`](https://github.com/ai/nanoid/) with a custom dictionary, so you can check the entropy [in this dictionary](https://zelark.github.io/nano-id-cc/) by removing the "\_" and "-", and setting it to 24 characters.
 
-  Here is the safety: "If you generate 1 million keys/second, it will take ~14 million years in order to have a 1% probability of at least one collision."
+The default key will be 24 AlphaNumeric characters (including upper and lower case) generated with random cryptography to make sure it's unguessable, high entropy and safe to use in most contexts like URLs, queries, etc. We use [`nanoid`](https://github.com/ai/nanoid/) with a custom dictionary, so you can check the entropy [in this dictionary](https://zelark.github.io/nano-id-cc/) by removing the "\_" and "-", and setting it to 24 characters.
+
+Here is the safety: "If you generate 1 million keys/second, it will take ~14 million years in order to have a 1% probability of at least one collision."
+
 </details>
 
 The main reason why `.add()` exists is to allow it to work with the prefix seamlessly:
@@ -353,7 +360,7 @@ Remember that [substores with `.prefix()`](#prefix) behave as if they were an in
 
 Check whether the key:value is available in the store and not expired:
 
-```js
+```ts
 await store.has(key: string);
 
 if (await store.has("cookie-consent")) {
@@ -397,7 +404,7 @@ const has3 = await store.has("session:key1");
 
 Remove a single key from the store and return the key itself:
 
-```js
+```ts
 const key = await store.del(key: string);
 ```
 
@@ -405,7 +412,7 @@ It will ignore the operation if the key or value don't exist already (but won't 
 
 ```js
 const keys = ["key1", "key2"];
-await Promise.all(keys.map(store.del));
+await Promise.all(keys.map((key) => store.del(key)));
 console.log("done");
 ```
 
@@ -512,8 +519,8 @@ const sessionEntries = await store.prefix('session:').entries();
 
 Get all of the entries (key:value) in the store as an object:
 
-```js
-const obj = await store.all(filter?: string);
+```ts
+const obj = await store.all();
 // { keyA: "valueA", keyB: "valueB", keyC: { hello: "world" }, ... }
 ```
 
@@ -588,7 +595,7 @@ Then all of the operations will be converted internally to add the prefix when r
 const session = store.prefix("session:");
 const val = await session.get("key1"); // store.get('session:key1');
 await session.set("key2", "some data"); // store.set('session:key2', ...);
-const val = await session.has("key3"); // store.has('session:key3');
+const exists = await session.has("key3"); // store.has('session:key3');
 await session.del("key4"); // store.del('session:key4');
 await session.keys(); // store.keys(); + filter
 // ['key1', 'key2', ...]   Note no prefix here
@@ -675,7 +682,7 @@ console.log(await store.get("a"));
 // DON'T DO THIS; this will break the app since we apply more
 // advanced serialization to the values stored in memory
 map.set("a", "b");
-console.log(await store.get("a")); // THROWS ERROR
+console.log(await store.get("a")); // null, the value is silently unreadable
 ```
 
 
@@ -694,12 +701,13 @@ console.log(await store.get("key1"));
 ```
 
 <details>
-  <summary>Why use polystore with <code>new Map()</code>?</summary>
-  <p>These benefits are for wrapping Map() with polystore:</p>
-  <ul>
-    <li><strong>Expiration</strong>: you can now set lifetime to your values so that they are automatically evicted when the time passes. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+  <summary>Why use polystore with `new Map()`?</summary>
+
+These benefits are for wrapping Map() with polystore:
+
+- **Expiration**: you can now set lifetime to your values so that they are automatically evicted when the time passes. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ```js
@@ -729,13 +737,14 @@ console.log(await store.get("key1"));
 Same limitations as always apply to localStorage, if you think you are going to use too much storage try instead our integration with [Local Forage](#local-forage)!
 
 <details>
-  <summary>Why use polystore with <code>localStorage</code>?</summary>
-  <p>These benefits are for wrapping localStorage with polystore:</p>
-  <ul>
-    <li><strong>Data structures</strong>: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.</li>
-    <li><strong>Expiration</strong>: you can now set lifetime to your values so that they are automatically evicted when the time passes. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+  <summary>Why use polystore with `localStorage`?</summary>
+
+These benefits are for wrapping localStorage with polystore:
+
+- **Data structures**: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.
+- **Expiration**: you can now set lifetime to your values so that they are automatically evicted when the time passes. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ```js
@@ -763,13 +772,14 @@ console.log(await store.get("key1"));
 ```
 
 <details>
-  <summary>Why use polystore with <code>sessionStorage</code>?</summary>
-  <p>These benefits are for wrapping sessionStorage with polystore:</p>
-  <ul>
-    <li><strong>Data structures</strong>: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.</li>
-    <li><strong>Expiration</strong>: you can now set lifetime to your values so that they are automatically evicted when the time passes. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+  <summary>Why use polystore with `sessionStorage`?</summary>
+
+These benefits are for wrapping sessionStorage with polystore:
+
+- **Data structures**: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.
+- **Expiration**: you can now set lifetime to your values so that they are automatically evicted when the time passes. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ```js
@@ -801,13 +811,14 @@ It is fairly limited for how powerful cookies are, but in exchange it has the sa
 > Note: the cookie expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
 <details>
-  <summary>Why use polystore with <code>cookies</code>?</summary>
-  <p>These benefits are for wrapping cookies with polystore:</p>
-  <ul>
-    <li><strong>Data structures</strong>: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.</li>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+  <summary>Why use polystore with `cookies`?</summary>
+
+These benefits are for wrapping cookies with polystore:
+
+- **Data structures**: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ### Local Forage
@@ -826,12 +837,13 @@ console.log(await store.get("key1"));
 ```
 
 <details>
-  <summary>Why use polystore with <code>localForage</code>?</summary>
-  <p>These benefits are for wrapping localStorage with polystore:</p>
-  <ul>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+  <summary>Why use polystore with `localForage`?</summary>
+
+These benefits are for wrapping localStorage with polystore:
+
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ### Redis
@@ -854,12 +866,13 @@ You don't need to call `.connect()`, but a client you already connected (or are 
 > Note: the Redis client expire resolution is in the seconds, so times shorter than 1 second like `expires: 0.02` (20 ms) don't make sense for this storage method and won't properly save them.
 
 <details>
-  <summary>Why use polystore with <code>Redis</code>?</summary>
-  <p>These benefits are for wrapping Redis with polystore:</p>
-  <ul>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+  <summary>Why use polystore with `Redis`?</summary>
+
+These benefits are for wrapping Redis with polystore:
+
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 
@@ -885,13 +898,14 @@ console.log(await store.get("key1"));
 ```
 
 <details>
-  <summary>Why use polystore with <code>SQLite</code>?</summary>
-  <p>These benefits apply when wrapping a SQLite DB with polystore:</p>
-  <ul>
-    <li><strong>Intuitive expirations</strong>: specify expiration times like <code>10min</code> or <code>2h</code> without manual date handling.</li>
-    <li><strong>Substores</strong>: use prefixes to isolate sets of keys cleanly.</li>
-    <li><strong>Simple persistence</strong>: full on-disk durability with a minimal driver.</li>
-  </ul>
+  <summary>Why use polystore with `SQLite`?</summary>
+
+These benefits apply when wrapping a SQLite DB with polystore:
+
+- **Intuitive expirations**: specify expiration times like `10min` or `2h` without manual date handling.
+- **Substores**: use prefixes to isolate sets of keys cleanly.
+- **Simple persistence**: full on-disk durability with a minimal driver.
+
 </details>
 
 #### SQLite schema
@@ -995,12 +1009,13 @@ const store1 = kv(new URL(`file://${process.cwd()}/cache.json`));
 
 <details>
   <summary>Why use polystore with a file?</summary>
-  <p>These benefits are for wrapping a file with polystore:</p>
-  <ul>
-    <li><strong>Data structures</strong>: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.</li>
-    <li><strong>Expiration</strong>: you can now set lifetime to your values so that they are automatically evicted when the time passes. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+
+These benefits are for wrapping a file with polystore:
+
+- **Data structures**: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.
+- **Expiration**: you can now set lifetime to your values so that they are automatically evicted when the time passes. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ```js
@@ -1054,12 +1069,13 @@ const store1 = kv(new URL(`file://${process.cwd()}/cache/`));
 
 <details>
   <summary>Why use polystore with a folder?</summary>
-  <p>These benefits are for wrapping a folder with polystore:</p>
-  <ul>
-    <li><strong>Data structures</strong>: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.</li>
-    <li><strong>Expiration</strong>: you can now set lifetime to your values so that they are automatically evicted when the time passes. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+
+These benefits are for wrapping a folder with polystore:
+
+- **Data structures**: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.
+- **Expiration**: you can now set lifetime to your values so that they are automatically evicted when the time passes. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ```js
@@ -1097,12 +1113,13 @@ It expects that you pass the namespace from Cloudflare straight as a `kv()` argu
 
 <details>
   <summary>Why use polystore with Cloudflare's KV?</summary>
-  <p>These benefits are for wrapping Cloudflare's KV with polystore:</p>
-  <ul>
-    <li><strong>Data structures</strong>: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.</li>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+
+These benefits are for wrapping Cloudflare's KV with polystore:
+
+- **Data structures**: with Polystore you can pass more complex data structures and we'll handle the serialization/deserialization.
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 ```js
@@ -1136,10 +1153,11 @@ You will need to set the `valueEncoding` to `"json"` for the store to work as ex
 
 <details>
   <summary>Why use polystore with Level?</summary>
-  <p>These benefits are for wrapping Level with polystore:</p>
-  <ul>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-  </ul>
+
+These benefits are for wrapping Level with polystore:
+
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+
 </details>
 
 ```js
@@ -1169,11 +1187,12 @@ You'll need to be running the etcd store for this to work as expected.
 
 <details>
   <summary>Why use polystore with Etcd?</summary>
-  <p>These benefits are for wrapping Etcd with polystore:</p>
-  <ul>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-    <li><strong>Substores</strong>: you can also create substores and manage partial data with ease. <a href="#prefix">Details about substores</a>.</li>
-  </ul>
+
+These benefits are for wrapping Etcd with polystore:
+
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+- **Substores**: you can also create substores and manage partial data with ease. [Details about substores](#prefix).
+
 </details>
 
 
@@ -1222,13 +1241,14 @@ This keeps a single table while preserving namespace-style grouping through pref
 
 <details>
   <summary>Why use polystore with Postgres?</summary>
-  <p>These benefits are for wrapping Postgres with polystore:</p>
-  <ul>
-    <li><strong>Unified API</strong>: use the same API across all your storage backends.</li>
-    <li><strong>Database-backed persistence</strong>: leverage your existing database for key-value storage.</li>
-    <li><strong>Table-based substores</strong>: <code>.prefix()</code> maps to different tables for optimal query performance.</li>
-    <li><strong>Intuitive expirations</strong>: use plain English to specify the expiration time like <code>10min</code>. <a href="#expirations">Expirations</a>.</li>
-  </ul>
+
+These benefits are for wrapping Postgres with polystore:
+
+- **Unified API**: use the same API across all your storage backends.
+- **Database-backed persistence**: leverage your existing database for key-value storage.
+- **Table-based substores**: `.prefix()` maps to different tables for optimal query performance.
+- **Intuitive expirations**: use plain English to specify the expiration time like `10min`. [Expirations](#expirations).
+
 </details>
 
 ### Custom store
@@ -1585,7 +1605,7 @@ try {
 
 To create a store, you define a class with these properties and methods:
 
-```js
+```ts
 class MyClient {
   // The store's `.type`; declare it `as const` in TS and `store.type`
   // is narrowed to this exact literal
@@ -1669,7 +1689,7 @@ While the signatures are different, you can check each entries on the output of 
 
 ### Plain Object adapter
 
-This is a good example of how simple a store can be, however do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own adapters:
+This is the simplest a store can be, a getter and a setter. Do not use it literally since it behaves the same as the already-supported `new Map()`, only use it as the base for your own adapters:
 
 ```js
 const dataSource = {};
@@ -1684,6 +1704,20 @@ class MyClient {
     dataSource[key] = value;
   }
 
+  // We strongly suggest you add *iterate() as well, see below
+}
+```
+
+We don't set `HAS_EXPIRATION` to true since plain objects do NOT support expiration natively. When the property is missing, polystore treats it as falsy and will manage all the expirations as a layer on top of the data. We could be more explicit and set it to `HAS_EXPIRATION = false`, but it's not needed in this case.
+
+### Adding iteration
+
+A store with only `.get()` and `.set()` supports every single-key method (`.get()`, `.set()`, `.add()`, `.has()`, `.del()`), including expiration and prefixes, but the group methods (`.keys()`, `.values()`, `.entries()`, `.all()`, `.clear()` and the iterator) throw when called. Add `.iterate()` whenever your backend can list its keys, which is almost always:
+
+```js
+class MyClient {
+  // ... .get() and .set() as above
+
   // Filter them by the prefix, note that `prefix` will always be a string
   *iterate(prefix) {
     for (const [key, value] of Object.entries(dataSource)) {
@@ -1695,7 +1729,7 @@ class MyClient {
 }
 ```
 
-We don't set `HAS_EXPIRATION` to true since plain objects do NOT support expiration natively. So by not adding the `HAS_EXPIRATION` property, it's the same as setting it to `false`, and polystore will manage all the expirations as a layer on top of the data. We could be more explicit and set it to `HAS_EXPIRATION = false`, but it's not needed in this case.
+Polystore builds every group method on top of it, so this one generator is enough. If your backend can do better than a full scan, you can also define `.keys()`, `.values()`, `.entries()` or `.clear()` natively and they will be used instead.
 
 ### Custom ID generation
 
@@ -1833,14 +1867,14 @@ I've used Polystore in many projects as a simple cache. With `fetch()`, it's fai
 
 ```ts
 async function getProductInfo(id: string) {
-  const data = await store.get(id);
-  if (data) return data;
-  
+  const cached = await store.get(id);
+  if (cached) return cached;
+
   const res = await fetch(`https://some-url.com/products/${id}`);
   const data = await res.json();
-  
+
   await store.set(id, data, { expires: "10days" });
-  return clean;
+  return data;
 }
 ```
 
