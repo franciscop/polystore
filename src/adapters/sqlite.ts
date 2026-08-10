@@ -36,15 +36,14 @@ export default class SQLite extends Adapter {
   static test = (raw: any): boolean => {
     // Both Bun:sqlite and better-sqlite3 have both `.prepare()` and `.exec()`
     return (
-      typeof raw?.prepare === "function" &&
-      typeof raw?.exec === "function"
+      typeof raw?.prepare === "function" && typeof raw?.exec === "function"
     );
   };
 
   get = <T>(id: string): T | null => {
     const value = this.lib
       .prepare(
-        `SELECT value, expires_at FROM kv WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)`,
+        `SELECT value, expires_at FROM ${this.table} WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)`,
       )
       .get(id, Date.now())?.value;
     if (!value) return null;
@@ -57,18 +56,18 @@ export default class SQLite extends Adapter {
 
     this.lib
       .prepare(
-        `INSERT INTO kv (id, value, expires_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
+        `INSERT INTO ${this.table} (id, value, expires_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
       )
       .run(id, value, expires_at);
   };
 
   del = (id: string): void => {
-    this.lib.prepare(`DELETE FROM kv WHERE id = ?`).run(id);
+    this.lib.prepare(`DELETE FROM ${this.table} WHERE id = ?`).run(id);
   };
 
   has = (id: string): boolean => {
     const row = this.lib
-      .prepare(`SELECT expires_at FROM kv WHERE id = ?`)
+      .prepare(`SELECT expires_at FROM ${this.table} WHERE id = ?`)
       .get(id);
     if (!row) return false;
 
@@ -81,7 +80,7 @@ export default class SQLite extends Adapter {
   };
 
   *iterate(prefix = ""): Generator<[string, any]> {
-    const sql = `SELECT id, value FROM kv WHERE (expires_at IS NULL OR expires_at > ?) ${prefix ? "AND id LIKE ?" : ""}
+    const sql = `SELECT id, value FROM ${this.table} WHERE (expires_at IS NULL OR expires_at > ?) ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
     for (const row of this.lib.prepare(sql).all(...params)) {
@@ -90,7 +89,7 @@ export default class SQLite extends Adapter {
   }
 
   keys = (prefix = ""): string[] => {
-    const sql = `SELECT id FROM kv WHERE (expires_at IS NULL OR expires_at > ?)
+    const sql = `SELECT id FROM ${this.table} WHERE (expires_at IS NULL OR expires_at > ?)
 ${prefix ? "AND id LIKE ?" : ""}
     `;
     const params = prefix ? [Date.now(), `${prefix}%`] : [Date.now()];
@@ -99,7 +98,9 @@ ${prefix ? "AND id LIKE ?" : ""}
   };
 
   prune = (): void => {
-    this.lib.prepare(`DELETE FROM kv WHERE expires_at <= ?`).run(Date.now());
+    this.lib
+      .prepare(`DELETE FROM ${this.table} WHERE expires_at <= ?`)
+      .run(Date.now());
   };
 
   clear = (prefix = ""): void => {
