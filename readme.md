@@ -1562,6 +1562,39 @@ When dealing with large or complex amounts of data in a KV store, sometimes it's
 
 For these and more situations, you can use `.prefix()` to simplify your life further.
 
+### Extending a store
+
+A store is a plain instance, so you can attach your own methods to it with `Object.assign()`. Build them on the store's API, or go straight to the underlying client when it can do better; here `count()` is a single SQL query instead of an O(n) scan of the keys:
+
+```js
+import kv from "polystore";
+import { Client } from "pg";
+
+const client = new Client({ connectionString: process.env.DATABASE_URL });
+const store = kv(client, { prefix: "user:" });
+
+export const users = Object.assign(store, {
+  list: async () => await store.values(),
+  count: async () => {
+    const { rows } = await client.query(
+      `SELECT COUNT(*) FROM kv
+       WHERE id LIKE 'user:%' AND (expires_at IS NULL OR expires_at > NOW())`,
+    );
+    return Number(rows[0].count);
+  },
+});
+
+await users.count(); // your method, a single COUNT(*) query
+await users.get("abc"); // the full API still works
+```
+
+Note how the raw query needs to handle what polystore normally handles for you: the `user:` prefix and skipping the expired rows. The [table layout of each SQL adapter](#postgres) is documented in its section.
+
+TypeScript infers the intersection on its own, so `users.count()` is typed as `Promise<number>` and the regular methods keep their types, with no extra annotations.
+
+> [!WARNING]
+> Derived stores do not inherit your methods: `.prefix()` and `.expires()` create a new instance from the underlying adapter, so `store.prefix("a:").count` is `undefined`. Extend _after_ deriving, e.g. `Object.assign(kv(client).expires("1w"), {...})`, and don't derive from an extended store expecting the extras to follow.
+
 ### Error Handling
 
 Polystore methods return promises and surface errors from the underlying client. A good rule of thumb is to treat errors in three categories:

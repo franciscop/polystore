@@ -448,6 +448,53 @@ describe("readme: Creating a store", () => {
   });
 });
 
+describe("readme: Extending a store", () => {
+  it("Object.assign adds methods, going to SQL for a fast count()", async () => {
+    // The docs use pg; sqlite has the same table layout and runs in-process
+    const { Database } =
+      typeof globalThis.Bun !== "undefined"
+        ? await import("bun:sqlite")
+        : ((await import("better-sqlite3")) as any).default;
+    const client = new Database(":memory:");
+    const store = kv(client, { prefix: "user:" });
+
+    const users = Object.assign(store, {
+      list: async () => await store.values(),
+      count: async () => {
+        const row = client
+          .prepare(
+            `SELECT COUNT(*) AS count FROM kv
+             WHERE id LIKE 'user:%' AND (expires_at IS NULL OR expires_at > ?)`,
+          )
+          .get(Date.now());
+        return Number(row.count);
+      },
+    });
+
+    await users.set("a", { name: "A" });
+    await users.set("b", { name: "B" });
+    await users.set("expired", { name: "X" }, { expires: "10ms" });
+    await kv(client).set("other:c", { name: "C" }); // outside "user:"
+    await delay(20);
+
+    expect(await users.count()).toBe(2); // one COUNT(*), skips expired
+    expect((await users.list()).length).toBe(2);
+    expect(await users.get("a")).toEqual({ name: "A" }); // full API works
+    expect(users.type).toBe("SQLITE");
+    expect(users).toBe(store as typeof users); // same instance, extended
+  });
+
+  it("derived stores do NOT inherit the extension", async () => {
+    const store = kv(new Map());
+    const users = Object.assign(store, {
+      count: async () => (await store.keys()).length,
+    });
+
+    expect((users.prefix("a:") as any).count).toBe(undefined);
+    expect((users.expires("1h") as any).count).toBe(undefined);
+  });
+});
+
 describe("readme: Simple cache", () => {
   it("only fetches once, then serves from the store", async () => {
     const store = kv(new Map());
