@@ -2,6 +2,7 @@ import AdapterBase from "./adapters/Adapter";
 import adapters from "./adapters/index";
 import type {
   Adapter,
+  AdapterNative,
   Expires,
   Options,
   Prefix,
@@ -14,6 +15,11 @@ import { createId, parse, unix } from "./utils";
 // adapter.connect() runs once per adapter; kept here (instead of on the
 // adapter) so that a frozen or shared adapter is never written to
 const inits = new WeakMap<object, Promise<any>>();
+
+// RAW and HAS_EXPIRATION are one bit with two names: values pass through
+// untouched and the adapter owns any expiration. Either flag enables it
+const native = (a: Adapter): a is AdapterNative =>
+  Boolean(a.RAW ?? a.HAS_EXPIRATION);
 
 class Store<TD extends Serializable = Serializable> {
   PREFIX: Prefix = "";
@@ -122,12 +128,17 @@ class Store<TD extends Serializable = Serializable> {
       throw new Error("Adapter should have .get() and .set()");
     }
 
+    const { RAW, HAS_EXPIRATION } = adapter;
+    if (RAW !== undefined && HAS_EXPIRATION !== undefined && !RAW !== !HAS_EXPIRATION) {
+      throw new Error("RAW and HAS_EXPIRATION must match");
+    }
+
     // No need to validate the methods
-    if (adapter.HAS_EXPIRATION) return;
+    if (native(adapter)) return;
 
     for (let method of ["has", "keys", "values"]) {
       if ((adapter as any)[method]) {
-        throw new Error(`adapter.${method}() requires HAS_EXPIRATION`);
+        throw new Error(`adapter.${method}() requires RAW or HAS_EXPIRATION`);
       }
     }
   }
@@ -176,7 +187,7 @@ class Store<TD extends Serializable = Serializable> {
 
     // Use the underlying one from the adapter if found
     if (this.#adapter.add) {
-      if (this.#adapter.HAS_EXPIRATION) {
+      if (native(this.#adapter)) {
         return this.#adapter.add(prefix, value, expires);
       }
 
@@ -216,7 +227,7 @@ class Store<TD extends Serializable = Serializable> {
     }
 
     // The adapter manages the expiration, so let it manage it
-    if (this.#adapter.HAS_EXPIRATION) {
+    if (native(this.#adapter)) {
       await this.#adapter.set<T>(id, value, expires);
       return key;
     }
@@ -248,7 +259,7 @@ class Store<TD extends Serializable = Serializable> {
 
     // The adapter already managed expiration and there's STILL some data,
     // so we can assume it's the raw user data
-    if (this.#adapter.HAS_EXPIRATION) {
+    if (native(this.#adapter)) {
       const data = (await this.#adapter.get<T>(id)) ?? null;
 
       // No value; nothing to do/check
@@ -311,7 +322,7 @@ class Store<TD extends Serializable = Serializable> {
       return key;
     }
 
-    if (this.#adapter.HAS_EXPIRATION) {
+    if (native(this.#adapter)) {
       await this.#adapter.set(id, null, 0);
     } else {
       await this.#adapter.set(id, null);
@@ -345,7 +356,7 @@ class Store<TD extends Serializable = Serializable> {
     await this.#promise;
     this.#assertIterate();
 
-    if (this.#adapter.HAS_EXPIRATION) {
+    if (native(this.#adapter)) {
       for await (const [name, data] of this.#adapter.iterate!<T>(this.PREFIX)) {
         const key = name.slice(this.PREFIX.length);
         yield [key, data];
@@ -382,7 +393,7 @@ class Store<TD extends Serializable = Serializable> {
 
     // With a native method
     if (this.#adapter.entries) {
-      if (this.#adapter.HAS_EXPIRATION) {
+      if (native(this.#adapter)) {
         const entries = await this.#adapter.entries<T>(this.PREFIX);
         return entries.map(([k, v]) => [trim(k), v]);
       } else {
@@ -396,7 +407,7 @@ class Store<TD extends Serializable = Serializable> {
 
     // No native method, iterate then
     this.#assertIterate();
-    if (this.#adapter.HAS_EXPIRATION) {
+    if (native(this.#adapter)) {
       const list: [string, T][] = [];
       for await (const [k, v] of this.#adapter.iterate!<T>(this.PREFIX)) {
         list.push([trim(k), v]);
@@ -458,7 +469,7 @@ class Store<TD extends Serializable = Serializable> {
     await this.#promise;
 
     if (this.#adapter.values) {
-      if (this.#adapter.HAS_EXPIRATION) return this.#adapter.values<T>(this.PREFIX);
+      if (native(this.#adapter)) return this.#adapter.values<T>(this.PREFIX);
       const list = await this.#adapter.values<T>(this.PREFIX);
       return list
         .filter((data) => this.#isFresh(data))
@@ -576,7 +587,7 @@ class Store<TD extends Serializable = Serializable> {
     await this.#promise;
 
     // Adapters with native expiration do not need pruning
-    if (this.#adapter.HAS_EXPIRATION) return;
+    if (native(this.#adapter)) return;
 
     if (this.#adapter.prune) {
       await this.#adapter.prune();

@@ -12,9 +12,16 @@ type StoreData<T extends Serializable = Serializable> = {
 type Serializable = string | number | boolean | null | (Serializable | null)[] | {
     [key: string]: Serializable | null;
 };
+type NativeFlag = {
+    HAS_EXPIRATION: true;
+    RAW?: true;
+} | {
+    RAW: true;
+    HAS_EXPIRATION?: true;
+};
+type AdapterNative = AdapterExpires & NativeFlag;
 interface AdapterExpires {
     TYPE: StoreType;
-    HAS_EXPIRATION: true;
     connect?(): Promise<any>;
     promise?: Promise<any>;
     test?: (raw: any) => boolean;
@@ -34,7 +41,8 @@ interface AdapterExpires {
 }
 interface AdapterNonExpires {
     TYPE: StoreType;
-    HAS_EXPIRATION: false;
+    HAS_EXPIRATION?: false;
+    RAW?: false;
     connect?(): Promise<any>;
     promise?: Promise<any>;
     test?: (raw: any) => boolean;
@@ -53,7 +61,7 @@ interface AdapterNonExpires {
     clearAll?(): Promise<any> | any;
     close?(): Promise<any> | any;
 }
-type Adapter = AdapterExpires | AdapterNonExpires;
+type Adapter = AdapterNative | AdapterNonExpires;
 
 declare class Store<TD extends Serializable = Serializable> {
     #private;

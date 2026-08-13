@@ -379,3 +379,109 @@ describe("promise inputs", () => {
     );
   });
 });
+
+// `RAW` is an alias of `HAS_EXPIRATION`: one bit with two names. Either one
+// means values pass through untouched and the adapter owns any expiration
+describe("RAW adapters", () => {
+  it("receives and returns the raw value, by reference", async () => {
+    let received: any;
+    const store = kv({
+      TYPE: "RAWREF",
+      RAW: true,
+      get: () => received ?? null,
+      set: (key: string, value: any) => {
+        received = value;
+      },
+    });
+
+    const user = { name: "Francisco", nested: { a: 1 } };
+    await store.set("u1", user);
+    expect(received).toBe(user); // no { value, expires } wrapper
+    expect(await store.get("u1")).toBe(user);
+  });
+
+  it("still forwards the expires option as seconds", async () => {
+    let expires: any = "unset";
+    const store = kv({
+      TYPE: "RAWEXP",
+      RAW: true,
+      get: () => null,
+      set: (key: string, value: any, exp?: number | null) => {
+        expires = exp;
+      },
+    });
+
+    await store.set("a", "b");
+    expect(expires).toBe(null);
+    await store.set("a", "b", { expires: "1h" });
+    expect(expires).toBe(3600);
+  });
+
+  it("may define has/keys/values, like HAS_EXPIRATION", async () => {
+    const data: Record<string, any> = { a: 1 };
+    const store = kv({
+      TYPE: "RAWFULL",
+      RAW: true,
+      get: (key: string) => data[key] ?? null,
+      set: (key: string, value: any) => {
+        data[key] = value;
+      },
+      has: (key: string) => key in data,
+      keys: () => Object.keys(data),
+      values: () => Object.values(data),
+    });
+
+    expect(await store.has("a")).toBe(true);
+    expect(await store.keys()).toEqual(["a"]);
+    expect(await store.values()).toEqual([1]);
+  });
+
+  it("without either flag the adapter receives the wrapper", async () => {
+    let received: any;
+    const store = kv({
+      TYPE: "WRAPPED",
+      get: () => received ?? null,
+      set: (key: string, value: any) => {
+        received = value;
+      },
+    });
+
+    await store.set("a", "b");
+    expect(Object.keys(received).sort()).toEqual(["expires", "value"]);
+    expect(received.value).toBe("b");
+  });
+
+  it("accepts both flags when they agree", async () => {
+    const raw = kv({
+      TYPE: "AGREE",
+      RAW: true,
+      HAS_EXPIRATION: true,
+      get: () => null,
+      set: () => {},
+    });
+    expect(raw.type).toBe("AGREE");
+
+    let received: any;
+    const wrapped = kv({
+      TYPE: "AGREEF",
+      RAW: false,
+      HAS_EXPIRATION: false,
+      get: () => null,
+      set: (key: string, value: any) => {
+        received = value;
+      },
+    });
+    await wrapped.set("a", "b");
+    expect(received.value).toBe("b");
+  });
+
+  it("throws when the flags disagree", () => {
+    const base = { get: () => null, set: () => {} };
+    expect(() =>
+      kv({ TYPE: "BAD1", RAW: true, HAS_EXPIRATION: false, ...base }),
+    ).toThrow(/must match/);
+    expect(() =>
+      kv({ TYPE: "BAD2", RAW: false, HAS_EXPIRATION: true, ...base }),
+    ).toThrow(/must match/);
+  });
+});

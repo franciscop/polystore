@@ -1644,9 +1644,13 @@ class MyClient {
   // is narrowed to this exact literal
   TYPE = "MYSTORE";
 
-  // If this is set to `true`, the CLIENT (you) handle the expiration, so
-  // the `.set()` and `.add()` receive a `expires` that is a `null` or `number`:
-  HAS_EXPIRATION = false;
+  // One switch with two names, set either (or both, if they agree) to `true`:
+  // values then reach your adapter untouched, exactly as the user passed
+  // them, and YOU handle any expiration (`.set()` receives it as a
+  // `null` or `number` of seconds). When `false` (the default), polystore
+  // manages expiration by wrapping every value as `{ value, expires }`
+  RAW = false; // "my adapter stores values as-is"
+  HAS_EXPIRATION = false; // "my client expires values natively"
 
   // Mandatory methods
   get (key): Promise<any>;
@@ -1689,6 +1693,8 @@ class MyClient {
 ```
 
 **Expires**: if you set the `HAS_EXPIRATION = true`, then you are indicating that the adapter WILL manage the lifecycle of the data. This includes all methods, for example if an item is expired, then its key should not be returned in `.keys()`, it's value should not be returned in `.values()`, and the method `.has()` will return `false`. The good news is that you will always receive the option `expires`, which is either `null` (no expiration) or a `number` indicating the **seconds** for the key/value to will expire.
+
+**Raw**: `RAW = true` is the same switch as `HAS_EXPIRATION = true` under a different name, for adapters where the point is the data shape rather than the lifecycle: your methods receive and return the values exactly as the user passed them, with no `{ value, expires }` wrapper. Use it when the adapter maps values onto something with its own structure, like the columns of a database table. Setting `RAW` and `HAS_EXPIRATION` to different values throws.
 
 **Prefix**: we manage the `prefix` as an invisible layer on top, you only need to be aware of it in the `.add()` method, as well as in the group methods:
 

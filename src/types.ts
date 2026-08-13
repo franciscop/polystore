@@ -36,9 +36,18 @@ export type Serializable =
   | (Serializable | null)[]
   | { [key: string]: Serializable | null };
 
+// One bit with two names, pick whichever reads best for the adapter:
+// `RAW` (values pass through untouched, no { value, expires } wrapper) and
+// `HAS_EXPIRATION` (the adapter owns expiration). Setting both to
+// different values is a compile error here and a runtime error in kv()
+type NativeFlag =
+  | { HAS_EXPIRATION: true; RAW?: true }
+  | { RAW: true; HAS_EXPIRATION?: true };
+
+export type AdapterNative = AdapterExpires & NativeFlag;
+
 export interface AdapterExpires {
   TYPE: StoreType;
-  HAS_EXPIRATION: true;
   // Async setup; the store calls it once and caches it in `promise`
   connect?(): Promise<any>;
   promise?: Promise<any>;
@@ -77,7 +86,8 @@ export interface AdapterExpires {
 
 export interface AdapterNonExpires {
   TYPE: StoreType;
-  HAS_EXPIRATION: false;
+  HAS_EXPIRATION?: false;
+  RAW?: false;
   // Async setup; the store calls it once and caches it in `promise`
   connect?(): Promise<any>;
   promise?: Promise<any>;
@@ -119,4 +129,4 @@ export interface AdapterNonExpires {
   close?(): Promise<any> | any;
 }
 
-export type Adapter = AdapterExpires | AdapterNonExpires;
+export type Adapter = AdapterNative | AdapterNonExpires;

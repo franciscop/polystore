@@ -127,3 +127,13 @@ void narrow;
 // @ts-expect-error the literal is exact, not any string
 const wrong: "OTHER" = typed.type;
 void wrong;
+
+// RAW is an alias of HAS_EXPIRATION; disagreement is a compile error
+import type { Adapter } from "../src/";
+const rawOnly: Adapter = { TYPE: "R", RAW: true, get: () => null, set: () => {} };
+const expOnly: Adapter = { TYPE: "E", HAS_EXPIRATION: true, get: () => null, set: () => {} };
+const agree: Adapter = { TYPE: "A", RAW: true, HAS_EXPIRATION: true, get: () => null, set: () => {} };
+void [rawOnly, expOnly, agree];
+// @ts-expect-error RAW and HAS_EXPIRATION cannot disagree
+const disagree: Adapter = { TYPE: "D", RAW: true, HAS_EXPIRATION: false, get: () => null, set: () => {} };
+void disagree;

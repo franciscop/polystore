@@ -70,7 +70,7 @@ describe("base API", () => {
         },
       ),
     ).toThrow(
-      "adapter.has() requires HAS_EXPIRATION",
+      "adapter.has() requires RAW or HAS_EXPIRATION",
     );
   });
 
@@ -82,7 +82,7 @@ describe("base API", () => {
         },
       ),
     ).toThrow(
-      "adapter.keys() requires HAS_EXPIRATION",
+      "adapter.keys() requires RAW or HAS_EXPIRATION",
     );
   });
 
@@ -94,7 +94,7 @@ describe("base API", () => {
         },
       ),
     ).toThrow(
-      "adapter.values() requires HAS_EXPIRATION",
+      "adapter.values() requires RAW or HAS_EXPIRATION",
     );
   });
 
