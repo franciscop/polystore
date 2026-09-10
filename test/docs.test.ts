@@ -592,3 +592,93 @@ describe("readme: Custom ID generation", () => {
     ]);
   });
 });
+
+// The `memo()` helper from the "Memoizing a function" example, verbatim
+const memo = (fn: any, store: any) => {
+  const running = new Map();
+
+  const memoized = async (...args: any[]) => {
+    const id = JSON.stringify(args);
+
+    const cached = await store.get(id);
+    if (cached !== null) return cached;
+
+    if (running.has(id)) return running.get(id);
+
+    const call = (async () => {
+      const value = await fn(...args);
+      if (value !== null && value !== undefined) await store.set(id, value);
+      return value;
+    })().finally(() => running.delete(id));
+
+    running.set(id, call);
+    return call;
+  };
+
+  memoized.del = (...args: any[]) => store.del(JSON.stringify(args));
+  return memoized;
+};
+
+describe("readme: Memoizing a function", () => {
+  it("calls fn once, then serves from the store", async () => {
+    let calls = 0;
+    const fetchUser = async (id: string) => {
+      calls++;
+      return { id, name: "User " + id };
+    };
+    const users = kv(new Map()).prefix("user:").expires("10min");
+    const getUser = memo(fetchUser, users);
+
+    expect(await getUser("u1")).toEqual({ id: "u1", name: "User u1" });
+    expect(await getUser("u1")).toEqual({ id: "u1", name: "User u1" });
+    expect(calls).toBe(1);
+  });
+
+  it("shares concurrent calls, and .del() forgets one entry", async () => {
+    let calls = 0;
+    const users = kv(new Map());
+    const getUser = memo(async (id: string) => {
+      calls++;
+      return { id };
+    }, users);
+
+    const all = await Promise.all([getUser("u2"), getUser("u2"), getUser("u2")]);
+    expect(all).toEqual([{ id: "u2" }, { id: "u2" }, { id: "u2" }]);
+    expect(calls).toBe(1); // one fn() call for three concurrent reads
+
+    await getUser.del("u2");
+    await getUser("u2");
+    expect(calls).toBe(2);
+  });
+
+  it("does not cache nullish results nor failures", async () => {
+    const store = kv(new Map());
+
+    let nulls = 0;
+    const missing = memo(async () => {
+      nulls++;
+      return null;
+    }, store);
+    await missing("x");
+    await missing("x");
+    expect(nulls).toBe(2);
+
+    let fails = 0;
+    const boom = memo(async () => {
+      fails++;
+      throw new Error("nope");
+    }, store);
+    await expect(boom("y")).rejects.toThrow("nope");
+    await expect(boom("y")).rejects.toThrow("nope");
+    expect(fails).toBe(2);
+  });
+
+  it("uses the store prefix, and JSON of the arguments as the key", async () => {
+    const map = new Map();
+    const users = kv(map).prefix("user:").expires("10min");
+    const search = memo(async (q: string, page: number) => ({ q, page }), users);
+
+    await search("hi", 2);
+    expect([...map.keys()]).toEqual(['user:["hi",2]']);
+  });
+});

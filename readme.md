@@ -1921,6 +1921,70 @@ You can store either the raw data, or the processed data. Depending on whether t
 
 
 
+### Memoizing a function
+
+The cache above is a pattern, so it's worth writing once as a helper. We can create a simple `memo()` helper to make our lifes easier:
+
+```js
+const cache = kv(new Map());
+const getUser = memo(fetchUser, cache);
+
+await getUser("u1"); // calls fetchUser("u1") and saves the result
+await getUser("u1"); // from the store, no call
+await getUser.del("u1"); // forget that one
+```
+
+This `memo()` wraps any async function, so its results are read from the store when they are there, and computed and saved when they are not:
+
+```js
+// Reads from the store when possible, calls fn() and saves it when not
+export const memo = (fn, store) => {
+  const running = new Map();
+
+  const memoized = async (...args) => {
+    const id = JSON.stringify(args);
+
+    const cached = await store.get(id);
+    if (cached !== null) return cached;
+
+    // Two calls with the same arguments share a single fn() call
+    if (running.has(id)) return running.get(id);
+
+    const call = (async () => {
+      const value = await fn(...args);
+      // A nullish value is indistinguishable from a miss, so skip it
+      if (value !== null && value !== undefined) await store.set(id, value);
+      return value;
+    })().finally(() => running.delete(id));
+
+    running.set(id, call);
+    return call;
+  };
+
+  // Forget a single entry, e.g. getUser.del("u1")
+  memoized.del = (...args) => store.del(JSON.stringify(args));
+  return memoized;
+};
+```
+
+The store decides where the results live and for how long, so the helper never has to:
+
+```js
+const users = kv(client).prefix("user:").expires("10min");
+const getUser = memo(fetchUser, users);
+
+await getUser("u1"); // calls fetchUser("u1") and saves the result
+await getUser("u1"); // from the store, no call
+await getUser.del("u1"); // forget that one
+```
+
+A few details, all visible in the code above:
+
+- **The key is the arguments as JSON**, so `getUser("u1")` is stored under `["u1"]`. Change that line if you want prettier keys.
+- **Failures are not cached**: if `fn()` rejects then nothing is stored, so the next call retries.
+- **Nullish results are not cached** either, since `.get()` cannot tell a stored `null` from a miss. To cache "this does not exist", return a sentinel like `false`.
+- **Concurrent calls are shared** within the process: ten simultaneous `getUser("u1")` produce a single `fetchUser()` call. This is per process, so several instances can still call it once each.
+
 ### Dev vs Prod
 
 With Polystore it's easy to configure your KV solution to use a different adapter in dev vs production. We've found particularly useful to use an easy-to-debug adapter in dev like [Folder](#folder) and a high-performance adapter in production like [Redis](#redis):

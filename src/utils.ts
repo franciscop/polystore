@@ -1,8 +1,9 @@
-const times = /(-?(?:\d+\.?\d*|\d*\.?\d+)(?:e[-+]?\d+)?)\s*([\p{L}]*)/iu;
+const times = /^(-?(?:\d+\.?\d*|\d*\.?\d+)(?:e[-+]?\d+)?)\s*([\p{L}]*)$/iu;
 
 interface ParseFunction {
   (str: string | number | null | undefined): number | null;
   millisecond: number;
+  msec: number;
   ms: number;
   second: number;
   sec: number;
@@ -31,16 +32,16 @@ const parse = function(str: string | number | null | undefined): number | null {
   if (str === null || str === undefined) return null;
   if (typeof str === "number") return str;
   // ignore commas/placeholders
-  const cleaned = str.toLowerCase().replace(/[,_]/g, "");
+  const cleaned = str.trim().toLowerCase().replace(/[,_]/g, "");
   let [_, value, units] = times.exec(cleaned) || [];
-  if (!units) return null;
+  if (value === undefined) return null;
   const unitValue = (parse as any)[units] || (parse as any)[units.replace(/s$/, "")];
   if (!unitValue) return null;
   const result = unitValue * parseFloat(value);
-  return Math.abs(Math.round(result * 1000) / 1000);
+  return Math.round(result * 1000) / 1000;
 } as ParseFunction;
 
-parse.millisecond = parse.ms = 0.001;
+parse.millisecond = parse.msec = parse.ms = 0.001;
 parse.second = parse.sec = parse.s = parse[""] = 1;
 parse.minute = parse.min = parse.m = parse.s * 60;
 parse.hour = parse.hr = parse.h = parse.m * 60;
