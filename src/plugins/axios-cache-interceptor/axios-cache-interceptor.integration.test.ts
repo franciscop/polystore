@@ -1,4 +1,4 @@
-import { createServer, type Server } from "node:http";
+import { createServer } from "node:http";
 import axiosStatic from "axios";
 import { setupCache } from "axios-cache-interceptor";
 import axiosCacheStorage, { PolystoreAxiosCacheStorage } from "./index.js";

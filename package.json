@@ -18,7 +18,7 @@
   "scripts": {
     "size": "echo $(gzip -c index.js | wc -c) bytes",
     "build": "bunx tsup src/index.ts --format esm --dts --minify --sourcemap --out-dir . --target node24 && bunx tsup src/plugins/express/index.ts --format esm --dts --out-dir src/plugins/express --target node24 --external polystore --external express-session && bunx tsup src/plugins/hono-sessions/index.ts --format esm --dts --out-dir src/plugins/hono-sessions --target node24 --external polystore --external hono-sessions && bunx tsup src/plugins/better-auth/index.ts --format esm --dts --out-dir src/plugins/better-auth --target node24 --external polystore && bunx tsup src/plugins/axios-cache-interceptor/index.ts --format esm --dts --out-dir src/plugins/axios-cache-interceptor --target node24 --external polystore --external axios-cache-interceptor",
-    "lint": "tsc",
+    "lint": "oxlint src && tsc",
     "start": "bun test --watch",
     "service:db": "etcd",
     "service:redis": "brew services start redis",
@@ -104,6 +104,7 @@
     "jsdom": "^27.2.0",
     "level": "^8.0.1",
     "localforage": "^1.10.0",
+    "oxlint": "^1.89.0",
     "pg": "^8.13.1",
     "redis": "^4.6.10",
     "supertest": "^7.2.2",

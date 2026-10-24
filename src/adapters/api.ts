@@ -22,6 +22,7 @@ export default class Api extends Adapter {
       accept: "application/json",
       "content-type": "application/json",
     };
+    // oxlint-disable-next-line unicorn/no-invalid-fetch-options
     const res = await fetch(url, { method, headers, body });
     if (!res.ok) return null;
     return this.decode<T>(await res.text());

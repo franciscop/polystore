@@ -21,7 +21,7 @@ export default class Cookie extends Adapter {
         const key = decodeURIComponent(rawKey.trim());
         const value = this.decode(decodeURIComponent(rawValue.trim()));
         all[key] = value;
-      } catch (error) {
+      } catch {
         // no-op; 3rd party can be set cookies independently and shouldn't throw
       }
     }
