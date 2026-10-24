@@ -20,7 +20,9 @@ describe("axiosCacheStorage", () => {
   });
 
   it("accepts a custom store", () => {
-    expect(axiosCacheStorage(new Map())).toBeInstanceOf(PolystoreAxiosCacheStorage);
+    expect(axiosCacheStorage(new Map())).toBeInstanceOf(
+      PolystoreAxiosCacheStorage,
+    );
   });
 
   it("get returns empty state for missing key", async () => {

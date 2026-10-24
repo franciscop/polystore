@@ -41,8 +41,7 @@ export type Serializable =
 // `HAS_EXPIRATION` (the adapter owns expiration). Setting both to
 // different values is a compile error here and a runtime error in kv()
 type NativeFlag =
-  | { HAS_EXPIRATION: true; RAW?: true }
-  | { RAW: true; HAS_EXPIRATION?: true };
+  { HAS_EXPIRATION: true; RAW?: true } | { RAW: true; HAS_EXPIRATION?: true };
 
 export type AdapterNative = AdapterExpires & NativeFlag;
 

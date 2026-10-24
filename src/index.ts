@@ -54,9 +54,10 @@ class Store<TD extends Serializable = Serializable> {
       });
     } else {
       const init = this.#adopt(input);
-      this.#promise = init?.then(() => {
-        this.#promise = null;
-      }) ?? null;
+      this.#promise =
+        init?.then(() => {
+          this.#promise = null;
+        }) ?? null;
     }
 
     // A failed init (e.g. an unreachable Redis) should reject on the first
@@ -129,7 +130,11 @@ class Store<TD extends Serializable = Serializable> {
     }
 
     const { RAW, HAS_EXPIRATION } = adapter;
-    if (RAW !== undefined && HAS_EXPIRATION !== undefined && !RAW !== !HAS_EXPIRATION) {
+    if (
+      RAW !== undefined &&
+      HAS_EXPIRATION !== undefined &&
+      !RAW !== !HAS_EXPIRATION
+    ) {
       throw new Error("RAW and HAS_EXPIRATION must match");
     }
 
@@ -632,4 +637,10 @@ export default function createStore(adapter?: any, options?: Options): Store {
 // that it can be used in annotations but `new Store()` and
 // `instanceof Store` are compile errors; stores are created with kv()
 type StoreInstance<TD extends Serializable = Serializable> = Store<TD>;
-export type { Adapter, Options, Serializable, StoreType, StoreInstance as Store };
+export type {
+  Adapter,
+  Options,
+  Serializable,
+  StoreType,
+  StoreInstance as Store,
+};

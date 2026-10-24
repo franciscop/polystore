@@ -4,8 +4,9 @@ import kv from "polystore";
 var MAX_STALE_AGE = 36e5;
 var ttlFromValue = (value) => {
   if (value.ttl === void 0 || value.createdAt === void 0) return void 0;
-  const staleTtl = value.state === "cached" ? value.staleTtl ?? 0 : 0;
-  const removableAt = value.createdAt + value.ttl + Math.max(staleTtl, MAX_STALE_AGE);
+  const staleTtl = value.state === "cached" ? (value.staleTtl ?? 0) : 0;
+  const removableAt =
+    value.createdAt + value.ttl + Math.max(staleTtl, MAX_STALE_AGE);
   const secs = Math.ceil((removableAt - Date.now()) / 1e3);
   return secs > 0 ? { expires: secs } : void 0;
 };
@@ -21,7 +22,7 @@ var PolystoreAxiosCacheStorage = class _PolystoreAxiosCacheStorage {
       find: (key) => this.store.get(key).then((v) => v ?? void 0),
       set: (key, value) => this.store.set(key, value, ttlFromValue(value)),
       remove: (key) => this.store.del(key),
-      clear: () => this.store.clear()
+      clear: () => this.store.clear(),
     });
   }
   prefix(prefix = "") {
@@ -43,7 +44,4 @@ var PolystoreAxiosCacheStorage = class _PolystoreAxiosCacheStorage {
 function axiosCacheStorage(store = /* @__PURE__ */ new Map()) {
   return new PolystoreAxiosCacheStorage(kv(store));
 }
-export {
-  PolystoreAxiosCacheStorage,
-  axiosCacheStorage as default
-};
+export { PolystoreAxiosCacheStorage, axiosCacheStorage as default };

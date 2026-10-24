@@ -20,7 +20,7 @@ export default class MyClient {
   *iterate(prefix: string): Generator<[string, any], void, unknown> {
     const raw = Object.entries(dataSource);
     const entries = prefix
-      ? raw.filter(([key, value]) => key.startsWith(prefix))
+      ? raw.filter(([key]) => key.startsWith(prefix))
       : raw;
     for (const entry of entries) {
       yield entry as [string, any];

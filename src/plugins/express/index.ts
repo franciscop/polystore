@@ -52,7 +52,12 @@ export class PolystoreSessionStore extends session.Store {
       .catch((err) => cb?.(err));
   }
 
-  all(cb: (err: any, sessions?: SessionData[] | { [sid: string]: SessionData } | null) => void): void {
+  all(
+    cb: (
+      err: any,
+      sessions?: SessionData[] | { [sid: string]: SessionData } | null,
+    ) => void,
+  ): void {
     this.store
       .values()
       .then((vals) => cb(null, vals as unknown as SessionData[]))

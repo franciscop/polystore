@@ -30,7 +30,4 @@ var PolystoreHonoStore = class _PolystoreHonoStore {
 function honoStore(store = /* @__PURE__ */ new Map()) {
   return new PolystoreHonoStore(kv(store));
 }
-export {
-  PolystoreHonoStore,
-  honoStore as default
-};
+export { PolystoreHonoStore, honoStore as default };

@@ -11,8 +11,7 @@ export default class Memory extends Adapter {
   static test = (raw: any): boolean => raw instanceof Map;
 
   get = (key: string): any => this.lib.get(key) ?? null;
-  set = (key: string, data: any): Map<string, any> =>
-    this.lib.set(key, data);
+  set = (key: string, data: any): Map<string, any> => this.lib.set(key, data);
   del = (key: string): boolean => this.lib.delete(key);
 
   *iterate(prefix = ""): Generator<[string, any], void, unknown> {

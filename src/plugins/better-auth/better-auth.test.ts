@@ -8,7 +8,9 @@ describe("betterAuthStorage", () => {
   });
 
   it("accepts a custom store", () => {
-    expect(betterAuthStorage(new Map())).toBeInstanceOf(PolystoreBetterAuthStorage);
+    expect(betterAuthStorage(new Map())).toBeInstanceOf(
+      PolystoreBetterAuthStorage,
+    );
   });
 
   it("get returns null for missing key", async () => {

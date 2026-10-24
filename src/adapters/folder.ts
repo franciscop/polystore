@@ -20,18 +20,15 @@ export default class Folder extends Adapter {
   static test = (raw: any): boolean => {
     if (raw instanceof URL) raw = raw.href;
     return (
-      typeof raw === "string" &&
-      raw.startsWith("file://") &&
-      raw.endsWith("/")
+      typeof raw === "string" && raw.startsWith("file://") && raw.endsWith("/")
     );
   };
 
   // Make sure the folder already exists, so attempt to create it
   // It fails if it already exists, hence the catch case
   connect = async () => {
-    this.fsp = (await import(
-      "node:fs/promises"
-    )) as unknown as typeof FsPromises;
+    this.fsp =
+      (await import("node:fs/promises")) as unknown as typeof FsPromises;
     this.folder = (this.lib?.href || this.lib).replace(/^file:\/\//, "");
     await this.fsp.mkdir(this.folder, { recursive: true }).catch(() => {});
   };

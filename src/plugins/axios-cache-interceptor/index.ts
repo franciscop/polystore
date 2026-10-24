@@ -14,11 +14,14 @@ import type { Store } from "polystore";
 // native expiration (Redis, etc.) don't drop entries the interceptor still needs.
 const MAX_STALE_AGE = 3_600_000; // 1 hour, matches buildMemoryStorage/buildWebStorage
 
-const ttlFromValue = (value: NotEmptyStorageValue): { expires: number } | undefined => {
+const ttlFromValue = (
+  value: NotEmptyStorageValue,
+): { expires: number } | undefined => {
   // Loading entries (and anything without a ttl) are transient — let them be
   // replaced by the interceptor rather than expired out from under it.
-  if (value.ttl === undefined || value.createdAt === undefined) return undefined;
-  const staleTtl = value.state === "cached" ? value.staleTtl ?? 0 : 0;
+  if (value.ttl === undefined || value.createdAt === undefined)
+    return undefined;
+  const staleTtl = value.state === "cached" ? (value.staleTtl ?? 0) : 0;
   const removableAt =
     value.createdAt + value.ttl + Math.max(staleTtl, MAX_STALE_AGE);
   const secs = Math.ceil((removableAt - Date.now()) / 1000);
@@ -36,7 +39,9 @@ export class PolystoreAxiosCacheStorage implements AxiosStorage {
     this.store = store;
     this._storage = buildStorage({
       find: (key) =>
-        this.store.get<any>(key).then((v: StorageValue | null) => v ?? undefined),
+        this.store
+          .get<any>(key)
+          .then((v: StorageValue | null) => v ?? undefined),
       set: (key, value) =>
         this.store.set(key, value as any, ttlFromValue(value)) as Promise<any>,
       remove: (key) => this.store.del(key) as Promise<any>,
@@ -55,7 +60,7 @@ export class PolystoreAxiosCacheStorage implements AxiosStorage {
   set(
     key: string,
     value: NotEmptyStorageValue,
-    currentRequest?: CacheRequestConfig
+    currentRequest?: CacheRequestConfig,
   ): Promise<void> {
     return this._storage.set(key, value, currentRequest) as Promise<void>;
   }
@@ -69,6 +74,8 @@ export class PolystoreAxiosCacheStorage implements AxiosStorage {
   }
 }
 
-export default function axiosCacheStorage(store: any = new Map()): PolystoreAxiosCacheStorage {
+export default function axiosCacheStorage(
+  store: any = new Map(),
+): PolystoreAxiosCacheStorage {
   return new PolystoreAxiosCacheStorage(kv(store));
 }

@@ -25,17 +25,21 @@ interface ParseFunction {
   y: number;
   month: number;
   b: number;
-  [key: string]: number | ((str: string | number | null | undefined) => number | null);
+  [key: string]:
+    number | ((str: string | number | null | undefined) => number | null);
 }
 
-const parse = function(str: string | number | null | undefined): number | null {
+const parse = function (
+  str: string | number | null | undefined,
+): number | null {
   if (str === null || str === undefined) return null;
   if (typeof str === "number") return str;
   // ignore commas/placeholders
   const cleaned = str.trim().toLowerCase().replace(/[,_]/g, "");
   let [_, value, units] = times.exec(cleaned) || [];
   if (value === undefined) return null;
-  const unitValue = (parse as any)[units] || (parse as any)[units.replace(/s$/, "")];
+  const unitValue =
+    (parse as any)[units] || (parse as any)[units.replace(/s$/, "")];
   if (!unitValue) return null;
   const result = unitValue * parseFloat(value);
   return Math.round(result * 1000) / 1000;

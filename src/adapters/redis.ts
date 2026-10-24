@@ -8,8 +8,7 @@ export default class Redis extends Adapter {
   HAS_EXPIRATION = true as const;
 
   // Check if this is the right class for the given client
-  static test = (raw: any): boolean =>
-    raw && raw.pSubscribe && raw.sSubscribe;
+  static test = (raw: any): boolean => raw && raw.pSubscribe && raw.sSubscribe;
 
   // Connect the client unless the user already did; `isOpen` flips
   // synchronously inside connect(), so a client that is mid-connection

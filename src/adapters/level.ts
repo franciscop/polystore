@@ -44,9 +44,7 @@ export default class Level extends Adapter {
     }
     const keys: string[] = await this.lib.keys().all();
     const list = keys.filter((k) => k.startsWith(prefix));
-    return this.lib.batch(
-      list.map((key) => ({ type: "del" as const, key })),
-    );
+    return this.lib.batch(list.map((key) => ({ type: "del" as const, key })));
   };
 
   close = (): Promise<void> => this.lib.close();

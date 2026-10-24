@@ -389,7 +389,7 @@ describe("RAW adapters", () => {
       TYPE: "RAWREF",
       RAW: true,
       get: () => received ?? null,
-      set: (key: string, value: any) => {
+      set: (_key: string, value: any) => {
         received = value;
       },
     });
@@ -406,7 +406,7 @@ describe("RAW adapters", () => {
       TYPE: "RAWEXP",
       RAW: true,
       get: () => null,
-      set: (key: string, value: any, exp?: number | null) => {
+      set: (_key: string, _value: any, exp?: number | null) => {
         expires = exp;
       },
     });
@@ -441,7 +441,7 @@ describe("RAW adapters", () => {
     const store = kv({
       TYPE: "WRAPPED",
       get: () => received ?? null,
-      set: (key: string, value: any) => {
+      set: (_key: string, value: any) => {
         received = value;
       },
     });
@@ -467,7 +467,7 @@ describe("RAW adapters", () => {
       RAW: false,
       HAS_EXPIRATION: false,
       get: () => null,
-      set: (key: string, value: any) => {
+      set: (_key: string, value: any) => {
         received = value;
       },
     });

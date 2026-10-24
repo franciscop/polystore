@@ -88,7 +88,11 @@ describe("PolystoreSessionStore", () => {
       const session = makeSession(60_000) as any;
       await promisify((cb) => store.set("sid4", session, cb));
       await promisify((cb) =>
-        store.touch("sid4", { ...session, cookie: { originalMaxAge: 120_000 } }, cb),
+        store.touch(
+          "sid4",
+          { ...session, cookie: { originalMaxAge: 120_000 } },
+          cb,
+        ),
       );
       expect(await promisify((cb) => store.get("sid4", cb))).toMatchObject({
         user: "alice",

@@ -31,6 +31,8 @@ export class PolystoreBetterAuthStorage implements SecondaryStorage {
   }
 }
 
-export default function betterAuthStorage(store: any = new Map()): PolystoreBetterAuthStorage {
+export default function betterAuthStorage(
+  store: any = new Map(),
+): PolystoreBetterAuthStorage {
   return new PolystoreBetterAuthStorage(kv(store));
 }

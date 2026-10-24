@@ -21,7 +21,4 @@ var PolystoreBetterAuthStorage = class _PolystoreBetterAuthStorage {
 function betterAuthStorage(store = /* @__PURE__ */ new Map()) {
   return new PolystoreBetterAuthStorage(kv(store));
 }
-export {
-  PolystoreBetterAuthStorage,
-  betterAuthStorage as default
-};
+export { PolystoreBetterAuthStorage, betterAuthStorage as default };

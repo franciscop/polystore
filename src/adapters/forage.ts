@@ -12,8 +12,7 @@ export default class Forage extends Adapter {
     raw?.defineDriver && raw?.dropInstance && raw?.INDEXEDDB;
 
   get = (key: string): Promise<any> => this.lib.getItem(key);
-  set = (key: string, value: any): Promise<any> =>
-    this.lib.setItem(key, value);
+  set = (key: string, value: any): Promise<any> => this.lib.setItem(key, value);
   del = (key: string): Promise<void> => this.lib.removeItem(key);
 
   async *iterate(prefix = ""): AsyncGenerator<[string, any], void, unknown> {
